@@ -100,8 +100,12 @@ const { title, problem, build, stack, metricValue, metricLabel } = Astro.props;
   .metric-value {
     font-family: var(--font-mono);
     font-size: var(--text-xl);
-    font-weight: 500;
-    color: var(--color-accent);
+    font-weight: 600;
+    background: var(--gradient-accent);
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
   }
 
   .metric-label {
