@@ -1,15 +1,22 @@
 ---
+import { Image } from 'astro:assets';
 import { NAME, EMAIL, LINKEDIN_URL } from '../consts';
+import moritzPhoto from '../assets/moritz.jpg';
 ---
 
 <section class="hero">
   <div class="inner">
-    <h1>{NAME}</h1>
-    <p class="positioning">[PLACEHOLDER: one-line positioning statement]</p>
-    <p class="subline">[PLACEHOLDER: one-line subline]</p>
-    <div class="links">
-      <a href={LINKEDIN_URL}>LinkedIn <span aria-hidden="true">&rarr;</span></a>
-      <a href={`mailto:${EMAIL}`}>Email <span aria-hidden="true">&rarr;</span></a>
+    <div class="text">
+      <h1>{NAME}</h1>
+      <p class="positioning">[PLACEHOLDER: one-line positioning statement]</p>
+      <p class="subline">[PLACEHOLDER: one-line subline]</p>
+      <div class="links">
+        <a href={LINKEDIN_URL}>LinkedIn <span aria-hidden="true">&rarr;</span></a>
+        <a href={`mailto:${EMAIL}`}>Email <span aria-hidden="true">&rarr;</span></a>
+      </div>
+    </div>
+    <div class="photo">
+      <Image src={moritzPhoto} alt={`Photo of ${NAME}`} width={900} format="webp" />
     </div>
   </div>
 </section>
@@ -20,9 +27,34 @@ import { NAME, EMAIL, LINKEDIN_URL } from '../consts';
   }
 
   .inner {
-    max-width: var(--content-width);
+    max-width: var(--content-width-wide);
     margin-inline: auto;
     padding-inline: var(--space-5);
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: var(--space-7);
+  }
+
+  .text {
+    flex: 1 1 26rem;
+    min-width: 0;
+  }
+
+  .photo {
+    flex: 0 0 auto;
+    width: clamp(11rem, 24vw, 15rem);
+    aspect-ratio: 4 / 5;
+    overflow: hidden;
+    border: 1px solid var(--color-border);
+  }
+
+  .photo :global(img) {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+    filter: grayscale(1) contrast(1.05);
   }
 
   h1 {
