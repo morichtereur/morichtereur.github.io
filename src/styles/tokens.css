@@ -10,6 +10,8 @@
   --color-accent: #6888d9;
   --color-accent-hover: #87a1e3;
   --color-accent-muted: rgba(104, 136, 217, 0.12);
+  /* Used sparingly — numbered badges, standout metrics. Borders/outlines/links stay solid. */
+  --gradient-accent: linear-gradient(135deg, #3ecf8e, var(--color-accent-hover));
 
   /* Typography */
   --font-sans: var(--font-inter), -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -43,6 +45,7 @@
   --content-width-wide: 60rem; /* ~960px, hero only (text + photo) */
   --nav-height: 4rem;
   --radius: 0px;
+  --radius-badge: 6px; /* deliberate exception for the borrowed gradient-badge motif */
 
   /* Motion */
   --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);

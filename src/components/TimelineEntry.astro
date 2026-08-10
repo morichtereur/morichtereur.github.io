@@ -4,27 +4,54 @@ interface Props {
   org: string;
   dates: string;
   detail?: string;
+  index: number;
 }
 
-const { title, org, dates, detail } = Astro.props;
+const { title, org, dates, detail, index } = Astro.props;
 ---
 
 <li class="entry">
-  <div class="row">
-    <span class="title">{title}</span>
-    <span class="dates">{dates}</span>
+  <span class="badge" aria-hidden="true">{index}</span>
+  <div class="entry-body">
+    <div class="row">
+      <span class="title">{title}</span>
+      <span class="dates">{dates}</span>
+    </div>
+    <div class="org">{org}</div>
+    {detail && <div class="detail">{detail}</div>}
   </div>
-  <div class="org">{org}</div>
-  {detail && <div class="detail">{detail}</div>}
 </li>
 
 <style>
   .entry {
+    display: flex;
+    gap: var(--space-4);
     padding-block: var(--space-4);
   }
 
   .entry + .entry {
     border-top: 1px solid var(--color-border);
+  }
+
+  .badge {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    margin-top: 0.125rem;
+    border-radius: var(--radius-badge);
+    background: var(--gradient-accent);
+    color: var(--color-bg);
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    font-weight: 600;
+  }
+
+  .entry-body {
+    flex: 1;
+    min-width: 0;
   }
 
   .row {

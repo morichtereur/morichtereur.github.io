@@ -109,13 +109,13 @@ const writing = {
     <div class="background-group">
       <h3>Experience</h3>
       <ul class="timeline">
-        {experience.map((e) => <TimelineEntry {...e} />)}
+        {experience.map((e, i) => <TimelineEntry {...e} index={i + 1} />)}
       </ul>
     </div>
     <div class="background-group">
       <h3>Education</h3>
       <ul class="timeline">
-        {education.map((e) => <TimelineEntry {...e} />)}
+        {education.map((e, i) => <TimelineEntry {...e} index={i + 1} />)}
       </ul>
     </div>
   </Section>
