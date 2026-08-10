@@ -3,7 +3,68 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 import Hero from '../components/Hero.astro';
 import Section from '../components/Section.astro';
 import CaseStudyCard from '../components/CaseStudyCard.astro';
+import TimelineEntry from '../components/TimelineEntry.astro';
 import WritingCard from '../components/WritingCard.astro';
+
+const experience = [
+  {
+    title: 'Consultant, Finance',
+    org: 'EY',
+    dates: 'Nov 2025 – Present',
+    detail: 'Zurich, Switzerland',
+  },
+  {
+    title: 'Consultant, CFO Excellence Program',
+    org: 'EY',
+    dates: 'Sep 2024 – Oct 2025',
+    detail: 'Munich, Germany',
+  },
+  {
+    title: 'Intern, FS CFO Consulting',
+    org: 'KPMG Deutschland',
+    dates: 'Jun 2022 – Aug 2022',
+    detail: 'Munich, Germany',
+  },
+  {
+    title: 'Intern, CFO Advisory (FAAS)',
+    org: 'EY',
+    dates: 'Nov 2021 – Apr 2022',
+    detail: 'Munich, Germany',
+  },
+  {
+    title: 'Intern, Finance',
+    org: 'MTU Maintenance',
+    dates: 'Jun 2021 – Oct 2021',
+    detail: 'Amsterdam, Netherlands',
+  },
+  {
+    title: 'Working Student, Finance',
+    org: 'RIO – The Logistics Flow',
+    dates: 'Jun 2020 – Nov 2020',
+    detail: 'Greater Munich Metropolitan Area',
+  },
+];
+
+const education = [
+  {
+    title: 'MSc, Financial Economics',
+    org: 'Erasmus University Rotterdam',
+    dates: '2022 – 2024',
+    detail: 'Data Science · Investments · Financial Modelling · Valuations',
+  },
+  {
+    title: 'Erasmus+ Exchange Program, BBA',
+    org: 'University of Deusto',
+    dates: '2019 – 2020',
+    detail: 'International Business & Finance',
+  },
+  {
+    title: 'Bachelor of Business Administration',
+    org: 'Hochschule München',
+    dates: '2017 – 2021',
+    detail: 'Accounting & Corporate Finance',
+  },
+];
 
 const caseStudies = [
   {
@@ -44,7 +105,41 @@ const writing = {
   <Section id="case-studies" heading="Case Studies">
     {caseStudies.map((cs) => <CaseStudyCard {...cs} />)}
   </Section>
+  <Section id="background" heading="Background">
+    <div class="background-group">
+      <h3>Experience</h3>
+      <ul class="timeline">
+        {experience.map((e) => <TimelineEntry {...e} />)}
+      </ul>
+    </div>
+    <div class="background-group">
+      <h3>Education</h3>
+      <ul class="timeline">
+        {education.map((e) => <TimelineEntry {...e} />)}
+      </ul>
+    </div>
+  </Section>
   <Section id="writing" heading="Writing">
     <WritingCard {...writing} />
   </Section>
 </BaseLayout>
+
+<style>
+  .background-group + .background-group {
+    margin-top: var(--space-7);
+  }
+
+  .background-group h3 {
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--color-text-secondary);
+    margin-bottom: var(--space-3);
+  }
+
+  .timeline {
+    list-style: none;
+    padding: 0;
+  }
+</style>
