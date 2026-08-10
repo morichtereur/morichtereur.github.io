@@ -5,7 +5,8 @@
       "name": "astro-dev",
       "runtimeExecutable": "/Users/moritzrichter/Documents/Personal Page/.claude/dev.sh",
       "runtimeArgs": [],
-      "port": 4321
+      "port": 4321,
+      "autoPort": true
     }
   ]
 }
