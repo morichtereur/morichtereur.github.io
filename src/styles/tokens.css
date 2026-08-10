@@ -40,6 +40,7 @@
 
   /* Layout */
   --content-width: 45rem; /* ~720px reading column */
+  --content-width-wide: 60rem; /* ~960px, hero only (text + photo) */
   --nav-height: 4rem;
   --radius: 0px;
 
