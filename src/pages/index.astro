@@ -1,17 +1,50 @@
 ---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Hero from '../components/Hero.astro';
+import Section from '../components/Section.astro';
+import CaseStudyCard from '../components/CaseStudyCard.astro';
+import WritingCard from '../components/WritingCard.astro';
 
+const caseStudies = [
+  {
+    title: '[PLACEHOLDER: Case study 1 title]',
+    problem: '[PLACEHOLDER: one-line problem statement]',
+    build: '[PLACEHOLDER: 2-3 line description of what was built]',
+    stack: ['[PLACEHOLDER]', '[PLACEHOLDER]', '[PLACEHOLDER]'],
+    metricValue: '[PLACEHOLDER]',
+    metricLabel: '[PLACEHOLDER: metric description]',
+  },
+  {
+    title: '[PLACEHOLDER: Case study 2 title]',
+    problem: '[PLACEHOLDER: one-line problem statement]',
+    build: '[PLACEHOLDER: 2-3 line description of what was built]',
+    stack: ['[PLACEHOLDER]', '[PLACEHOLDER]', '[PLACEHOLDER]'],
+    metricValue: '[PLACEHOLDER]',
+    metricLabel: '[PLACEHOLDER: metric description]',
+  },
+  {
+    title: '[PLACEHOLDER: Case study 3 title]',
+    problem: '[PLACEHOLDER: one-line problem statement]',
+    build: '[PLACEHOLDER: 2-3 line description of what was built]',
+    stack: ['[PLACEHOLDER]', '[PLACEHOLDER]', '[PLACEHOLDER]'],
+    metricValue: '[PLACEHOLDER]',
+    metricLabel: '[PLACEHOLDER: metric description]',
+  },
+];
+
+const writing = {
+  title: '[PLACEHOLDER: Essay title]',
+  description: '[PLACEHOLDER: one-line teaser for the essay]',
+  href: '#', // [PLACEHOLDER: real essay URL]
+};
 ---
 
-<html lang="en">
-	<head>
-		<meta charset="utf-8" />
-		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-		<link rel="icon" href="/favicon.ico" />
-		<meta name="viewport" content="width=device-width" />
-		<meta name="generator" content={Astro.generator} />
-		<title>Astro</title>
-	</head>
-	<body>
-		<h1>Astro</h1>
-	</body>
-</html>
+<BaseLayout>
+  <Hero />
+  <Section id="case-studies" heading="Case Studies">
+    {caseStudies.map((cs) => <CaseStudyCard {...cs} />)}
+  </Section>
+  <Section id="writing" heading="Writing">
+    <WritingCard {...writing} />
+  </Section>
+</BaseLayout>
