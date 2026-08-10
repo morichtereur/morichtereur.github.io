@@ -1,0 +1,81 @@
+---
+interface Props {
+  title: string;
+  description: string;
+  href: string;
+}
+
+const { title, description, href } = Astro.props;
+---
+
+<article class="writing-card">
+  <div class="text">
+    <h3><a href={href} class="stretched-link">{title}</a></h3>
+    <p>{description}</p>
+  </div>
+  <span class="arrow" aria-hidden="true">&rarr;</span>
+</article>
+
+<style>
+  .writing-card {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-5);
+    padding: var(--space-6) var(--space-5);
+    margin-inline: calc(var(--space-5) * -1);
+    transition: background-color var(--duration-fast) var(--ease-standard);
+  }
+
+  .writing-card:hover {
+    background-color: var(--color-surface);
+  }
+
+  .writing-card:has(a:focus-visible) {
+    background-color: var(--color-surface);
+    outline: 2px solid var(--color-accent);
+    outline-offset: 3px;
+  }
+
+  .text {
+    min-width: 0;
+  }
+
+  h3 {
+    font-size: var(--text-xl);
+    font-weight: 600;
+  }
+
+  .stretched-link {
+    text-decoration: none;
+    color: var(--color-text-primary);
+  }
+
+  .stretched-link::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+  }
+
+  .stretched-link:focus-visible {
+    outline: none;
+  }
+
+  p {
+    margin-top: var(--space-2);
+    color: var(--color-text-secondary);
+  }
+
+  .arrow {
+    flex-shrink: 0;
+    font-family: var(--font-mono);
+    font-size: var(--text-lg);
+    color: var(--color-accent);
+    transition: transform var(--duration-fast) var(--ease-standard);
+  }
+
+  .writing-card:hover .arrow {
+    transform: translateX(4px);
+  }
+</style>
