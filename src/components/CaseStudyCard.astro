@@ -1,4 +1,7 @@
 ---
+import { Image } from 'astro:assets';
+import type { ImageMetadata } from 'astro';
+
 interface Props {
   title: string;
   problem: string;
@@ -7,9 +10,10 @@ interface Props {
   metricValue: string;
   metricLabel: string;
   repoUrl?: string;
+  figure?: { src: ImageMetadata; alt: string; caption: string };
 }
 
-const { title, problem, build, stack, metricValue, metricLabel, repoUrl } = Astro.props;
+const { title, problem, build, stack, metricValue, metricLabel, repoUrl, figure } = Astro.props;
 ---
 
 <article class="case-study">
@@ -41,6 +45,14 @@ const { title, problem, build, stack, metricValue, metricLabel, repoUrl } = Astr
       <span class="metric-label">{metricLabel}</span>
     </dd>
   </dl>
+  {
+    figure && (
+      <figure class="shot">
+        <Image src={figure.src} alt={figure.alt} widths={[700, 1100]} sizes="(max-width: 48rem) 100vw, 44rem" />
+        <figcaption>{figure.caption}</figcaption>
+      </figure>
+    )
+  }
 </article>
 
 <style>
@@ -145,6 +157,24 @@ const { title, problem, build, stack, metricValue, metricLabel, repoUrl } = Astr
   .metric-label {
     font-family: var(--font-mono);
     font-size: var(--text-xs);
+    color: var(--color-text-secondary);
+  }
+
+  .shot {
+    margin: var(--space-6) 0 0;
+  }
+
+  .shot :global(img) {
+    width: 100%;
+    height: auto;
+    border: 1px solid var(--color-border-strong);
+  }
+
+  .shot figcaption {
+    margin-top: var(--space-3);
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    line-height: var(--leading-snug);
     color: var(--color-text-secondary);
   }
 
