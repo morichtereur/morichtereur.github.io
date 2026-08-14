@@ -3,48 +3,35 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 import Hero from '../components/Hero.astro';
 import Section from '../components/Section.astro';
 import CaseStudyCard from '../components/CaseStudyCard.astro';
-import WritingCard from '../components/WritingCard.astro';
 
 const caseStudies = [
   {
-    title: '[PLACEHOLDER: Case study 1 title]',
-    problem: '[PLACEHOLDER: one-line problem statement]',
-    build: '[PLACEHOLDER: 2-3 line description of what was built]',
-    stack: ['[PLACEHOLDER]', '[PLACEHOLDER]', '[PLACEHOLDER]'],
-    metricValue: '[PLACEHOLDER]',
-    metricLabel: '[PLACEHOLDER: metric description]',
+    title: 'GBS Intelligence Agent',
+    problem:
+      'Competitor and client intelligence reached the team through whoever happened to read the right article — usually weeks after it could have changed a proposal.',
+    build:
+      'A pipeline that reads 69 feeds across 33 consulting firms, analyst houses and client companies, then has Claude score every article 0–3 for strategic relevance. Only the top tier reaches the Monday brief; everything below the cut stays searchable in a dashboard.',
+    stack: ['Python', 'Claude API', 'SQLite'],
+    metricValue: '16 weeks',
+    metricLabel: 'delivered end to end, no manual step',
   },
   {
-    title: '[PLACEHOLDER: Case study 2 title]',
-    problem: '[PLACEHOLDER: one-line problem statement]',
-    build: '[PLACEHOLDER: 2-3 line description of what was built]',
-    stack: ['[PLACEHOLDER]', '[PLACEHOLDER]', '[PLACEHOLDER]'],
-    metricValue: '[PLACEHOLDER]',
-    metricLabel: '[PLACEHOLDER: metric description]',
+    title: 'DAX Intelligence',
+    problem:
+      'Answering one comparative question across a set of annual reports means opening every PDF and trusting your memory of what each one said.',
+    build:
+      'Retrieval across 15 DAX 40 annual reports. ChromaDB surfaces the relevant passages and Claude synthesises them behind a prompt that will not answer without a source, so every claim comes back with a company and a page number.',
+    stack: ['Python', 'ChromaDB', 'Claude API', 'Streamlit'],
+    metricValue: '15 reports',
+    metricLabel: 'answerable in a single query, with page citations',
   },
-  {
-    title: '[PLACEHOLDER: Case study 3 title]',
-    problem: '[PLACEHOLDER: one-line problem statement]',
-    build: '[PLACEHOLDER: 2-3 line description of what was built]',
-    stack: ['[PLACEHOLDER]', '[PLACEHOLDER]', '[PLACEHOLDER]'],
-    metricValue: '[PLACEHOLDER]',
-    metricLabel: '[PLACEHOLDER: metric description]',
-  },
+  // Third case study goes here.
 ];
-
-const writing = {
-  title: '[PLACEHOLDER: Essay title]',
-  description: '[PLACEHOLDER: one-line teaser for the essay]',
-  href: '#', // [PLACEHOLDER: real essay URL]
-};
 ---
 
 <BaseLayout>
   <Hero />
   <Section id="case-studies" heading="Case Studies">
     {caseStudies.map((cs) => <CaseStudyCard {...cs} />)}
-  </Section>
-  <Section id="writing" heading="Writing">
-    <WritingCard {...writing} />
   </Section>
 </BaseLayout>
