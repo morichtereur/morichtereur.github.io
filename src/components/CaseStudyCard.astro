@@ -6,13 +6,23 @@ interface Props {
   stack: string[];
   metricValue: string;
   metricLabel: string;
+  repoUrl?: string;
 }
 
-const { title, problem, build, stack, metricValue, metricLabel } = Astro.props;
+const { title, problem, build, stack, metricValue, metricLabel, repoUrl } = Astro.props;
 ---
 
 <article class="case-study">
-  <h3>{title}</h3>
+  <header>
+    <h3>{title}</h3>
+    {
+      repoUrl && (
+        <a class="repo" href={repoUrl}>
+          Source <span aria-hidden="true">↗</span>
+        </a>
+      )
+    }
+  </header>
   <dl>
     <dt>Problem</dt>
     <dd>{problem}</dd>
@@ -35,45 +45,71 @@ const { title, problem, build, stack, metricValue, metricLabel } = Astro.props;
 
 <style>
   .case-study {
-    padding: var(--space-6) var(--space-5);
-    margin-inline: calc(var(--space-5) * -1);
-    transition: background-color var(--duration-fast) var(--ease-standard);
-  }
-
-  .case-study + .case-study {
+    padding-block: var(--space-7);
     border-top: 1px solid var(--color-border);
   }
 
-  .case-study:hover {
-    background-color: var(--color-surface);
+  .case-study:first-child {
+    border-top: 0;
+    padding-top: var(--space-2);
+  }
+
+  header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-3) var(--space-5);
+    margin-bottom: var(--space-6);
   }
 
   h3 {
+    font-family: var(--font-display);
     font-size: var(--text-xl);
     font-weight: 600;
     line-height: var(--leading-snug);
-    margin-bottom: var(--space-5);
+    letter-spacing: -0.02em;
+  }
+
+  .repo {
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    text-decoration: none;
+    color: var(--color-text-secondary);
+    border-bottom: 1px solid var(--color-border);
+    padding-bottom: 2px;
+    transition:
+      color var(--duration-fast) var(--ease-standard),
+      border-color var(--duration-fast) var(--ease-standard);
+  }
+
+  .repo:hover,
+  .repo:focus-visible {
+    color: var(--color-accent);
+    border-color: var(--color-accent);
   }
 
   dl {
     display: grid;
-    grid-template-columns: 8rem 1fr;
-    row-gap: var(--space-4);
-    column-gap: var(--space-4);
+    grid-template-columns: 7.5rem minmax(0, 1fr);
+    row-gap: var(--space-5);
+    column-gap: var(--space-5);
   }
 
   dt {
     font-family: var(--font-mono);
     font-size: var(--text-xs);
     text-transform: uppercase;
-    letter-spacing: 0.06em;
+    letter-spacing: var(--tracking-label);
     color: var(--color-text-secondary);
-    padding-top: 0.2em;
+    padding-top: 0.45em;
   }
 
   dd {
     margin: 0;
+    font-family: var(--font-serif);
     line-height: var(--leading-normal);
+    text-wrap: pretty;
   }
 
   .stack {
@@ -86,6 +122,7 @@ const { title, problem, build, stack, metricValue, metricLabel } = Astro.props;
     font-family: var(--font-mono);
     font-size: var(--text-xs);
     color: var(--color-text-secondary);
+    background: var(--color-surface);
     border: 1px solid var(--color-border);
     padding: var(--space-1) var(--space-2);
   }
@@ -94,29 +131,31 @@ const { title, problem, build, stack, metricValue, metricLabel } = Astro.props;
     display: flex;
     align-items: baseline;
     flex-wrap: wrap;
-    gap: var(--space-3);
+    gap: var(--space-1) var(--space-3);
   }
 
   .metric-value {
-    font-family: var(--font-mono);
+    font-family: var(--font-display);
     font-size: var(--text-xl);
-    font-weight: 500;
+    font-weight: 700;
+    letter-spacing: var(--tracking-tight);
     color: var(--color-accent);
   }
 
   .metric-label {
-    font-size: var(--text-sm);
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
     color: var(--color-text-secondary);
   }
 
-  @media (max-width: 540px) {
+  @media (max-width: 600px) {
     dl {
-      grid-template-columns: 1fr;
-      row-gap: var(--space-1);
+      grid-template-columns: minmax(0, 1fr);
+      row-gap: var(--space-2);
     }
 
     dt {
-      padding-top: var(--space-3);
+      padding-top: var(--space-4);
     }
   }
 </style>
