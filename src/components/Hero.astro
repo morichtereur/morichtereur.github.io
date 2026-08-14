@@ -1,6 +1,7 @@
 ---
 import { Image } from 'astro:assets';
 import { NAME, EMAIL, LINKEDIN_URL } from '../consts';
+import Icon from './Icon.astro';
 import moritzPhoto from '../assets/moritz.jpg';
 ---
 
@@ -14,8 +15,8 @@ import moritzPhoto from '../assets/moritz.jpg';
       </p>
       <p class="subline">CFO advisory, global business services, and finance transformation.</p>
       <div class="links">
-        <a href={LINKEDIN_URL}>LinkedIn</a>
-        <a href={`mailto:${EMAIL}`}>Email</a>
+        <a href={LINKEDIN_URL}><Icon name="linkedin" />LinkedIn</a>
+        <a href={`mailto:${EMAIL}`}><Icon name="email" />Email</a>
       </div>
     </div>
     <div class="photo">
@@ -90,6 +91,9 @@ import moritzPhoto from '../assets/moritz.jpg';
   }
 
   .links a {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
     font-family: var(--font-mono);
     font-size: var(--text-sm);
     text-decoration: none;
