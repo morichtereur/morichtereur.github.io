@@ -18,11 +18,11 @@ import { NAME, EMAIL } from '../consts';
     top: 0;
     z-index: 50;
     background: var(--color-bg);
-    border-bottom: 1px solid var(--color-border);
+    border-bottom: 1px solid var(--color-border-strong);
   }
 
   .inner {
-    max-width: var(--content-width);
+    max-width: var(--content-width-wide);
     margin-inline: auto;
     min-height: var(--nav-height);
     padding-inline: var(--space-5);
@@ -34,9 +34,11 @@ import { NAME, EMAIL } from '../consts';
   }
 
   .wordmark {
-    font-size: var(--text-sm);
-    font-weight: 600;
-    letter-spacing: 0.01em;
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: var(--tracking-label);
   }
 
   nav {
@@ -46,14 +48,18 @@ import { NAME, EMAIL } from '../consts';
   }
 
   nav a {
-    font-size: var(--text-sm);
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    text-transform: uppercase;
+    letter-spacing: var(--tracking-label);
     color: var(--color-text-secondary);
     text-decoration: none;
     padding-block: var(--space-2);
+    transition: color var(--duration-fast) var(--ease-standard);
   }
 
   nav a:hover,
   nav a:focus-visible {
-    color: var(--color-text-primary);
+    color: var(--color-accent);
   }
 </style>

@@ -3,6 +3,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 import Hero from '../components/Hero.astro';
 import Section from '../components/Section.astro';
 import CaseStudyCard from '../components/CaseStudyCard.astro';
+import SignalField from '../components/SignalField.astro';
 
 const caseStudies = [
   {
@@ -14,6 +15,7 @@ const caseStudies = [
     stack: ['Python', 'Claude API', 'SQLite'],
     metricValue: '16 weeks',
     metricLabel: 'delivered end to end, no manual step',
+    repoUrl: 'https://github.com/morichtereur/gbs-intelligence-agent',
   },
   {
     title: 'DAX Intelligence',
@@ -23,7 +25,8 @@ const caseStudies = [
       'Retrieval across 15 DAX 40 annual reports. ChromaDB surfaces the relevant passages and Claude synthesises them behind a prompt that will not answer without a source, so every claim comes back with a company and a page number.',
     stack: ['Python', 'ChromaDB', 'Claude API', 'Streamlit'],
     metricValue: '15 reports',
-    metricLabel: 'answerable in a single query, with page citations',
+    metricLabel: 'answerable in one query, with page citations',
+    repoUrl: 'https://github.com/morichtereur/dax-intelligence',
   },
   // Third case study goes here.
 ];
@@ -31,6 +34,7 @@ const caseStudies = [
 
 <BaseLayout>
   <Hero />
+  <SignalField total={1132} signal={30} />
   <Section id="case-studies" heading="Case Studies">
     {caseStudies.map((cs) => <CaseStudyCard {...cs} />)}
   </Section>

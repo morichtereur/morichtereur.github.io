@@ -1,0 +1,118 @@
+---
+/**
+ * One mark per article the GBS pipeline has scored. The lit marks are the
+ * thirty that scored high enough to reach the weekly brief — the real ratio,
+ * not an illustration of one.
+ */
+interface Props {
+  total: number;
+  signal: number;
+}
+
+const { total, signal } = Astro.props;
+
+// Spread the lit marks across the field deterministically, so the build is
+// reproducible and the distribution reads as sampled rather than clumped.
+const stride = total / signal;
+const lit = new Set(Array.from({ length: signal }, (_, i) => Math.floor(i * stride + stride / 2)));
+
+const marks = Array.from({ length: total }, (_, i) => lit.has(i));
+---
+
+<figure class="field" aria-labelledby="field-caption">
+  <div class="marks" aria-hidden="true">
+    {marks.map((isSignal) => <span class={isSignal ? 'mark is-signal' : 'mark'} />)}
+  </div>
+  <figcaption id="field-caption">
+    <span class="stat"><b>{total.toLocaleString('en-US')}</b> articles scored</span>
+    <span class="stat"><b class="accent">{signal}</b> reached the brief</span>
+    <span class="stat"><b>16</b> weeks running</span>
+  </figcaption>
+</figure>
+
+<style>
+  .field {
+    margin: 0;
+    max-width: var(--content-width-wide);
+    margin-inline: auto;
+    padding-inline: var(--space-5);
+  }
+
+  .marks {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, 6px);
+    justify-content: space-between;
+    gap: 3px 0;
+    padding-block: var(--space-5);
+    border-block: 1px solid var(--color-border);
+  }
+
+  .mark {
+    display: block;
+    width: 2px;
+    height: 13px;
+    background: var(--color-noise);
+  }
+
+  .mark.is-signal {
+    background: var(--color-accent);
+    height: 17px;
+    margin-top: -4px;
+  }
+
+  figcaption {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2) var(--space-6);
+    margin-top: var(--space-4);
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    letter-spacing: 0.02em;
+    color: var(--color-text-secondary);
+  }
+
+  figcaption b {
+    font-weight: 500;
+    color: var(--color-text-primary);
+  }
+
+  figcaption b.accent {
+    color: var(--color-accent);
+  }
+
+  /* Load sequence: the field wipes in left to right, then the signal marks
+     resolve out of the noise. One orchestrated moment, two properties. */
+  @media (prefers-reduced-motion: no-preference) {
+    .marks {
+      clip-path: inset(0 100% 0 0);
+      animation: wipe 1100ms var(--ease-out-expo) 250ms forwards;
+    }
+
+    .mark.is-signal {
+      background: var(--color-noise);
+      height: 13px;
+      margin-top: 0;
+      animation: resolve 500ms var(--ease-standard) 1250ms forwards;
+    }
+
+    @keyframes wipe {
+      to {
+        clip-path: inset(0 0 0 0);
+      }
+    }
+
+    @keyframes resolve {
+      to {
+        background: var(--color-accent);
+        height: 17px;
+        margin-top: -4px;
+      }
+    }
+  }
+
+  @media (max-width: 540px) {
+    .marks {
+      grid-template-columns: repeat(auto-fill, 5px);
+    }
+  }
+</style>

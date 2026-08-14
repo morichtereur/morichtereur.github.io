@@ -21,11 +21,12 @@ html {
 body {
   background: var(--color-bg);
   color: var(--color-text-primary);
-  font-family: var(--font-sans);
+  font-family: var(--font-serif);
   font-size: var(--text-base);
   line-height: var(--leading-normal);
   min-height: 100dvh;
   overflow-wrap: break-word;
+  -webkit-font-smoothing: antialiased;
 }
 
 html,
@@ -61,9 +62,10 @@ a {
   left: var(--space-2);
   z-index: 100;
   padding: var(--space-2) var(--space-4);
-  background: var(--color-bg);
+  background: var(--color-surface);
   color: var(--color-text-primary);
   border: 1px solid var(--color-accent);
+  font-family: var(--font-mono);
   font-size: var(--text-sm);
   transform: translateY(-150%);
   transition: transform var(--duration-fast) var(--ease-standard);
