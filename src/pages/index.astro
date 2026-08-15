@@ -6,6 +6,7 @@ import CaseStudyCard from '../components/CaseStudyCard.astro';
 import SignalField from '../components/SignalField.astro';
 import explorerShot from '../assets/intelligence-explorer.png';
 import variantCoverage from '../assets/p2p-variant-coverage.png';
+import gbsTornado from '../assets/gbs-tornado.png';
 
 const caseStudies = [
   {
@@ -54,7 +55,24 @@ const caseStudies = [
     metricLabel: 'answerable in one query, with page citations',
     repoUrl: 'https://github.com/morichtereur/dax-intelligence',
   },
-  // Third case study goes here.
+  {
+    title: 'GBS Business Case',
+    problem:
+      'A shared-services business case usually rests on numbers guessed in a workshop — automation rate, rework share, handling time — presented as if they were measured.',
+    build:
+      'Built the case on the P2P Process Mining baseline instead: opportunity sizing and discounted cash flows from the measured straight-through rate and rework cost, then a 10,000-draw Monte Carlo across every assumption still uncertain. Each one is tagged whether diligence could resolve it or genuinely cannot yet, so the variance in the answer sorts into a work plan rather than a caveat.',
+    stack: ['Python', 'DuckDB', 'NumPy', 'Matplotlib'],
+    metricValue: '62%',
+    metricLabel: 'of NPV variance is a diligence work plan, resolvable before a vendor quote — not after',
+    repoUrl: 'https://github.com/morichtereur/gbs-business-case',
+    figure: {
+      src: gbsTornado,
+      alt: 'Horizontal tornado chart of NPV sensitivity by assumption, low value to high value, bars coloured by whether diligence could measure the assumption or not. Minutes per rework touch, a measurable assumption, produces the widest swing — ahead of the implementation one-off cost.',
+      caption:
+        'The widest swing comes from a measurable assumption, not the implementation cost quote — the opposite of what a workshop case usually assumes.',
+      blend: true,
+    },
+  },
 ];
 ---
 
