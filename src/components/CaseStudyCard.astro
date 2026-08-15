@@ -10,7 +10,9 @@ interface Props {
   metricValue: string;
   metricLabel: string;
   repoUrl?: string;
-  figure?: { src: ImageMetadata; alt: string; caption: string };
+  /** `blend` multiplies a white-background chart onto the paper, so it sits on
+   *  the page rather than floating in a white panel. */
+  figure?: { src: ImageMetadata; alt: string; caption: string; blend?: boolean };
 }
 
 const { title, problem, build, stack, metricValue, metricLabel, repoUrl, figure } = Astro.props;
@@ -47,7 +49,7 @@ const { title, problem, build, stack, metricValue, metricLabel, repoUrl, figure 
   </dl>
   {
     figure && (
-      <figure class="shot">
+      <figure class={figure.blend ? 'shot is-blended' : 'shot'}>
         <Image src={figure.src} alt={figure.alt} widths={[700, 1100]} sizes="(max-width: 48rem) 100vw, 44rem" />
         <figcaption>{figure.caption}</figcaption>
       </figure>
@@ -168,6 +170,14 @@ const { title, problem, build, stack, metricValue, metricLabel, repoUrl, figure 
     width: 100%;
     height: auto;
     border: 1px solid var(--color-border-strong);
+  }
+
+  /* Charts render on white. Multiplying drops that white to the paper colour
+     without touching the ink, so the plot sits on the page instead of in a
+     bright panel — and anti-aliased edges blend correctly for free. */
+  .shot.is-blended :global(img) {
+    mix-blend-mode: multiply;
+    border: 0;
   }
 
   .shot figcaption {
