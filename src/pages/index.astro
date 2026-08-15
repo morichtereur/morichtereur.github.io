@@ -7,6 +7,7 @@ import SignalField from '../components/SignalField.astro';
 import explorerShot from '../assets/intelligence-explorer.png';
 import variantCoverage from '../assets/p2p-variant-coverage.png';
 import gbsTornado from '../assets/gbs-tornado.png';
+import daxAnswer from '../assets/dax-intelligence-answer.png';
 
 const caseStudies = [
   {
@@ -54,6 +55,12 @@ const caseStudies = [
     metricValue: '15 reports',
     metricLabel: 'answerable in one query, with page citations',
     repoUrl: 'https://github.com/morichtereur/dax-intelligence',
+    figure: {
+      src: daxAnswer,
+      alt: 'A synthesised research memo comparing how Siemens and SAP frame AI investment strategy, each claim followed by an inline (Company Year, p.N) citation. Below it a green "VERIFIED — 8/8 citations matched retrieved excerpts exactly" badge, an export button, and the start of an audit trail table listing each retrieved excerpt with its page range and confidence score.',
+      caption:
+        'A real query against the 2025 filings. Every claim carries a page citation, and every citation is checked against the retrieved excerpt before it reaches the screen.',
+    },
   },
   {
     title: 'GBS Business Case',
