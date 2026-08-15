@@ -3,7 +3,6 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 import Hero from '../components/Hero.astro';
 import Section from '../components/Section.astro';
 import CaseStudyCard from '../components/CaseStudyCard.astro';
-import SignalField from '../components/SignalField.astro';
 import explorerShot from '../assets/intelligence-explorer.png';
 import variantCoverage from '../assets/p2p-variant-coverage.png';
 import gbsTornado from '../assets/gbs-tornado.png';
@@ -38,6 +37,7 @@ const caseStudies = [
     metricValue: '16 weeks',
     metricLabel: 'delivered end to end, no manual step',
     repoUrl: 'https://github.com/morichtereur/gbs-intelligence-agent',
+    signal: { total: 1132, signal: 30 },
     figure: {
       src: explorerShot,
       alt: 'The Intelligence Explorer dashboard: a filter bar above a grid of article cards, each carrying a source logo, topic tags and a relevance badge. Text is obscured.',
@@ -85,7 +85,6 @@ const caseStudies = [
 
 <BaseLayout>
   <Hero />
-  <SignalField total={1132} signal={30} />
   <Section id="case-studies" heading="Case Studies">
     {caseStudies.map((cs) => <CaseStudyCard {...cs} />)}
   </Section>
