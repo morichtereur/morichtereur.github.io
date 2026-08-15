@@ -2,7 +2,7 @@
 
 Source for my personal site — [morichtereur.github.io](https://morichtereur.github.io/).
 
-A single static page: what I work on, two case studies, and a way to reach me.
+A single static page: what I work on, a set of case studies, and a way to reach me.
 Built with Astro, deployed to GitHub Pages by the workflow in
 `.github/workflows/deploy.yml` on every push to `main`.
 
