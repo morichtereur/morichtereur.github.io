@@ -8,9 +8,9 @@ interface Props {
 const { id, heading, count } = Astro.props;
 ---
 
-<section {id} class="section" data-reveal>
+<section {id} class="section">
   <div class="inner">
-    <div class="head">
+    <div class="head" data-reveal>
       <h2>{heading}</h2>
       {count && <span class="count">{count}</span>}
     </div>

@@ -1,6 +1,7 @@
 ---
 import { Image } from 'astro:assets';
 import type { ImageMetadata } from 'astro';
+import SignalField from './SignalField.astro';
 
 interface Props {
   title: string;
@@ -13,12 +14,16 @@ interface Props {
   /** `blend` multiplies a white-background chart onto the paper, so it sits on
    *  the page rather than floating in a white panel. */
   figure?: { src: ImageMetadata; alt: string; caption: string; blend?: boolean };
+  /** The scored/reached-brief ratio behind the outcome metric, rendered as a
+   *  field of marks. Only meaningful once the reader already knows what's
+   *  being counted, so it lives in the outcome row rather than the page. */
+  signal?: { total: number; signal: number };
 }
 
-const { title, problem, build, stack, metricValue, metricLabel, repoUrl, figure } = Astro.props;
+const { title, problem, build, stack, metricValue, metricLabel, repoUrl, figure, signal } = Astro.props;
 ---
 
-<article class="case-study">
+<article class="case-study" data-reveal>
   <header>
     <h3>{title}</h3>
     {
@@ -45,6 +50,13 @@ const { title, problem, build, stack, metricValue, metricLabel, repoUrl, figure 
     <dd class="outcome">
       <span class="metric-value">{metricValue}</span>
       <span class="metric-label">{metricLabel}</span>
+      {
+        signal && (
+          <div class="signal-wrap">
+            <SignalField total={signal.total} signal={signal.signal} />
+          </div>
+        )
+      }
     </dd>
   </dl>
   {
@@ -160,6 +172,11 @@ const { title, problem, build, stack, metricValue, metricLabel, repoUrl, figure 
     font-family: var(--font-mono);
     font-size: var(--text-xs);
     color: var(--color-text-secondary);
+  }
+
+  .signal-wrap {
+    flex-basis: 100%;
+    margin-top: var(--space-4);
   }
 
   .shot {

@@ -2,7 +2,11 @@
 /**
  * One mark per article the GBS pipeline has scored. The lit marks are the
  * thirty that scored high enough to reach the weekly brief — the real ratio,
- * not an illustration of one.
+ * not an illustration of one. Lives inside the GBS Intelligence Agent case
+ * study card, where "articles scored" and "reached the brief" have an
+ * antecedent — it doesn't work as a page-opening stat nobody has context for
+ * yet, and duration (already the card's own headline metric) isn't this
+ * visual's job, so it isn't repeated here.
  */
 interface Props {
   total: number;
@@ -19,23 +23,19 @@ const lit = new Set(Array.from({ length: signal }, (_, i) => Math.floor(i * stri
 const marks = Array.from({ length: total }, (_, i) => lit.has(i));
 ---
 
-<figure class="field" aria-labelledby="field-caption">
+<figure class="field" data-reveal aria-labelledby="field-caption">
   <div class="marks" aria-hidden="true">
     {marks.map((isSignal) => <span class={isSignal ? 'mark is-signal' : 'mark'} />)}
   </div>
   <figcaption id="field-caption">
     <span class="stat"><b>{total.toLocaleString('en-US')}</b> articles scored</span>
     <span class="stat"><b class="accent">{signal}</b> reached the brief</span>
-    <span class="stat"><b>16</b> weeks running</span>
   </figcaption>
 </figure>
 
 <style>
   .field {
     margin: 0;
-    max-width: var(--content-width-wide);
-    margin-inline: auto;
-    padding-inline: var(--space-5);
   }
 
   .marks {
@@ -43,7 +43,7 @@ const marks = Array.from({ length: total }, (_, i) => lit.has(i));
     grid-template-columns: repeat(auto-fill, 6px);
     justify-content: space-between;
     gap: 3px 0;
-    padding-block: var(--space-5);
+    padding-block: var(--space-4);
     border-block: 1px solid var(--color-border);
   }
 
@@ -81,17 +81,28 @@ const marks = Array.from({ length: total }, (_, i) => lit.has(i));
   }
 
   /* Load sequence: the field wipes in left to right, then the signal marks
-     resolve out of the noise. One orchestrated moment, two properties. */
+     resolve out of the noise. One orchestrated moment, two properties.
+     Gated on .is-visible (added by BaseLayout's scroll observer) rather than
+     firing at mount — this card sits below the fold, so a mount-time delay
+     would finish playing before anyone scrolls to see it. Also gated on
+     html.js-reveal-enabled, same as the global reveal rule, so a script
+     failure shows the resolved state immediately instead of stuck mid-wipe. */
   @media (prefers-reduced-motion: no-preference) {
-    .marks {
+    :global(html.js-reveal-enabled) .marks {
       clip-path: inset(0 100% 0 0);
+    }
+
+    :global(html.js-reveal-enabled) .field.is-visible .marks {
       animation: wipe 1100ms var(--ease-out-expo) 250ms forwards;
     }
 
-    .mark.is-signal {
+    :global(html.js-reveal-enabled) .mark.is-signal {
       background: var(--color-noise);
       height: 13px;
       margin-top: 0;
+    }
+
+    :global(html.js-reveal-enabled) .field.is-visible .mark.is-signal {
       animation: resolve 500ms var(--ease-standard) 1250ms forwards;
     }
 
