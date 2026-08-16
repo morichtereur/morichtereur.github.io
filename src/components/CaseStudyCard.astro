@@ -14,6 +14,10 @@ interface Props {
    *  number is; this says why anyone should act on it. */
   implication: string;
   repoUrl?: string;
+  /** A deployed, working version. Carried separately from repoUrl and styled
+   *  louder: reading code and using the thing are different offers, and only
+   *  one of them survives a reader who does not code. */
+  demoUrl?: string;
   /** `blend` multiplies a white-background chart onto the paper, so it sits on
    *  the page rather than floating in a white panel. */
   figure?: { src: ImageMetadata; alt: string; caption: string; blend?: boolean };
@@ -23,20 +27,29 @@ interface Props {
   signal?: { total: number; signal: number };
 }
 
-const { title, problem, build, stack, metricValue, metricLabel, implication, repoUrl, figure, signal } =
+const { title, problem, build, stack, metricValue, metricLabel, implication, repoUrl, demoUrl, figure, signal } =
   Astro.props;
 ---
 
 <article class="case-study" data-reveal>
   <header>
     <h3>{title}</h3>
-    {
-      repoUrl && (
-        <a class="repo" href={repoUrl}>
-          Source <span aria-hidden="true">↗</span>
-        </a>
-      )
-    }
+    <div class="links">
+      {
+        demoUrl && (
+          <a class="demo" href={demoUrl}>
+            Live demo <span aria-hidden="true">↗</span>
+          </a>
+        )
+      }
+      {
+        repoUrl && (
+          <a class="repo" href={repoUrl}>
+            Source <span aria-hidden="true">↗</span>
+          </a>
+        )
+      }
+    </div>
   </header>
   <dl>
     <dt>Problem</dt>
@@ -102,6 +115,28 @@ const { title, problem, build, stack, metricValue, metricLabel, implication, rep
     font-weight: 600;
     line-height: var(--leading-snug);
     letter-spacing: -0.02em;
+  }
+
+  .links {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: var(--space-4);
+  }
+
+  .demo {
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    text-decoration: none;
+    color: var(--color-accent);
+    border-bottom: 1px solid var(--color-accent);
+    padding-bottom: 2px;
+    transition: color var(--duration-fast) var(--ease-standard);
+  }
+
+  .demo:hover,
+  .demo:focus-visible {
+    color: var(--color-accent-hover);
   }
 
   .repo {
