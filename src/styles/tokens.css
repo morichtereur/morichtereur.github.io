@@ -25,7 +25,7 @@
   --text-xs: 0.75rem; /* 12px — mono labels, tags */
   --text-sm: 0.875rem; /* 14px — nav, captions */
   --text-base: 1.0625rem; /* 17px — body */
-  --text-lg: 1.1875rem; /* 19px — hero subline */
+  --text-lg: 1.1875rem; /* 19px */
   --text-xl: 1.5rem; /* 24px — card titles */
   --text-2xl: clamp(1.5rem, 2.6vw, 1.875rem); /* section h2 */
   --text-3xl: clamp(2.5rem, 7.5vw, 5rem); /* hero h1 */
