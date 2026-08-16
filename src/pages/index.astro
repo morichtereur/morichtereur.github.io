@@ -99,13 +99,14 @@ const caseStudies = [
     problem:
       'An FP&A forecast usually gets judged on whether it looks thorough, not on whether it would have been right — the assumptions that actually drive the number rarely get checked against what happened next.',
     build:
-      "Built a driver-based forecast for adidas as of FY2024 — using only that year's figures plus adidas's own stated FY2025 guidance — then checked it against FY2025 actuals alongside a naive top-down extrapolation. The driver-based forecast beat naive on every metric. A Monte Carlo run over adidas's own disclosed guidance ranges then asked which assumption actually drove the uncertainty: working capital, not revenue growth.",
-    stack: ['Python', 'NumPy', 'LLM API', 'pytest'],
+      "Built a driver-based forecast for adidas as of FY2024 — using only that year's figures plus adidas's own stated FY2025 guidance — then checked it against FY2025 actuals alongside a naive top-down extrapolation. The driver-based forecast beat naive on every metric. A Monte Carlo run over adidas's own disclosed guidance ranges then asked which assumption actually drove the uncertainty: working capital, not revenue growth. The same model sits behind an interactive cockpit — move an assumption and watch it trace through to free cash flow, with a flag when a value leaves the range the company actually guided to.",
+    stack: ['Python', 'NumPy', 'FastAPI', 'Next.js', 'LLM API', 'pytest'],
     metricValue: '3.4%',
     metricLabel: 'free cash flow error backtested against FY2025, vs. 14.8% for naive extrapolation',
     implication:
       "Both forecasts still undershot — adidas beat its own guidance, so 'the model won' is not the same claim as 'the model was accurate.' The actionable read is narrower and more useful: don't spend review time re-arguing the growth assumption, spend it on the working-capital assumption, since that is what actually moves the cash outcome.",
     repoUrl: 'https://github.com/morichtereur/fpa-decision-model',
+    demoUrl: 'https://fpa-decision-model.vercel.app/planner',
     figure: {
       src: fpaForecastError,
       alt: 'Horizontal bar chart comparing forecast error against FY2025 actuals for three metrics — revenue, operating profit, free cash flow — each showing a naive-extrapolation bar and a driver-based bar. The driver-based bar is shorter in all three: 3.1% vs 5.5% on revenue, 14.9% vs 22.3% on operating profit, 3.4% vs 14.8% on free cash flow.',
