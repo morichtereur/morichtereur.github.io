@@ -8,9 +8,15 @@ import moritzPhoto from '../assets/moritz.jpg';
 <section class="hero">
   <div class="inner">
     <div class="text">
-      <p class="eyebrow">Zürich · Business Consultant</p>
+      <p class="eyebrow">Zürich · Finance Transformation &amp; AI</p>
       <h1>{NAME}</h1>
-      <p class="positioning">I build the AI systems that do the analysis.</p>
+      <p class="positioning">
+        I use data and AI to diagnose, quantify, and improve finance operations.
+      </p>
+      <p class="subline">
+        Finance transformation consultant, working across GBS, operating models, performance
+        management and applied AI.
+      </p>
       <div class="links">
         <a href={LINKEDIN_URL}><Icon name="linkedin" />LinkedIn</a>
         <a href={`mailto:${EMAIL}`}><Icon name="email" />Email</a>
@@ -66,7 +72,19 @@ import moritzPhoto from '../assets/moritz.jpg';
     margin-top: var(--space-5);
     font-size: var(--text-xl);
     line-height: var(--leading-snug);
-    max-width: 26ch;
+    max-width: 30ch;
+    text-wrap: pretty;
+  }
+
+  /* Steps down from the positioning line rather than competing with it: the
+     claim reads first, the scope second. */
+  .subline {
+    font-family: var(--font-serif);
+    margin-top: var(--space-4);
+    font-size: var(--text-base);
+    line-height: var(--leading-snug);
+    color: var(--color-text-secondary);
+    max-width: 46ch;
     text-wrap: pretty;
   }
 
