@@ -9,6 +9,10 @@ import gbsTornado from '../assets/gbs-tornado.png';
 import daxAnswer from '../assets/dax-intelligence-answer.png';
 import agenticMix from '../assets/gbs-agentic-mix.png';
 
+// Ordered as an engagement runs: diagnose the operation, read how the model is
+// changing, quantify the case, build the tooling. The Intelligence Agent closes
+// the set — it is the one that has run unattended for months rather than the one
+// that produced a finding.
 const caseStudies = [
   {
     title: 'P2P Process Mining',
@@ -19,6 +23,8 @@ const caseStudies = [
     stack: ['Python', 'DuckDB', 'Claude API', 'Matplotlib'],
     metricValue: '20%',
     metricLabel: 'of cases follow the most common path; rework costs 19.6 days',
+    implication:
+      'Cycle time here is an exception problem, not a capacity problem — and the expensive exceptions are not the frequent ones. A programme that targets the loudest rework activity would pick one of the cheapest. Prioritisation has to follow volume times penalty, which is only visible once the log is mined.',
     repoUrl: 'https://github.com/morichtereur/p2p-process-mining',
     figure: {
       src: variantCoverage,
@@ -33,10 +39,12 @@ const caseStudies = [
     problem:
       'McKinsey argues agentic AI is turning the GBS talent pyramid into a diamond — a shrinking transactional base and a new layer managing the agent force. It is a claim about what work looks like, cited far more often than it is checked.',
     build:
-      'Read the claim off the labour market instead. Classified 2,110 live GBS and finance-operations postings across ten markets as transactional, judgment or agent-ops — a visible phrase taxonomy carries the headline, an LLM decides only the ambiguous residual, and the classifier\'s accuracy is measured against a hand-labelled gold set rather than asserted. Splitting by employer is the sharpest cut: captive GBS hires 38% transactional, third-party providers 84%. The base changed employer more than it shrank.',
+      "Read the claim off the labour market instead. Classified 2,110 live GBS and finance-operations postings across ten markets as transactional, judgment or agent-ops — a visible phrase taxonomy carries the headline, an LLM decides only the ambiguous residual, and the classifier's accuracy is measured against a hand-labelled gold set rather than asserted. Splitting by employer is the sharpest cut: captive GBS hires 38% transactional, third-party providers 84%. The base changed employer more than it shrank.",
     stack: ['Python', 'DuckDB', 'Claude API', 'Matplotlib'],
     metricValue: '2%',
     metricLabel: 'of postings ask for agent-ops skills — the diamond is not visible yet',
+    implication:
+      'Workforce plans built on the diamond thesis are ahead of the evidence. The live decision is not agent-ops recruitment but sourcing: a captive function that looks transformed may simply have moved its transactional base to a provider, and only the employer cut separates the two.',
     repoUrl: 'https://github.com/morichtereur/gbs-agentic-shift',
     figure: {
       src: agenticMix,
@@ -44,41 +52,6 @@ const caseStudies = [
       caption:
         'Ten markets, one point-in-time cross-section. A measured 42.9% recall on the agent-ops class makes that 2% a lower bound rather than a ceiling — the classifier reports how wrong it is, so the finding can be read honestly.',
       blend: true,
-    },
-  },
-  {
-    title: 'GBS Intelligence Agent',
-    problem:
-      'Competitor and client intelligence reached the team through whoever happened to read the right article — usually weeks after it could have changed a proposal.',
-    build:
-      'A pipeline that reads 69 feeds across 33 consulting firms, analyst houses and client companies, then has Claude score every article 0–3 for strategic relevance. Only the top tier reaches the Monday brief; everything below the cut stays searchable in a dashboard.',
-    stack: ['Python', 'Claude API', 'SQLite'],
-    metricValue: '16 weeks',
-    metricLabel: 'delivered end to end, no manual step',
-    repoUrl: 'https://github.com/morichtereur/gbs-intelligence-agent',
-    signal: { total: 1132, signal: 30 },
-    figure: {
-      src: explorerShot,
-      alt: 'The Intelligence Explorer dashboard: a filter bar above a grid of article cards, each carrying a source logo, topic tags and a relevance badge. Text is obscured.',
-      caption:
-        'The Intelligence Explorer — one card per signal, grouped by cluster, filtered by topic and calendar week. Content obscured; the live dashboard carries competitive intelligence.',
-    },
-  },
-  {
-    title: 'DAX Intelligence',
-    problem:
-      'Answering one comparative question across a set of annual reports means opening every PDF and trusting your memory of what each one said.',
-    build:
-      'Retrieval across 15 DAX 40 annual reports. ChromaDB surfaces the relevant passages and Claude synthesises them behind a prompt that will not answer without a source, so every claim comes back with a company and a page number.',
-    stack: ['Python', 'ChromaDB', 'Claude API', 'Streamlit'],
-    metricValue: '15 reports',
-    metricLabel: 'answerable in one query, with page citations',
-    repoUrl: 'https://github.com/morichtereur/dax-intelligence',
-    figure: {
-      src: daxAnswer,
-      alt: 'A synthesised research memo comparing how Siemens and SAP frame AI investment strategy, each claim followed by an inline (Company Year, p.N) citation. Below it a green "VERIFIED — 8/8 citations matched retrieved excerpts exactly" badge, an export button, and the start of an audit trail table listing each retrieved excerpt with its page range and confidence score.',
-      caption:
-        'A real query against the 2025 filings. Every claim carries a page citation, and every citation is checked against the retrieved excerpt before it reaches the screen.',
     },
   },
   {
@@ -90,6 +63,8 @@ const caseStudies = [
     stack: ['Python', 'DuckDB', 'NumPy', 'Matplotlib'],
     metricValue: '62%',
     metricLabel: 'of NPV variance comes from assumptions diligence can resolve — the work plan, not the caveat',
+    implication:
+      'At central assumptions the case does not clear the hurdle rate, which is a result rather than a dead end. The uncertainty that decides it is a handling-time study, not a vendor quote — so a week of desk observation moves the answer further than another round of estimating, and the model says which week to spend.',
     repoUrl: 'https://github.com/morichtereur/gbs-business-case',
     figure: {
       src: gbsTornado,
@@ -97,6 +72,45 @@ const caseStudies = [
       caption:
         'The widest swing comes from a measurable assumption, not the implementation cost quote — the opposite of what a workshop case usually assumes.',
       blend: true,
+    },
+  },
+  {
+    title: 'DAX Intelligence',
+    problem:
+      'Answering one comparative question across a set of annual reports means opening every PDF and trusting your memory of what each one said.',
+    build:
+      'Retrieval across 15 DAX 40 annual reports. ChromaDB surfaces the relevant passages and Claude synthesises them behind a prompt that will not answer without a source, so every claim comes back with a company and a page number.',
+    stack: ['Python', 'ChromaDB', 'Claude API', 'Streamlit'],
+    metricValue: '15 reports',
+    metricLabel: 'answerable in one query, with page citations',
+    implication:
+      'Analyst time shifts from finding a passage to judging it. The citation check is what makes that shift safe: an answer carrying a verified page number can go into a client document as it stands, while an unsourced one has to be found by hand anyway — which is the work it was supposed to save.',
+    repoUrl: 'https://github.com/morichtereur/dax-intelligence',
+    figure: {
+      src: daxAnswer,
+      alt: 'A synthesised research memo comparing how Siemens and SAP frame AI investment strategy, each claim followed by an inline (Company Year, p.N) citation. Below it a green "VERIFIED — 8/8 citations matched retrieved excerpts exactly" badge, an export button, and the start of an audit trail table listing each retrieved excerpt with its page range and confidence score.',
+      caption:
+        'A real query against the 2025 filings. Every claim carries a page citation, and every citation is checked against the retrieved excerpt before it reaches the screen.',
+    },
+  },
+  {
+    title: 'GBS Intelligence Agent',
+    problem:
+      'Competitor and client intelligence reached the team through whoever happened to read the right article — usually weeks after it could have changed a proposal.',
+    build:
+      'A pipeline that reads 69 feeds across 33 consulting firms, analyst houses and client companies, then has Claude score every article 0–3 for strategic relevance. Only the top tier reaches the Monday brief; everything below the cut stays searchable in a dashboard.',
+    stack: ['Python', 'Claude API', 'SQLite'],
+    metricValue: '16 weeks',
+    metricLabel: 'delivered end to end, no manual step',
+    implication:
+      'Market awareness stops depending on who happened to read what. The summarising is the least of it — the point is that the filter runs on a Monday whether or not anyone remembers to look, which is the difference between a tool that was built and one that is used.',
+    repoUrl: 'https://github.com/morichtereur/gbs-intelligence-agent',
+    signal: { total: 1132, signal: 30 },
+    figure: {
+      src: explorerShot,
+      alt: 'The Intelligence Explorer dashboard: a filter bar above a grid of article cards, each carrying a source logo, topic tags and a relevance badge. Text is obscured.',
+      caption:
+        'The Intelligence Explorer — one card per signal, grouped by cluster, filtered by topic and calendar week. Content obscured; the live dashboard carries competitive intelligence.',
     },
   },
 ];
