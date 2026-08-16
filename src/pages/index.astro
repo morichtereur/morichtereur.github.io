@@ -20,7 +20,7 @@ const caseStudies = [
       'Every finance transformation deck opens with the same sentence — the process is inefficient and highly manual. Almost nobody can say by how much, or where.',
     build:
       'Mined a 1.6M-event SAP purchase-to-pay log covering 251,734 purchase order line items, reconstructing the path each case actually took rather than the one the process documentation describes. Variant analysis, straight-through rate, the cycle-time cost of rework, and which sequence rules the system genuinely enforces versus merely documents.',
-    stack: ['Python', 'DuckDB', 'Claude API', 'Matplotlib'],
+    stack: ['Python', 'DuckDB', 'LLM API', 'Matplotlib'],
     metricValue: '20%',
     metricLabel: 'of cases follow the most common path; rework costs 19.6 days',
     implication:
@@ -40,7 +40,7 @@ const caseStudies = [
       'McKinsey argues agentic AI is turning the GBS talent pyramid into a diamond — a shrinking transactional base and a new layer managing the agent force. It is a claim about what work looks like, cited far more often than it is checked.',
     build:
       "Read the claim off the labour market instead. Classified 2,110 live GBS and finance-operations postings across ten markets as transactional, judgment or agent-ops — a visible phrase taxonomy carries the headline, an LLM decides only the ambiguous residual, and the classifier's accuracy is measured against a hand-labelled gold set rather than asserted. Splitting by employer is the sharpest cut: captive GBS hires 38% transactional, third-party providers 84%. The base changed employer more than it shrank.",
-    stack: ['Python', 'DuckDB', 'Claude API', 'Matplotlib'],
+    stack: ['Python', 'DuckDB', 'LLM API', 'Matplotlib'],
     metricValue: '2%',
     metricLabel: 'of postings ask for agent-ops skills — the diamond is not visible yet',
     implication:
@@ -79,8 +79,8 @@ const caseStudies = [
     problem:
       'Answering one comparative question across a set of annual reports means opening every PDF and trusting your memory of what each one said.',
     build:
-      'Retrieval across 15 DAX 40 annual reports. ChromaDB surfaces the relevant passages and Claude synthesises them behind a prompt that will not answer without a source, so every claim comes back with a company and a page number.',
-    stack: ['Python', 'ChromaDB', 'Claude API', 'Streamlit'],
+      'Retrieval across 15 DAX 40 annual reports. ChromaDB surfaces the relevant passages and the LLM synthesises them behind a prompt that will not answer without a source, so every claim comes back with a company and a page number.',
+    stack: ['Python', 'ChromaDB', 'LLM API', 'Streamlit'],
     metricValue: '15 reports',
     metricLabel: 'answerable in one query, with page citations',
     implication:
@@ -98,8 +98,8 @@ const caseStudies = [
     problem:
       'Competitor and client intelligence reached the team through whoever happened to read the right article — usually weeks after it could have changed a proposal.',
     build:
-      'A pipeline that reads 69 feeds across 33 consulting firms, analyst houses and client companies, then has Claude score every article 0–3 for strategic relevance. Only the top tier reaches the Monday brief; everything below the cut stays searchable in a dashboard.',
-    stack: ['Python', 'Claude API', 'SQLite'],
+      'A pipeline that reads 69 feeds across 33 consulting firms, analyst houses and client companies, then has the LLM score every article 0–3 for strategic relevance. Only the top tier reaches the Monday brief; everything below the cut stays searchable in a dashboard.',
+    stack: ['Python', 'LLM API', 'SQLite'],
     metricValue: '16 weeks',
     metricLabel: 'delivered end to end, no manual step',
     implication:
