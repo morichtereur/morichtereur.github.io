@@ -10,6 +10,9 @@ interface Props {
   stack: string[];
   metricValue: string;
   metricLabel: string;
+  /** The commercial consequence of the finding. The outcome says what the
+   *  number is; this says why anyone should act on it. */
+  implication: string;
   repoUrl?: string;
   /** `blend` multiplies a white-background chart onto the paper, so it sits on
    *  the page rather than floating in a white panel. */
@@ -20,7 +23,8 @@ interface Props {
   signal?: { total: number; signal: number };
 }
 
-const { title, problem, build, stack, metricValue, metricLabel, repoUrl, figure, signal } = Astro.props;
+const { title, problem, build, stack, metricValue, metricLabel, implication, repoUrl, figure, signal } =
+  Astro.props;
 ---
 
 <article class="case-study" data-reveal>
@@ -58,6 +62,9 @@ const { title, problem, build, stack, metricValue, metricLabel, repoUrl, figure,
         )
       }
     </dd>
+
+    <dt>So what</dt>
+    <dd>{implication}</dd>
   </dl>
   {
     figure && (
