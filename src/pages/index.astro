@@ -11,7 +11,8 @@ import agenticMix from '../assets/gbs-agentic-mix.png';
 import fpaForecastError from '../assets/fpa-forecast-error.png';
 
 // Ordered as an engagement runs: diagnose the operation, read how the model is
-// changing, quantify the case, build the tooling, forecast what happens next.
+// changing, quantify the case, build the tooling, forecast what happens next,
+// then put controls around what the tooling is allowed to decide.
 // The Intelligence Agent closes the set — it is the one that has run
 // unattended for months rather than the one that produced a finding.
 const caseStudies = [
@@ -114,6 +115,19 @@ const caseStudies = [
         'One backtest point, not a track record: built as of FY2024, checked against FY2025 actuals. Driver-based beats naive on every metric, but both still undershot — adidas outperformed its own guidance.',
       blend: true,
     },
+  },
+  {
+    title: 'Finance Close Control Agent',
+    problem:
+      'A month-end close raises more exceptions than there are reviewer hours, and most of them are benign. Handing the triage to a model is an obvious idea and a dangerous one: a control has to run the same checks on every item, rest on a policy someone can open and read, and survive an auditor asking six months later what the system knew when it made a recommendation.',
+    build:
+      'Eighteen deterministic checks run over the ledger in DuckDB before a model sees anything — materiality, approval, segregation of duties, duplicates, reconciliation status. LlamaIndex then retrieves the governing policy sections with document and clause preserved, and the model classifies and recommends inside a closed vocabulary. Every citation it returns is matched against what was actually retrieved and stripped if it was not, and a deterministic gate — not the model — decides whether a person must look. Benchmarked over 60 labelled exceptions on AWS Bedrock, with the whole decision reconstructable from an audit record.',
+    stack: ['Python', 'LangChain', 'LlamaIndex', 'AWS Bedrock', 'DuckDB'],
+    metricValue: '0 missed',
+    metricLabel: 'escalations across 60 exceptions on a live Bedrock run — bought with 7 false ones',
+    implication:
+      'The direction of the error is the finding. Seven benign items reached a reviewer who did not need to see them; nothing that required review was cleared. For a control assistant that is the affordable failure, and it is the gate that guarantees it rather than the model being trusted to get it right. Where the model disagrees more often is which remedy to propose — left visible rather than tuned away against labels the project wrote itself.',
+    repoUrl: 'https://github.com/morichtereur/finance-close-control-agent',
   },
   {
     title: 'GBS Intelligence Agent',
