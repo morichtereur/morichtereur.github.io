@@ -9,6 +9,7 @@ import gbsTornado from '../assets/gbs-tornado.png';
 import daxAnswer from '../assets/dax-intelligence-answer.png';
 import agenticMix from '../assets/gbs-agentic-mix.png';
 import fpaForecastError from '../assets/fpa-forecast-error.png';
+import fccaEscalation from '../assets/fcca-escalation-outcomes.png';
 
 // Ordered as an engagement runs: diagnose the operation, read how the model is
 // changing, quantify the case, build the tooling, forecast what happens next,
@@ -128,6 +129,13 @@ const caseStudies = [
     implication:
       'The direction of the error is the finding. Seven benign items reached a reviewer who did not need to see them; nothing that required review was cleared. For a control assistant that is the affordable failure, and it is the gate that guarantees it rather than the model being trusted to get it right. Where the model disagrees more often is which remedy to propose — left visible rather than tuned away against labels the project wrote itself.',
     repoUrl: 'https://github.com/morichtereur/finance-close-control-agent',
+    figure: {
+      src: fccaEscalation,
+      alt: 'A single stacked bar across 60 labelled close exceptions: 48 escalated correctly in green, 7 escalated unnecessarily in orange, 5 cleared correctly in muted green, with a note at the right edge reading zero missed.',
+      caption:
+        'One live Bedrock run over the labelled set. The segment that matters is the one that is not there — nothing requiring review was cleared instead, and the seven unnecessary escalations are what that costs.',
+      blend: true,
+    },
   },
   {
     title: 'GBS Intelligence Agent',
