@@ -22,3 +22,7 @@ pnpm-debug.log*
 
 # jetbrains setting folder
 .idea/
+
+# Personal documents that live in this working directory but are not part of the site.
+*.docx
+*.pdf
