@@ -9,9 +9,11 @@ import gbsTornado from '../assets/gbs-tornado.png';
 import daxAnswer from '../assets/dax-intelligence-answer.png';
 import agenticMix from '../assets/gbs-agentic-mix.png';
 import fpaForecastError from '../assets/fpa-forecast-error.png';
+import fccaControlReview from '../assets/fcca-control-review.png';
 
 // Ordered as an engagement runs: diagnose the operation, read how the model is
-// changing, quantify the case, build the tooling, forecast what happens next.
+// changing, quantify the case, build the tooling, forecast what happens next,
+// then put controls around what the tooling is allowed to decide.
 // The Intelligence Agent closes the set — it is the one that has run
 // unattended for months rather than the one that produced a finding.
 const caseStudies = [
@@ -112,6 +114,26 @@ const caseStudies = [
       alt: 'Horizontal bar chart comparing forecast error against FY2025 actuals for three metrics — revenue, operating profit, free cash flow — each showing a naive-extrapolation bar and a driver-based bar. The driver-based bar is shorter in all three: 3.1% vs 5.5% on revenue, 14.9% vs 22.3% on operating profit, 3.4% vs 14.8% on free cash flow.',
       caption:
         'One backtest point, not a track record: built as of FY2024, checked against FY2025 actuals. Driver-based beats naive on every metric, but both still undershot — adidas outperformed its own guidance.',
+      blend: true,
+    },
+  },
+  {
+    title: 'Finance Close Control Agent',
+    problem:
+      'A month-end close raises more exceptions than there are reviewer hours, and most of them are benign. Handing the triage to a model is an obvious idea and a dangerous one: a control has to run the same checks on every item, rest on a policy someone can open and read, and survive an auditor asking six months later what the system knew when it made a recommendation.',
+    build:
+      'Eighteen deterministic checks run over the ledger in DuckDB before a model sees anything — materiality, approval, segregation of duties, duplicates, reconciliation status. LlamaIndex then retrieves the governing policy sections with document and clause preserved, and the model classifies and recommends inside a closed vocabulary. Every citation it returns is matched against what was actually retrieved and stripped if it was not, and a deterministic gate — not the model — decides whether a person must look. Benchmarked over 60 labelled exceptions on AWS Bedrock, with the whole decision reconstructable from an audit record.',
+    stack: ['Python', 'LangChain', 'LlamaIndex', 'AWS Bedrock', 'DuckDB'],
+    metricValue: '0 missed',
+    metricLabel: 'escalations across 60 exceptions — on two models and a repeat run, at a cost of 7 to 11 false ones',
+    implication:
+      'The direction of the error is the finding. Benign items reached a reviewer who did not need to see them; nothing that required review was cleared. That held when the model was swapped for one costing a third as much — risk accuracy fell from 0.87 to 0.70 and missed escalations stayed at zero — and again when the same run was repeated. Judgement is the model\'s and degrades with its price; the guarantee is the gate\'s and does not.',
+    repoUrl: 'https://github.com/morichtereur/finance-close-control-agent',
+    figure: {
+      src: fccaControlReview,
+      alt: 'A control review for one exception: a table of the four deterministic checks that fired with their severity, observed value and detail; the risk rating, finding and recommended action; a disposition of HUMAN REVIEW REQUIRED with the three reasons that forced it; and four cited policy sections with relevance scores and source file paths.',
+      caption:
+        'One exception decided end to end on AWS Bedrock. The checks that fired carry their own thresholds, the disposition names the rule that forced it, and every policy section is quotable back to a file. Real output, typeset; two blocks abridged where marked.',
       blend: true,
     },
   },
