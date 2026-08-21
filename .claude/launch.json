@@ -6,6 +6,18 @@
       "runtimeExecutable": "/Users/moritzrichter/Documents/Personal Page/.claude/dev.sh",
       "runtimeArgs": [],
       "port": 4321
+    },
+    {
+      "name": "location-dashboard",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8777",
+        "--directory",
+        "/Users/moritzrichter/Documents/gbs-location-selection"
+      ],
+      "port": 8777
     }
   ]
 }
