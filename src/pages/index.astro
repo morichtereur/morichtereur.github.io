@@ -10,7 +10,7 @@ import daxAnswer from '../assets/dax-intelligence-answer.png';
 import agenticMix from '../assets/gbs-agentic-mix.png';
 import fpaForecastError from '../assets/fpa-forecast-error.png';
 import fccaControlReview from '../assets/fcca-control-review.png';
-import centresSpread from '../assets/gbs-centres-spread.png';
+import sampleFilter from '../assets/gbs-sample-filter.png';
 
 // Ordered as an engagement runs: diagnose the operation, read how the model is
 // changing, quantify the case, decide where it goes, build the tooling,
@@ -84,19 +84,19 @@ const caseStudies = [
     problem:
       'A location study arrives as three cities and a weighted scorecard. The weights were agreed in a workshop, and the weights are what chose the three cities \u2014 which is then presented to a steering committee as measurement.',
     build:
-      "Candidates are evidenced rather than asserted: a location qualifies as a GBS centre only where finance-operations roles are actually advertised there by four or more employers, read off the same 2,110-posting snapshot as the capability pillar. The employer threshold is what matters \u2014 volume alone admits a German town with seventeen postings from two employers, which is one company's office, not a labour market. That leaves 26 centres, scored on six pillars: a wage basket and the employed stock in the same ISCO groups from ILOSTAT, governance carried with the bounds of its own 90% interval, working hours shared with the headquarters, how fast each wage gap is closing, and what the location demonstrably staffs. Cost resolves to the city for the 15 centres Eurostat reaches. The scorecard then runs 10,000 times across every defensible weighting, resampling the governance scores, the staffing blend, and the capability shares from the binomial that produced them.",
+      "The first version of this study rested on a sample searched for \u2018finance operations\u2019 and similar terms. Measured against its own result, only 13% of those 2,159 postings carried any shared-services or capability-centre signal \u2014 the pillar meant to describe GBS was describing retained finance nine times out of ten. The population is now fetched for the delivery model instead, and every posting passes two independent classifiers: one deciding whether it is GBS or GCC work, one deciding whether that work is transactional or judgment. Ten markets are then scored on six pillars \u2014 a wage basket and the employed stock in the same ISCO groups, governance carried with the bounds of its own 90% interval, hours shared with the headquarters, how fast the wage gap is closing, and what the market demonstrably staffs \u2014 and re-run 10,000 times across every defensible weighting, resampling each of those inputs inside its own published or sampling error.",
     stack: ['Python', 'NumPy', 'DuckDB', 'Matplotlib', 'JavaScript', 'pytest'],
-    metricValue: '15 of 26',
+    metricValue: '13%',
     metricLabel:
-      'GBS centres whose labour cost is measurable at city level \u2014 for the other eleven the tool can name the city but cannot separate it from its neighbours',
+      'of the original sample was actually GBS or GCC work \u2014 the rest was retained finance, the work a shared-services centre exists not to do',
     implication:
-      'A site selection does not choose India, it chooses Pune or Bangalore, and the honest finding is that this panel cannot tell them apart. Where Eurostat resolves cost, the choice between a country\u2019s centres is a real decision \u2014 in Poland it moves up to 30% of the entire score range, because Warsaw costs 1.81\u00d7 the national average while \u0141\u00f3d\u017a sits at 0.73\u00d7. Where cost is only inherited, the centres differ by a capability share estimated on a dozen postings, which is sampling noise wearing the clothes of a finding; it is shrunk toward the national figure in proportion to how thin it is, and what survives is that nothing in the centre view is robust. Building the interactive version caught the same error in a sharper form: the first dashboard varied only the weights, which can never reorder centres that share every other pillar, and so reported Pune at a confident 100%. It now resamples what is uncertain and reports 86%.',
+      'Restricting the population changes the reading in eight of ten markets and changes which city leads. Warsaw dominated Poland on the broad sample because it is the country\u2019s largest finance job market; on GBS and GCC work alone Kraków leads, because it is the largest shared-services one. Those are different questions and only the second is a location decision. What the narrower sample costs is size, and the honest consequence is stated rather than hidden: Switzerland contributes five decided postings, nine centres survive across only two markets, and nothing in the centre view is robust \u2014 the tool can name Pune and cannot rank it against Bangalore. The delivery classifier is not asserted either. Twenty postings drawn at random were adjudicated by hand at 16 correct, 3 wrong, 1 unclear, and earlier versions were worse: a hotel cashier cleared every gate before a wrong-setting list existed.',
     repoUrl: 'https://github.com/morichtereur/gbs-location-selection',
     figure: {
-      src: centresSpread,
-      alt: 'Dot plot of 26 GBS centres grouped by country on a shared score axis. Poland spreads widest, from Warsaw at the low end to Gda\u0144sk at the high end; Spain, the Netherlands and Germany spread less. India\u2019s five centres sit far to the right, clustered tightly together and drawn as hollow dots. Filled dots mark centres with measured city-level cost, hollow dots those carrying their country\u2019s figure.',
+      src: sampleFilter,
+      alt: 'Dumbbell chart of ten markets. Hollow dots show the transactional share of a broad finance-operations posting sample; filled dots show the same markets restricted to GBS and GCC work. The filled dot sits to the right in eight of ten markets \u2014 Switzerland moves from 19% to 60%, Mexico from 43% to 86% \u2014 while India and the Netherlands move left. Each row is annotated with the remaining sample size, from n=103 in India down to n=5 in Switzerland.',
       caption:
-        'Filled dots have measured city-level cost; hollow dots inherit their country\u2019s. India\u2019s five centres are the strongest transactional candidates and the least separable \u2014 the cluster is the finding.',
+        'The gap is retained finance that was never in scope. The sample sizes on the right are what honestly remains once it is removed.',
       blend: true,
     },
   },
