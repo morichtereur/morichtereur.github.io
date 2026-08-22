@@ -10,7 +10,7 @@ import daxAnswer from '../assets/dax-intelligence-answer.png';
 import agenticMix from '../assets/gbs-agentic-mix.png';
 import fpaForecastError from '../assets/fpa-forecast-error.png';
 import fccaControlReview from '../assets/fcca-control-review.png';
-import locationStability from '../assets/location-rank-stability.png';
+import centresSpread from '../assets/gbs-centres-spread.png';
 
 // Ordered as an engagement runs: diagnose the operation, read how the model is
 // changing, quantify the case, decide where it goes, build the tooling,
@@ -84,19 +84,19 @@ const caseStudies = [
     problem:
       'A location study arrives as three cities and a weighted scorecard. The weights were agreed in a workshop, and the weights are what chose the three cities \u2014 which is then presented to a steering committee as measurement.',
     build:
-      "Ten markets scored on six pillars, each traceable to a source: a wage basket and the employed stock in the same three ISCO occupation groups, both from ILOSTAT so cost and talent describe one workforce; governance carried with the bounds of its own published 90% interval; working hours shared with the headquarters; how fast each market's wage gap is closing, from its own measured drift; and a pillar no commercial index has, built from 2,110 classified live postings \u2014 not how much talent a market supplies, but what work it demonstrably staffs. Cost is then resolved to NUTS-2 regions via Eurostat for the four markets where that exists. The scorecard is re-run 10,000 times across every defensible weighting, resampling the governance scores inside their published interval, the staffing blend behind both baskets, and the capability shares redrawn from the binomial that produced them. An interactive dashboard lets a reader move the weights and watch both the ranking and its stability move with them; the page's JavaScript is held to the Python scoring by a test that runs both on the real panel.",
+      "Candidates are evidenced rather than asserted: a location qualifies as a GBS centre only where finance-operations roles are actually advertised there by four or more employers, read off the same 2,110-posting snapshot as the capability pillar. The employer threshold is what matters \u2014 volume alone admits a German town with seventeen postings from two employers, which is one company's office, not a labour market. That leaves 26 centres, scored on six pillars: a wage basket and the employed stock in the same ISCO groups from ILOSTAT, governance carried with the bounds of its own 90% interval, working hours shared with the headquarters, how fast each wage gap is closing, and what the location demonstrably staffs. Cost resolves to the city for the 15 centres Eurostat reaches. The scorecard then runs 10,000 times across every defensible weighting, resampling the governance scores, the staffing blend, and the capability shares from the binomial that produced them.",
     stack: ['Python', 'NumPy', 'DuckDB', 'Matplotlib', 'JavaScript', 'pytest'],
-    metricValue: '2.7\u00d7',
+    metricValue: '15 of 26',
     metricLabel:
-      'spread in labour cost inside Poland alone \u2014 Warsaw costs more per employee than the Spanish national average, which no country-level shortlist can see',
+      'GBS centres whose labour cost is measurable at city level \u2014 for the other eleven the tool can name the city but cannot separate it from its neighbours',
     implication:
-      'A site selection does not choose Poland, it chooses Wroc\u0142aw or Katowice or Warsaw, and those are not the same decision: the national figure hides a 2.7-fold internal range, while Germany is nearly flat at 1.2. Country resolution is not uniformly wrong \u2014 it is wrong by a different amount in every country, which is worse, because it is invisible. The second result is a correction. An earlier version of this study found Poland never shortlisted and concluded the panel was blind to the nearshore proximity Poland is bought for. Proximity was added as a pillar, Poland scores the maximum on it, and Poland is still never shortlisted \u2014 it ties four other markets on that maximum, and carries the fastest-closing cost gap in the panel at 8.5% a year. Poland is never best at anything. The original conclusion was wrong, and it only came out because the missing pillar was built rather than written up as a caveat.',
+      'A site selection does not choose India, it chooses Pune or Bangalore, and the honest finding is that this panel cannot tell them apart. Where Eurostat resolves cost, the choice between a country\u2019s centres is a real decision \u2014 in Poland it moves up to 30% of the entire score range, because Warsaw costs 1.81\u00d7 the national average while \u0141\u00f3d\u017a sits at 0.73\u00d7. Where cost is only inherited, the centres differ by a capability share estimated on a dozen postings, which is sampling noise wearing the clothes of a finding; it is shrunk toward the national figure in proportion to how thin it is, and what survives is that nothing in the centre view is robust. Building the interactive version caught the same error in a sharper form: the first dashboard varied only the weights, which can never reorder centres that share every other pillar, and so reported Pune at a confident 100%. It now resamples what is uncertain and reports 86%.',
     repoUrl: 'https://github.com/morichtereur/gbs-location-selection',
     figure: {
-      src: locationStability,
-      alt: 'Grouped horizontal bar chart of ten markets, each with two bars showing how often it lands in the top three across 10,000 weightings. Transactional hub bars, in blue, run India 100%, United Kingdom 68%, South Africa 58%, Mexico 51%, then six markets near zero. Judgment centre bars, in orange, are led by Germany at 100% and Switzerland at 88%, with the rest below 50%. A dashed line marks the 90% robust threshold.',
+      src: centresSpread,
+      alt: 'Dot plot of 26 GBS centres grouped by country on a shared score axis. Poland spreads widest, from Warsaw at the low end to Gda\u0144sk at the high end; Spain, the Netherlands and Germany spread less. India\u2019s five centres sit far to the right, clustered tightly together and drawn as hollow dots. Filled dots mark centres with measured city-level cost, hollow dots those carrying their country\u2019s figure.',
       caption:
-        'Exactly one market in each archetype survives a change of mind \u2014 India for a transactional hub, Germany for a judgment centre. Everything below is contingent on a weighting somebody chose.',
+        'Filled dots have measured city-level cost; hollow dots inherit their country\u2019s. India\u2019s five centres are the strongest transactional candidates and the least separable \u2014 the cluster is the finding.',
       blend: true,
     },
   },
