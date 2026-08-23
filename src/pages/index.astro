@@ -12,6 +12,7 @@ import fpaForecastError from '../assets/fpa-forecast-error.png';
 import fccaControlReview from '../assets/fcca-control-review.png';
 import sampleFilter from '../assets/gbs-sample-filter.png';
 import locationDashboard from '../assets/gbs-location-dashboard.png';
+import tomDashboard from '../assets/gbs-tom-dashboard.png';
 
 // Ordered as an engagement runs: diagnose the operation, read how the model is
 // changing, quantify the case, decide where it goes, build the tooling,
@@ -46,6 +47,31 @@ const caseStudies = [  {
     },
   },
 
+  {
+    title: 'GBS Target Operating Model',
+    summary:
+      'Prices how often purchase-to-pay work crosses between delivery units, solves the assignment to proven optimality — and reports a price and a set of bands rather than a target operating model.',
+    data: 'The same public SAP event log, plus the public wage panel and posting classifier from the two upstream studies.',
+    group: 'gbs',
+    problem:
+      'A target operating model arrives as four columns on a slide — retained, captive, provider, automated — with the activities sorted into them by the people whose functions are being sorted. The expensive part is not where an activity sits. It is how often work crosses between columns, and nobody in the room has measured which activities actually follow each other.',
+    build:
+      'Measured the crossings from the same 1.6M-event SAP log: 498 directly-follows pairs across 11,973 variants, of which 681,352 transitions are priced once repeats and unavoidable vendor or system steps are excluded and reported. OR-Tools CP-SAT then assigns 29 activities to one delivery model and one city, proven optimal at every price, under four declared constraints — segregation of duties ported from the Finance Control Agent, minimum viable site size, contact coverage, and a cap on judgment work in a measured transactional hub. Both metrics were fixed in writing before the solve ran, and automation is allowed only where the log already shows an activity running in batch: Clear Invoice is 194,393 events with zero batch, so this model cannot automate it however much a slide would like to.',
+    stack: ['Python', 'OR-Tools CP-SAT', 'DuckDB', 'LLM API', 'pytest'],
+    metricValue: '13 of 29',
+    metricLabel:
+      'positions the cost model actually decides — the other 16 are ties, and the tool leaves them blank rather than filling them in',
+    implication:
+      'Concentrating purchase-to-pay pays only above USD 3.38 per handoff — inside the range declared before the sweep ran, but in its top half. At the price the study declares, USD 1.50, the crossings already cost 1.85× the wage bill they coordinate, so the four-column slide is quietly taking a position on a number larger than the one it is optimising. Two results outrank the assignment itself. Contact coverage — that somebody can answer a supplier inside their working day — is worth more than the entire labour-arbitrage argument: remove it and 28 of 29 activities move and the bill falls by about half a million dollars. And retained is empty at every price, because nothing in the brief said authority over company spend has to sit inside the company; wanting a retained organisation is not the same as having written it down.',
+    repoUrl: 'https://github.com/morichtereur/gbs-tom-assignment',
+    figure: {
+      src: tomDashboard,
+      alt: 'The target-operating-model tool in use. A headline reads “What a handoff costs decides the operating model”; an answer panel states that concentrating purchase-to-pay pays only above USD 3.38 per handoff, near the top edge of the range the study will defend, and that cost decides 13 of the 29 positions while the other 16 are ties left undecided. Below it a slider sets what one handoff costs, currently USD 1.50, with the defensible range and the 3.38 tipping point marked on the track.',
+      caption:
+        'The tool as it runs. Every stop on the slider is a price the model was actually solved at, so nothing on the page is an assignment the solver did not produce.',
+      blend: true,
+    },
+  },
   {
     title: 'P2P Process Mining',
     summary:
