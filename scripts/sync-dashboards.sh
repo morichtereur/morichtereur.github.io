@@ -39,5 +39,6 @@ echo "Syncing dashboards from their source repositories:"
 sync gbs-location-selection location-dashboard
 sync gbs-tom-assignment     tom-dashboard
 sync gbs-agentic-shift      agentic-shift-dashboard
+sync dax-intelligence       dax-dashboard
 
 exit "$status"
