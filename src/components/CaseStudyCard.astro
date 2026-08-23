@@ -35,8 +35,21 @@ interface Props {
   signal?: { total: number; signal: number };
 }
 
-const { title, summary, data, problem, build, stack, metricValue, metricLabel, implication, repoUrl, demoUrl, figure, signal } =
-  Astro.props;
+const {
+  title,
+  summary,
+  data,
+  problem,
+  build,
+  stack,
+  metricValue,
+  metricLabel,
+  implication,
+  repoUrl,
+  demoUrl,
+  figure,
+  signal,
+} = Astro.props;
 ---
 
 <article class="case-study" data-reveal>
@@ -106,7 +119,10 @@ const { title, summary, data, problem, build, stack, metricValue, metricLabel, i
     border-top: 1px solid var(--color-border);
   }
 
-  .case-study:first-child {
+  /* The first card in a group sits directly under the group heading's own
+     rule. Matching on type, not position: .group-head is the element's first
+     child, so :first-child matched nothing and the divider doubled up. */
+  .case-study:first-of-type {
     border-top: 0;
     padding-top: var(--space-2);
   }
