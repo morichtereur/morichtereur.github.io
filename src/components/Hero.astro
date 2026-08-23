@@ -24,7 +24,14 @@ import moritzPhoto from '../assets/moritz.jpg';
       </div>
     </div>
     <div class="photo">
-      <Image src={moritzPhoto} alt={`Photo of ${NAME}`} width={900} format="webp" />
+      <Image
+        src={moritzPhoto}
+        alt={`Photo of ${NAME}`}
+        width={900}
+        format="webp"
+        loading="eager"
+        fetchpriority="high"
+      />
     </div>
   </div>
 </section>
