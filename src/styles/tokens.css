@@ -6,7 +6,6 @@
      meaning: scored-through marks, metrics, link affordances. */
   --color-bg: #e9eae4;
   --color-surface: #f2f3ee;
-  --color-surface-sunk: #dfe1d9;
   --color-border: #c6cac0;
   --color-border-strong: #7e857a;
   --color-text-primary: #121a17;
@@ -27,7 +26,6 @@
   --text-base: 1.0625rem; /* 17px — body */
   --text-lg: 1.1875rem; /* 19px */
   --text-xl: 1.5rem; /* 24px — card titles */
-  --text-2xl: clamp(1.5rem, 2.6vw, 1.875rem); /* section h2 */
   --text-3xl: clamp(2.5rem, 7.5vw, 5rem); /* hero h1 */
 
   --leading-tight: 1.02;
@@ -46,13 +44,11 @@
   --space-6: 2rem;
   --space-7: 3rem;
   --space-8: 4rem;
-  --space-9: 6rem;
 
   /* Layout */
   --content-width: 46rem;
   --content-width-wide: 64rem;
   --nav-height: 3.5rem;
-  --radius: 0px;
 
   /* Motion */
   --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);

@@ -21,13 +21,18 @@ const stride = total / signal;
 const lit = new Set(Array.from({ length: signal }, (_, i) => Math.floor(i * stride + stride / 2)));
 
 const marks = Array.from({ length: total }, (_, i) => lit.has(i));
+
+// Derived rather than fixed, so a second field on the page cannot collide with
+// this one's id and break both aria-labelledby references. Deterministic, so
+// the build stays reproducible.
+const captionId = `field-caption-${total}-${signal}`;
 ---
 
-<figure class="field" data-reveal aria-labelledby="field-caption">
+<figure class="field" data-reveal aria-labelledby={captionId}>
   <div class="marks" aria-hidden="true">
     {marks.map((isSignal) => <span class={isSignal ? 'mark is-signal' : 'mark'} />)}
   </div>
-  <figcaption id="field-caption">
+  <figcaption id={captionId}>
     <span class="stat"><b>{total.toLocaleString('en-US')}</b> articles scored</span>
     <span class="stat"><b class="accent">{signal}</b> reached the brief</span>
   </figcaption>

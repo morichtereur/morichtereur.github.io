@@ -10,17 +10,15 @@ import daxAnswer from '../assets/dax-intelligence-answer.png';
 import agenticMix from '../assets/gbs-agentic-mix.png';
 import fpaForecastError from '../assets/fpa-forecast-error.png';
 import fccaControlReview from '../assets/fcca-control-review.png';
-import sampleFilter from '../assets/gbs-sample-filter.png';
 import locationDashboard from '../assets/gbs-location-dashboard.png';
 import tomDashboard from '../assets/gbs-tom-dashboard.png';
 
-// Ordered as an engagement runs: diagnose the operation, read how the model is
-// changing, quantify the case, decide where it goes, build the tooling,
-// forecast what happens next, then put controls around what the tooling is
-// allowed to decide.
-// The Intelligence Agent closes the set — it is the one that has run
-// unattended for months rather than the one that produced a finding.
-const caseStudies = [  {
+// This array is not the page order. Each card declares a `group`, and the
+// `groups` array below decides which groups render and in what order; within a
+// group the cards keep the order they have here. A card whose `group` matches
+// no key renders nowhere, so the two lists have to stay in step.
+const caseStudies = [
+  {
     title: 'GBS Location Selection',
     summary:
       'Ranks the cities where finance shared-services work is genuinely advertised, on seven pillars of public data \u2014 and refuses to rank the ones the evidence cannot tell apart.',
@@ -46,7 +44,6 @@ const caseStudies = [  {
       blend: true,
     },
   },
-
   {
     title: 'GBS Target Operating Model',
     summary:
@@ -245,7 +242,6 @@ const caseStudies = [  {
         'A real query against the 2025 filings. Every claim carries a page citation, and every citation is checked against the retrieved excerpt before it reaches the screen.',
     },
   },
-
 ];
 
 const groups = [
@@ -286,11 +282,11 @@ const groups = [
       {groups.map((g) => <a href={`#${g.key}`}>{g.heading}</a>)}
     </nav>
     {
-      /* Grouped by what the work does rather than by subject. Four of these
+      /* Grouped by what the work does rather than by subject. Some of these
          replace a number that was asserted in a workshop with one that was
-         measured; the other four carry a decision or a queue that a person
-         could not carry by hand. The subject labels would have sorted them
-         into GBS and not-GBS, which says less. */
+         measured; the rest carry a decision or a queue that a person could not
+         carry by hand. The subject labels would have sorted them into GBS and
+         not-GBS, which says less. */
       groups.map((g) => (
         <div class="group" id={g.key}>
           <div class="group-head">
@@ -305,10 +301,6 @@ const groups = [
 </BaseLayout>
 
 <style>
-  /* The group heading has to read as a level between the section label and a
-     card title: quieter than the card, louder than body copy. Mono small-caps
-     is the section register, so this takes the serif at reading size instead
-     and earns its separation from the rule above rather than from weight. */
   /* Stated before the first card, not in a footer. A reader who wonders whether
      this is client material should have the answer before the question forms,
      and each card repeats its own sources so the claim can be checked. */
@@ -328,8 +320,8 @@ const groups = [
     color: var(--color-text-primary);
   }
 
-  /* Jump marks, not filters. Eight cards do not need a control that hides
-     seven of them; they need somewhere to land. Sits in the mono register so
+  /* Jump marks, not filters. This many cards do not need a control that hides
+     most of them; they need somewhere to land. Sits in the mono register so
      it reads as navigation rather than as another heading. */
   .index {
     display: flex;
@@ -372,6 +364,10 @@ const groups = [
     border-top: 1px solid var(--color-border-strong);
   }
 
+  /* The group heading has to read as a level between the section label and a
+     card title: quieter than the card, louder than body copy. Mono small-caps
+     is the section register, so this takes the serif at reading size instead
+     and earns its separation from the rule above rather than from weight. */
   .group-head h3 {
     margin: 0;
     font-family: var(--font-serif);
@@ -392,5 +388,4 @@ const groups = [
     color: var(--color-text-secondary);
     text-wrap: pretty;
   }
-
 </style>
