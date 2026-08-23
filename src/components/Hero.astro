@@ -73,12 +73,18 @@ import moritzPhoto from '../assets/moritz.jpg';
     text-wrap: balance;
   }
 
+  /* Both paragraphs used a ch-based reading measure — 30ch and 46ch — while the
+     column itself is sized by the headline, which reaches ~31rem once the h1
+     hits its 5rem cap. The copy therefore stopped 60-100px short of the rule
+     above it, and the portrait read as pushed away from words that had simply
+     stopped early. Capping both at the headline's own width makes the text a
+     single block, and the gap to the photo the 2rem it always was. */
   .positioning {
     font-family: var(--font-serif);
     margin-top: var(--space-5);
     font-size: var(--text-xl);
     line-height: var(--leading-snug);
-    max-width: 30ch;
+    max-width: 31rem;
     text-wrap: pretty;
   }
 
@@ -90,7 +96,7 @@ import moritzPhoto from '../assets/moritz.jpg';
     font-size: var(--text-base);
     line-height: var(--leading-snug);
     color: var(--color-text-secondary);
-    max-width: 46ch;
+    max-width: 31rem;
     text-wrap: pretty;
   }
 
