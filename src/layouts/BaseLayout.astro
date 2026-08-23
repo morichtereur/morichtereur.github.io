@@ -2,12 +2,24 @@
 import { Font } from 'astro:assets';
 import Nav from '../components/Nav.astro';
 import Footer from '../components/Footer.astro';
+import { NAME } from '../consts';
 import '../styles/tokens.css';
 import '../styles/global.css';
 
 const title = 'Moritz Richter — Finance Transformation & AI, Zürich';
 const description =
   'Finance transformation consultant in Zürich, working across GBS, operating models, performance management and applied AI. I use data and AI to diagnose, quantify and improve finance operations — process mining, transformation business cases and retrieval over financial reporting.';
+
+// Unfurlers resolve nothing: a relative og:image is dropped and the card
+// renders blank, so these have to be absolute. `site` is set in astro.config.mjs.
+const canonical = new URL(Astro.url.pathname, Astro.site);
+const ogImage = new URL('/og-cover.png', Astro.site);
+
+// The meta description is written for a search result, which shows more of it
+// than a LinkedIn card does. This is the same claim inside the length a card
+// will actually render.
+const socialDescription =
+  'Case studies in finance transformation and applied AI — process mining, GBS location and operating-model studies, driver-based forecasting, and retrieval over financial reporting. Every project runs on public or synthetic data.';
 ---
 
 <!doctype html>
@@ -19,6 +31,28 @@ const description =
     <meta name="generator" content={Astro.generator} />
     <title>{title}</title>
     <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    <meta name="theme-color" content="#e9eae4" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content={NAME} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={socialDescription} />
+    <meta property="og:locale" content="en_GB" />
+    <meta property="og:image" content={ogImage} />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta
+      property="og:image:alt"
+      content="Moritz Richter — Zürich, finance transformation and AI. I use data and AI to diagnose, quantify, and improve finance operations."
+    />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={socialDescription} />
+    <meta name="twitter:image" content={ogImage} />
     <Font cssVariable="--font-archivo" preload />
     <Font cssVariable="--font-source-serif" preload />
     <Font cssVariable="--font-plex-mono" />
