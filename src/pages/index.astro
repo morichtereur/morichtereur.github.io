@@ -19,69 +19,9 @@ import gbsCoverage from '../assets/gbs-coverage.png';
 // allowed to decide.
 // The Intelligence Agent closes the set — it is the one that has run
 // unattended for months rather than the one that produced a finding.
-const caseStudies = [
-  {
-    title: 'P2P Process Mining',
-    problem:
-      'Every finance transformation deck opens with the same sentence — the process is inefficient and highly manual. Almost nobody can say by how much, or where.',
-    build:
-      'Mined a 1.6M-event SAP purchase-to-pay log covering 251,734 purchase order line items, reconstructing the path each case actually took rather than the one the process documentation describes. Variant analysis, straight-through rate, the cycle-time cost of rework, and which sequence rules the system genuinely enforces versus merely documents.',
-    stack: ['Python', 'DuckDB', 'LLM API', 'Matplotlib'],
-    metricValue: '20%',
-    metricLabel: 'of cases follow the most common path; rework costs 19.6 days',
-    implication:
-      'Cycle time here is an exception problem, not a capacity problem — and the expensive exceptions are not the frequent ones. A programme that targets the loudest rework activity would pick one of the cheapest. Prioritisation has to follow volume times penalty, which is only visible once the log is mined.',
-    repoUrl: 'https://github.com/morichtereur/p2p-process-mining',
-    figure: {
-      src: variantCoverage,
-      alt: 'Cumulative share of cases covered as more process variants are included, on a log-scaled rank axis. The curve rises steeply then flattens: 50% of cases at rank 7, 90% at rank 232, 99% only at rank 9,456.',
-      caption:
-        'Coverage against variant rank. Half the cases sit in seven variants; the last percent needs nine thousand more.',
-      blend: true,
-    },
-  },
-  {
-    title: 'GBS Agentic Shift',
-    problem:
-      'McKinsey argues agentic AI is turning the GBS talent pyramid into a diamond — a shrinking transactional base and a new layer managing the agent force. It is a claim about what work looks like, cited far more often than it is checked.',
-    build:
-      "Read the claim off the labour market instead. Classified 2,110 live GBS and finance-operations postings across ten markets as transactional, judgment or agent-ops — a visible phrase taxonomy carries the headline, an LLM decides only the ambiguous residual, and the classifier's accuracy is measured against a hand-labelled gold set rather than asserted. Splitting by employer is the sharpest cut: captive GBS hires 38% transactional, third-party providers 84%. The base changed employer more than it shrank.",
-    stack: ['Python', 'DuckDB', 'LLM API', 'Matplotlib'],
-    metricValue: '2%',
-    metricLabel: 'of postings ask for agent-ops skills — the diamond is not visible yet',
-    implication:
-      'Workforce plans built on the diamond thesis are ahead of the evidence. The live decision is not agent-ops recruitment but sourcing: a captive function that looks transformed may simply have moved its transactional base to a provider, and only the employer cut separates the two.',
-    repoUrl: 'https://github.com/morichtereur/gbs-agentic-shift',
-    figure: {
-      src: agenticMix,
-      alt: 'A single stacked bar across 2,110 GBS job postings: transactional 44%, judgment 55%, and a thin agent-ops sliver at 2% annotated in orange at the right edge.',
-      caption:
-        'Ten markets, one point-in-time cross-section. A measured 42.9% recall on the agent-ops class makes that 2% a lower bound rather than a ceiling — the classifier reports how wrong it is, so the finding can be read honestly.',
-      blend: true,
-    },
-  },
-  {
-    title: 'GBS Business Case',
-    problem:
-      'A shared-services business case usually rests on numbers guessed in a workshop — automation rate, rework share, handling time — presented as if they were measured.',
-    build:
-      'Built the case on the P2P Process Mining baseline instead: opportunity sizing and discounted cash flows from the measured straight-through rate and rework cost, then a 10,000-draw Monte Carlo across every assumption still uncertain. Each one is tagged whether diligence could resolve it or genuinely cannot yet, so the variance in the answer sorts into a work plan rather than a caveat.',
-    stack: ['Python', 'DuckDB', 'NumPy', 'Matplotlib'],
-    metricValue: '62%',
-    metricLabel: 'of NPV variance comes from assumptions diligence can resolve — the work plan, not the caveat',
-    implication:
-      'At central assumptions the case does not clear the hurdle rate, which is a result rather than a dead end. The uncertainty that decides it is a handling-time study, not a vendor quote — so a week of desk observation moves the answer further than another round of estimating, and the model says which week to spend.',
-    repoUrl: 'https://github.com/morichtereur/gbs-business-case',
-    figure: {
-      src: gbsTornado,
-      alt: 'Horizontal tornado chart of NPV sensitivity by assumption, low value to high value, bars coloured by whether diligence could measure the assumption or not. Minutes per rework touch, a measurable assumption, produces the widest swing — ahead of the implementation one-off cost.',
-      caption:
-        'The widest swing comes from a measurable assumption, not the implementation cost quote — the opposite of what a workshop case usually assumes.',
-      blend: true,
-    },
-  },
-  {
+const caseStudies = [  {
     title: 'GBS Location Selection',
+    group: 'measured',
     problem:
       'A location study arrives as three cities and a weighted scorecard. The weights were agreed in a workshop, and the weights are what chose the three cities \u2014 which is then presented to a steering committee as measurement.',
     build:
@@ -102,27 +42,73 @@ const caseStudies = [
       blend: true,
     },
   },
+
   {
-    title: 'DAX Intelligence',
+    title: 'P2P Process Mining',
+    group: 'measured',
     problem:
-      'Answering one comparative question across a set of annual reports means opening every PDF and trusting your memory of what each one said.',
+      'Every finance transformation deck opens with the same sentence — the process is inefficient and highly manual. Almost nobody can say by how much, or where.',
     build:
-      'Retrieval across 15 DAX 40 annual reports. ChromaDB surfaces the relevant passages and the LLM synthesises them behind a prompt that will not answer without a source, so every claim comes back with a company and a page number.',
-    stack: ['Python', 'ChromaDB', 'LLM API', 'Streamlit'],
-    metricValue: '15 reports',
-    metricLabel: 'answerable in one query, with page citations',
+      'Mined a 1.6M-event SAP purchase-to-pay log covering 251,734 purchase order line items, reconstructing the path each case actually took rather than the one the process documentation describes. Variant analysis, straight-through rate, the cycle-time cost of rework, and which sequence rules the system genuinely enforces versus merely documents.',
+    stack: ['Python', 'DuckDB', 'LLM API', 'Matplotlib'],
+    metricValue: '20%',
+    metricLabel: 'of cases follow the most common path; rework costs 19.6 days',
     implication:
-      'Analyst time shifts from finding a passage to judging it. The citation check is what makes that shift safe: an answer carrying a verified page number can go into a client document as it stands, while an unsourced one has to be found by hand anyway — which is the work it was supposed to save.',
-    repoUrl: 'https://github.com/morichtereur/dax-intelligence',
+      'Cycle time here is an exception problem, not a capacity problem — and the expensive exceptions are not the frequent ones. A programme that targets the loudest rework activity would pick one of the cheapest. Prioritisation has to follow volume times penalty, which is only visible once the log is mined.',
+    repoUrl: 'https://github.com/morichtereur/p2p-process-mining',
     figure: {
-      src: daxAnswer,
-      alt: 'A synthesised research memo comparing how Siemens and SAP frame AI investment strategy, each claim followed by an inline (Company Year, p.N) citation. Below it a green "VERIFIED — 8/8 citations matched retrieved excerpts exactly" badge, an export button, and the start of an audit trail table listing each retrieved excerpt with its page range and confidence score.',
+      src: variantCoverage,
+      alt: 'Cumulative share of cases covered as more process variants are included, on a log-scaled rank axis. The curve rises steeply then flattens: 50% of cases at rank 7, 90% at rank 232, 99% only at rank 9,456.',
       caption:
-        'A real query against the 2025 filings. Every claim carries a page citation, and every citation is checked against the retrieved excerpt before it reaches the screen.',
+        'Coverage against variant rank. Half the cases sit in seven variants; the last percent needs nine thousand more.',
+      blend: true,
+    },
+  },
+  {
+    title: 'GBS Business Case',
+    group: 'measured',
+    problem:
+      'A shared-services business case usually rests on numbers guessed in a workshop — automation rate, rework share, handling time — presented as if they were measured.',
+    build:
+      'Built the case on the P2P Process Mining baseline instead: opportunity sizing and discounted cash flows from the measured straight-through rate and rework cost, then a 10,000-draw Monte Carlo across every assumption still uncertain. Each one is tagged whether diligence could resolve it or genuinely cannot yet, so the variance in the answer sorts into a work plan rather than a caveat.',
+    stack: ['Python', 'DuckDB', 'NumPy', 'Matplotlib'],
+    metricValue: '62%',
+    metricLabel: 'of NPV variance comes from assumptions diligence can resolve — the work plan, not the caveat',
+    implication:
+      'At central assumptions the case does not clear the hurdle rate, which is a result rather than a dead end. The uncertainty that decides it is a handling-time study, not a vendor quote — so a week of desk observation moves the answer further than another round of estimating, and the model says which week to spend.',
+    repoUrl: 'https://github.com/morichtereur/gbs-business-case',
+    figure: {
+      src: gbsTornado,
+      alt: 'Horizontal tornado chart of NPV sensitivity by assumption, low value to high value, bars coloured by whether diligence could measure the assumption or not. Minutes per rework touch, a measurable assumption, produces the widest swing — ahead of the implementation one-off cost.',
+      caption:
+        'The widest swing comes from a measurable assumption, not the implementation cost quote — the opposite of what a workshop case usually assumes.',
+      blend: true,
+    },
+  },
+  {
+    title: 'GBS Agentic Shift',
+    group: 'measured',
+    problem:
+      'McKinsey argues agentic AI is turning the GBS talent pyramid into a diamond — a shrinking transactional base and a new layer managing the agent force. It is a claim about what work looks like, cited far more often than it is checked.',
+    build:
+      "Read the claim off the labour market instead. Classified 2,110 live GBS and finance-operations postings across ten markets as transactional, judgment or agent-ops — a visible phrase taxonomy carries the headline, an LLM decides only the ambiguous residual, and the classifier's accuracy is measured against a hand-labelled gold set rather than asserted. Splitting by employer is the sharpest cut: captive GBS hires 38% transactional, third-party providers 84%. The base changed employer more than it shrank.",
+    stack: ['Python', 'DuckDB', 'LLM API', 'Matplotlib'],
+    metricValue: '2%',
+    metricLabel: 'of postings ask for agent-ops skills — the diamond is not visible yet',
+    implication:
+      'Workforce plans built on the diamond thesis are ahead of the evidence. The live decision is not agent-ops recruitment but sourcing: a captive function that looks transformed may simply have moved its transactional base to a provider, and only the employer cut separates the two.',
+    repoUrl: 'https://github.com/morichtereur/gbs-agentic-shift',
+    figure: {
+      src: agenticMix,
+      alt: 'A single stacked bar across 2,110 GBS job postings: transactional 44%, judgment 55%, and a thin agent-ops sliver at 2% annotated in orange at the right edge.',
+      caption:
+        'Ten markets, one point-in-time cross-section. A measured 42.9% recall on the agent-ops class makes that 2% a lower bound rather than a ceiling — the classifier reports how wrong it is, so the finding can be read honestly.',
+      blend: true,
     },
   },
   {
     title: 'FP&A Decision Intelligence Accelerator',
+    group: 'decision',
     problem:
       'FP&A review cycles reliably produce analysis and much less reliably produce decisions. The pack lands, the variances are explained, the sensitivity table is admired — and the meeting ends without anyone naming which exposure is worth the next thirty minutes, who owns it, or what would have to change for the answer to move.',
     build:
@@ -145,6 +131,7 @@ const caseStudies = [
   },
   {
     title: 'Finance Control Agent',
+    group: 'decision',
     problem:
       'Two finance processes have the same shape. Month-end close raises more exceptions than there are reviewer hours; accounts payable raises more invoice mismatches than there are clerk hours. Most items are benign, a few are not, and the failure mode is not a bad summary — it is money out of the door against a document nobody checked.',
     build:
@@ -165,6 +152,7 @@ const caseStudies = [
   },
   {
     title: 'GBS Intelligence Agent',
+    group: 'decision',
     problem:
       'Competitor and client intelligence reached the team through whoever happened to read the right article — usually weeks after it could have changed a proposal.',
     build:
@@ -183,12 +171,107 @@ const caseStudies = [
         'The Intelligence Explorer — one card per signal, grouped by cluster, filtered by topic and calendar week. Content obscured; the live dashboard carries competitive intelligence.',
     },
   },
+  {
+    title: 'DAX Intelligence',
+    group: 'decision',
+    problem:
+      'Answering one comparative question across a set of annual reports means opening every PDF and trusting your memory of what each one said.',
+    build:
+      'Retrieval across 15 DAX 40 annual reports. ChromaDB surfaces the relevant passages and the LLM synthesises them behind a prompt that will not answer without a source, so every claim comes back with a company and a page number.',
+    stack: ['Python', 'ChromaDB', 'LLM API', 'Streamlit'],
+    metricValue: '15 reports',
+    metricLabel: 'answerable in one query, with page citations',
+    implication:
+      'Analyst time shifts from finding a passage to judging it. The citation check is what makes that shift safe: an answer carrying a verified page number can go into a client document as it stands, while an unsourced one has to be found by hand anyway — which is the work it was supposed to save.',
+    repoUrl: 'https://github.com/morichtereur/dax-intelligence',
+    figure: {
+      src: daxAnswer,
+      alt: 'A synthesised research memo comparing how Siemens and SAP frame AI investment strategy, each claim followed by an inline (Company Year, p.N) citation. Below it a green "VERIFIED — 8/8 citations matched retrieved excerpts exactly" badge, an export button, and the start of an audit trail table listing each retrieved excerpt with its page range and confidence score.',
+      caption:
+        'A real query against the 2025 filings. Every claim carries a page citation, and every citation is checked against the retrieved excerpt before it reaches the screen.',
+    },
+  },
+
+];
+
+const groups = [
+  {
+    key: 'measured',
+    heading: 'Measurement where there was assertion',
+    blurb:
+      'Each of these replaces a number that arrived asserted \u2014 an automation rate, a handling time, a set of workshop weights \u2014 with one that was measured, and reports what the measurement will not carry.',
+  },
+  {
+    key: 'decision',
+    heading: 'From analysis to decision',
+    blurb:
+      'Each of these sits where the analysis already existed and the decision did not: a queue longer than the hours available, a pack that explains variance without ranking it, a shelf of reports nobody can read in time.',
+  },
 ];
 ---
 
 <BaseLayout>
   <Hero />
   <Section id="case-studies" heading="Case Studies">
-    {caseStudies.map((cs) => <CaseStudyCard {...cs} />)}
+    {
+      /* Grouped by what the work does rather than by subject. Four of these
+         replace a number that was asserted in a workshop with one that was
+         measured; the other four carry a decision or a queue that a person
+         could not carry by hand. The subject labels would have sorted them
+         into GBS and not-GBS, which says less. */
+      groups.map((g) => (
+        <div class="group">
+          <div class="group-head">
+            <h3>{g.heading}</h3>
+            <p>{g.blurb}</p>
+          </div>
+          {caseStudies.filter((cs) => cs.group === g.key).map((cs) => <CaseStudyCard {...cs} />)}
+        </div>
+      ))
+    }
   </Section>
 </BaseLayout>
+
+<style>
+  /* The group heading has to read as a level between the section label and a
+     card title: quieter than the card, louder than body copy. Mono small-caps
+     is the section register, so this takes the serif at reading size instead
+     and earns its separation from the rule above rather than from weight. */
+  .group + .group {
+    margin-top: var(--space-8);
+  }
+
+  .group-head {
+    max-width: 46rem;
+    margin-bottom: var(--space-6);
+    padding-top: var(--space-3);
+    border-top: 1px solid var(--color-border-strong);
+  }
+
+  .group-head h3 {
+    margin: 0;
+    font-family: var(--font-serif);
+    /* Card titles are 24px. A group heading at 22px made the container quieter
+       than its contents, which reads as an accident rather than a level. */
+    font-size: 1.75rem;
+    font-weight: 600;
+    letter-spacing: -0.015em;
+    line-height: 1.25;
+    color: var(--color-text-primary);
+    text-wrap: balance;
+  }
+
+  .group-head p {
+    margin: var(--space-2) 0 0;
+    font-size: var(--text-sm);
+    line-height: 1.6;
+    color: var(--color-text-secondary);
+    text-wrap: pretty;
+  }
+
+  @media (max-width: 600px) {
+    .group-head h3 {
+      font-size: 1.375rem;
+    }
+  }
+</style>
