@@ -11,6 +11,7 @@ import agenticMix from '../assets/gbs-agentic-mix.png';
 import fpaForecastError from '../assets/fpa-forecast-error.png';
 import fccaControlReview from '../assets/fcca-control-review.png';
 import sampleFilter from '../assets/gbs-sample-filter.png';
+import gbsCoverage from '../assets/gbs-coverage.png';
 
 // Ordered as an engagement runs: diagnose the operation, read how the model is
 // changing, quantify the case, decide where it goes, build the tooling,
@@ -93,10 +94,10 @@ const caseStudies = [
       'Restricting the population changes the reading in eight of ten markets and changes which city leads: Warsaw dominated Poland on the broad sample because it is the largest finance job market, while Kraków leads on GBS and GCC work because it is the largest shared-services one. Two later tests matter more than the ranking they produced. Removing each pillar in turn shows that for a transactional hub the answer is a cost ranking wearing six other pillars \u2014 every one of them can be deleted without moving the shortlist \u2014 while five of seven move the judgment one. And capability, the only pillar built from this project\u2019s own classifier rather than an official statistic, turns out to be irrelevant to the transactional answer and load-bearing for the judgment one, which is exactly where its measured error matters. That error is measured rather than asserted: five audits over a hundred postings, ending at two clear failures in twenty, and it is modelled in the resampling rather than noted as a caveat \u2014 doing so reversed which market is robust as a judgment location. A location can be missing for three different reasons, and the tool now says which: never reached by the postings feed, seen in the sample but hiring from too few employers to be a centre \u2014 105 places clear neither threshold, and Guadalajara carries no posting at all \u2014 or carrying a series that does not hold together, as Egypt does at 1.06\u00d7 clerical pay for professionals against 1.3 to 2.9\u00d7 in every other market, excluded by a test rather than a judgement. A study that prints one blank for all three invites the reader to assume the wrong one.',
     repoUrl: 'https://github.com/morichtereur/gbs-location-selection',
     figure: {
-      src: sampleFilter,
-      alt: 'Dumbbell chart of ten markets. Hollow dots show the transactional share of a broad finance-operations posting sample; filled dots show the same markets restricted to GBS and GCC work. The filled dot sits to the right in eight of ten markets \u2014 Switzerland moves from 19% to 60%, Mexico from 43% to 86% \u2014 while India and the Netherlands move left. Each row is annotated with the remaining sample size, from n=103 in India down to n=5 in Switzerland.',
+      src: gbsCoverage,
+      alt: 'Dot chart of twenty-one locations on a single wage axis, from Pune at USD 342 a month to Warsaw at 4,723. Eleven filled dots are the cities ranked on all seven pillars; ten hollow dots are locations priced on the five pillars that reach every country and never ranked. Manila, Ho Chi Minh City, Santo Domingo and Bogot\u00e1 all sit below every ranked city except the five Indian ones.',
       caption:
-        'The gap is retained finance that was never in scope. The sample sizes on the right are what honestly remains once it is removed.',
+        'Cost is measured the same way everywhere, so all twenty-one sit on one honest axis. The six pillars that would turn cost into a ranking reach eleven of them \u2014 and four of the cheapest are hollow.',
       blend: true,
     },
   },
