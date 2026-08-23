@@ -213,6 +213,9 @@ const groups = [
 <BaseLayout>
   <Hero />
   <Section id="case-studies" heading="Case Studies">
+    <nav class="index" aria-label="Case study groups">
+      {groups.map((g) => <a href={`#${g.key}`}>{g.heading}</a>)}
+    </nav>
     {
       /* Grouped by what the work does rather than by subject. Four of these
          replace a number that was asserted in a workshop with one that was
@@ -220,7 +223,7 @@ const groups = [
          could not carry by hand. The subject labels would have sorted them
          into GBS and not-GBS, which says less. */
       groups.map((g) => (
-        <div class="group">
+        <div class="group" id={g.key}>
           <div class="group-head">
             <h3>{g.heading}</h3>
             <p>{g.blurb}</p>
@@ -237,6 +240,39 @@ const groups = [
      card title: quieter than the card, louder than body copy. Mono small-caps
      is the section register, so this takes the serif at reading size instead
      and earns its separation from the rule above rather than from weight. */
+  /* Jump marks, not filters. Eight cards do not need a control that hides
+     seven of them; they need somewhere to land. Sits in the mono register so
+     it reads as navigation rather than as another heading. */
+  .index {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2) var(--space-5);
+    margin-bottom: var(--space-7);
+  }
+
+  .index a {
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    letter-spacing: var(--tracking-label);
+    text-transform: uppercase;
+    color: var(--color-text-secondary);
+    text-decoration: none;
+    border-bottom: 1px solid var(--color-border-strong);
+    padding-bottom: 0.15rem;
+    transition: color 0.15s ease, border-color 0.15s ease;
+  }
+
+  .index a:hover,
+  .index a:focus-visible {
+    color: var(--color-text-primary);
+    border-bottom-color: currentColor;
+  }
+
+  /* The sticky nav would otherwise cover the heading the link lands on. */
+  .group {
+    scroll-margin-top: calc(var(--nav-height) + var(--space-5));
+  }
+
   .group + .group {
     margin-top: var(--space-8);
   }
