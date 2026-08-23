@@ -11,7 +11,7 @@ import agenticMix from '../assets/gbs-agentic-mix.png';
 import fpaForecastError from '../assets/fpa-forecast-error.png';
 import fccaControlReview from '../assets/fcca-control-review.png';
 import sampleFilter from '../assets/gbs-sample-filter.png';
-import gbsCoverage from '../assets/gbs-coverage.png';
+import locationDashboard from '../assets/gbs-location-dashboard.png';
 
 // Ordered as an engagement runs: diagnose the operation, read how the model is
 // changing, quantify the case, decide where it goes, build the tooling,
@@ -38,10 +38,10 @@ const caseStudies = [  {
     repoUrl: 'https://github.com/morichtereur/gbs-location-selection',
     demoUrl: 'https://morichtereur.github.io/location-dashboard/',
     figure: {
-      src: gbsCoverage,
-      alt: 'Dot chart of twenty-one locations on a single wage axis, from Pune at USD 342 a month to Warsaw at 4,723. Eleven filled dots are the cities ranked on all seven pillars; ten hollow dots are locations priced on the five pillars that reach every country and never ranked. Manila, Ho Chi Minh City, Santo Domingo and Bogot\u00e1 all sit below every ranked city except the five Indian ones.',
+      src: locationDashboard,
+      alt: 'The location dashboard in use. A headline reads \u201c5 cities finish level at the top\u201d; a toggle switches between a transactional hub and a judgment centre; seven sliders set the weight on cost, talent, governance, capability, overlap, durability and employer depth. The ranked exhibit shows Mumbai, Chennai, Pune, Bangalore and Hyderabad sharing band one, each with a flag, its posting count and its top-three frequency, and Pozna\u0144 opening band two.',
       caption:
-        'Cost is measured the same way everywhere, so all twenty-one sit on one honest axis. The six pillars that would turn cost into a ranking reach eleven of them \u2014 and four of the cheapest are hollow.',
+        'The tool as it runs. Move a weight and the ranking, the bands and the sentence above them all move with it \u2014 and cities the draws cannot separate keep sharing a band instead of trading places.',
       blend: true,
     },
   },
