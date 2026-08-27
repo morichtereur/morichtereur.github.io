@@ -226,6 +226,23 @@ select {
 }
 
 .reads { margin: 0; font-size: 12px; color: var(--ink-3); }
+
+/* Scenario controls: a name box and two quiet verbs. The card must not read
+   as a feature — it is a filing drawer for the controls that already exist. */
+.scn-row { display: grid; grid-template-columns: 1fr auto auto; gap: 7px; margin-top: 7px; }
+.scn-row input {
+  min-width: 0; font: inherit; font-size: 12.5px; padding: 5px 7px; color: var(--ink);
+  background: var(--panel-2); border: 1px solid var(--rule-strong); border-radius: 4px;
+}
+.scn-row button {
+  font: inherit; font-size: 12px; padding: 5px 10px; cursor: pointer;
+  background: var(--panel); color: var(--ink); border: 1px solid var(--rule-strong);
+}
+.scn-row button:hover { border-color: var(--accent); color: var(--accent); }
+.scn-row button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* The scenario's name rides in the eyebrow — and therefore onto the one-pager,
+   which is where "which stand was this" actually gets asked. */
+.scn-tag { color: var(--ink-2); }
 #reset-weights {
   font: inherit; font-size: 12px; padding: 4px 10px; cursor: pointer;
   background: var(--panel-2); color: var(--ink); border: 1px solid var(--rule-strong);
@@ -766,7 +783,7 @@ footer p { max-width: 78ch; }
 <body>
 <div class="wrap">
 <header>
-  <p class="eyebrow"><span id="scope">11 GBS and GCC cities</span> · <span id="asof">7 pillars · one snapshot, 22 August 2026</span></p>
+  <p class="eyebrow"><span id="scope">11 GBS and GCC cities</span> · <span id="asof">7 pillars · one snapshot, 22 August 2026</span><span class="scn-tag" id="scenario-tag"></span></p>
   <div class="title-block">
     <div>
       <h1 id="headline">5 cities finish level at the top.</h1>
@@ -791,6 +808,20 @@ footer p { max-width: 78ch; }
         and therefore where each weighting starts.</p>
       <div class="seg" id="archetype" role="group" aria-label="Centre type"><button type="button" data-k="transactional_hub" aria-pressed="true">Transactional hub</button><button type="button" data-k="judgment_centre" aria-pressed="false">Judgment centre</button></div>
       <p class="blurb" id="archetype-blurb">High-volume processing: accounts payable and receivable, payroll, the ledger. Bought on cost and the size of the labour pool.</p>
+    </div>
+
+    <div class="card">
+      <h2>Scenarios</h2>
+      <p class="panel-note">Every control on this page under one name, so a view can be
+        put down and picked up again.</p>
+      <select id="scenario-list" aria-label="Saved scenarios"><option value="">— saved on this device —</option></select>
+      <div class="scn-row">
+        <input id="scenario-name" type="text" maxlength="60"
+               placeholder="Name this view" aria-label="Scenario name">
+        <button type="button" id="scenario-save">Save</button>
+        <button type="button" id="scenario-delete">Delete</button>
+      </div>
+      <p class="slider-note" id="scenario-note">Stored in this browser only. “Copy link” under the exhibits hands this view to someone else.</p>
     </div>
 
     <details class="adjust" id="adjust">
@@ -921,6 +952,8 @@ footer p { max-width: 78ch; }
     <div class="page-actions">
       <button type="button" id="one-pager">Print one-pager</button>
       <span class="hint">Finding, exhibit and sources on one page.</span>
+      <button type="button" id="copy-link">Copy link to this view</button>
+      <span class="copy-status" id="link-status" role="status"></span>
     </div>
 
     <details>
@@ -1161,6 +1194,94 @@ function nationalPillars(items) {
     const hi = Math.max(...vals), lo = Math.min(...vals);
     return (hi - lo) <= 1e-9 * Math.max(1, Math.abs(hi));
   }));
+}
+
+/* ---- scenario codec: the view as a string ---- */
+function defaultScenarioState() {
+  const archetype = Object.keys(DATA.archetypes)[0];
+  return {
+    archetype,
+    weights: { ...DATA.archetypes[archetype].weights },
+    hq: DATA.hq,
+    baseline: DATA.baselineDefault,
+    fte: DATA.fteDefault,
+    loading: DATA.loadingDefault,
+    attrition: DATA.attritionDefault,
+    horizon: DATA.horizonDefault,
+    scenario: null,
+  };
+}
+
+function encodeScenario(s, {includeName = true} = {}) {
+  const p = new URLSearchParams();
+  p.set("v", "1");
+  p.set("a", s.archetype);
+  p.set("w", DATA.pillars.map((k) => Math.round((s.weights[k] || 0) * 100)).join("-"));
+  p.set("hq", s.hq);
+  p.set("o", s.baseline);
+  p.set("f", String(s.fte));
+  p.set("l", String(Math.round(s.loading * 100)));
+  p.set("t", String(Math.round(s.attrition * 100)));
+  p.set("y", String(s.horizon));
+  if (includeName && s.scenario) p.set("n", s.scenario);
+  return p.toString();
+}
+
+function isDefaultScenario(s) {
+  return !s.scenario
+    && encodeScenario(s, {includeName: false})
+       === encodeScenario(defaultScenarioState(), {includeName: false});
+}
+
+/* Returns only the fields that survived validation; the caller merges them
+   onto the defaults. Weights are accepted whole or not at all — a partial
+   weighting is not a weighting anyone chose. */
+function decodeScenario(str) {
+  const out = {};
+  let p;
+  try { p = new URLSearchParams(str || ""); } catch { return out; }
+  if (p.get("v") !== "1") return out;
+
+  const a = p.get("a");
+  if (a && DATA.archetypes[a]) out.archetype = a;
+
+  const w = p.get("w");
+  if (w) {
+    const parts = w.split("-").map((x) => parseInt(x, 10));
+    const ok = parts.length === DATA.pillars.length
+      && parts.every((x) => Number.isInteger(x) && x >= 0 && x <= 60)
+      && parts.some((x) => x > 0);
+    if (ok) {
+      out.weights = {};
+      DATA.pillars.forEach((k, i) => { out.weights[k] = parts[i] / 100; });
+    }
+  }
+
+  const hq = p.get("hq");
+  if (hq && DATA.hqOffsets[hq] !== undefined) out.hq = hq;
+
+  const o = p.get("o");
+  if (o && DATA.baselines.some((b) => b.key === o)) out.baseline = o;
+
+  /* Below the floor is rejected, above the ceiling is clamped: a link that
+     says 999 roles moved meant "a lot", a link that says minus four meant
+     nothing. */
+  const int = (key, lo, hi) => {
+    const n = parseInt(p.get(key), 10);
+    return Number.isInteger(n) && n >= lo ? Math.min(n, hi) : undefined;
+  };
+  const f = int("f", 1, 5000);
+  if (f !== undefined) out.fte = f;
+  const l = int("l", 0, Math.round(DATA.loadingMax * 100));
+  if (l !== undefined) out.loading = l / 100;
+  const t = int("t", 0, Math.round(DATA.attritionMax * 100));
+  if (t !== undefined) out.attrition = t / 100;
+  const y = int("y", 0, DATA.horizonMax);
+  if (y !== undefined) out.horizon = y;
+
+  const n = (p.get("n") || "").trim().slice(0, 60);
+  if (n) out.name = n;
+  return out;
 }
 
 
@@ -1541,6 +1662,8 @@ function render() {
   renderAdjustState();
   renderSource(rows);
   renderFoot(rows);
+  syncUrl();
+  updateScenarioTag();
 }
 
 /* ---- how independent the pillars are ----
@@ -2163,8 +2286,163 @@ function buildControls() {
 
   $("#copy").addEventListener("click", copyTable);
   $("#one-pager").addEventListener("click", () => window.print());
+  $("#copy-link").addEventListener("click", copyLink);
 
   syncSliders();
+}
+
+/* ---- scenarios: a name for the view, and a link that reproduces it ----
+   The state is the scenario; this only files it. Names live in this browser's
+   storage — the tool has no server and gains none here — while the URL carries
+   the full view to anyone, storage or not. */
+const SCENARIO_STORE = "gbs-location-scenarios-v1";
+
+function scenarioStore() {
+  try {
+    const raw = localStorage.getItem(SCENARIO_STORE);
+    return raw ? JSON.parse(raw) : {};
+  } catch { return null; }  // storage blocked: saving is off, links still work
+}
+
+function writeScenarioStore(map) {
+  try { localStorage.setItem(SCENARIO_STORE, JSON.stringify(map)); return true; }
+  catch { return false; }
+}
+
+const escHtml = (x) => String(x).replace(/[&<>"]/g,
+  (c) => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
+
+/* The address bar always holds the current view; at the defaults it holds
+   nothing, so an untouched page keeps a clean URL. replaceState, not pushState:
+   every slider drag as a history entry would bury the back button. */
+function syncUrl() {
+  const enc = isDefaultScenario(state) ? "" : encodeScenario(state);
+  history.replaceState(null, "", location.pathname + location.search + (enc ? "#" + enc : ""));
+}
+
+/* A view that drifted from its saved name says so: a one-pager stamped
+   "Steering" that no longer shows the Steering stand is the quiet lie this
+   page keeps refusing elsewhere. */
+function updateScenarioTag() {
+  const el = $("#scenario-tag");
+  if (!state.scenario) { el.textContent = ""; return; }
+  const map = scenarioStore();
+  const saved = map && map[state.scenario];
+  const edited = saved && saved.s !== encodeScenario(state, {includeName: false});
+  el.textContent = ` · scenario “${state.scenario}”${edited ? " (edited)" : ""}`;
+}
+
+function refreshScenarioList() {
+  const map = scenarioStore() || {};
+  const names = Object.keys(map).sort(
+    (a, b) => (map[b].at || "").localeCompare(map[a].at || ""));
+  $("#scenario-list").innerHTML =
+    `<option value="">${names.length
+      ? "— load a saved view —"
+      : "— nothing saved on this device —"}</option>`
+    + names.map((n) => `<option value="${escHtml(n)}">${escHtml(n)}</option>`).join("");
+}
+
+function reflectControls() {
+  $("#archetype").querySelectorAll("button").forEach((x) =>
+    x.setAttribute("aria-pressed", String(x.dataset.k === state.archetype)));
+  syncSliders();
+  $("#hq").value = state.hq;
+  $("#baseline").value = state.baseline;
+  $("#fte").value = state.fte;
+  $("#loading").value = Math.round(state.loading * 100);
+  $("#attrition").value = Math.round(state.attrition * 100);
+  $("#horizon").value = state.horizon;
+}
+
+function applyScenario(dec, name) {
+  const base = defaultScenarioState();
+  state.archetype = dec.archetype || base.archetype;
+  state.weights = dec.weights || { ...DATA.archetypes[state.archetype].weights };
+  state.hq = dec.hq ?? base.hq;
+  state.baseline = dec.baseline ?? base.baseline;
+  state.fte = dec.fte ?? base.fte;
+  state.loading = dec.loading ?? base.loading;
+  state.attrition = dec.attrition ?? base.attrition;
+  state.horizon = dec.horizon ?? base.horizon;
+  state.scenario = name ?? dec.name ?? null;
+  reflectControls();
+  render();
+}
+
+function buildScenarioControls() {
+  const sel = $("#scenario-list");
+  const note = $("#scenario-note");
+  if (scenarioStore() === null) {
+    sel.style.display = "none";
+    sel.closest(".card").querySelector(".scn-row").style.display = "none";
+    note.textContent =
+      "This browser blocks site storage, so views cannot be saved here. "
+      + "“Copy link” under the exhibits still carries the current view.";
+    return;
+  }
+  refreshScenarioList();
+  note.textContent =
+    "Stored in this browser only. “Copy link” under the exhibits hands "
+    + "this view to someone else.";
+
+  sel.addEventListener("change", () => {
+    const name = sel.value;
+    if (!name) return;
+    const rec = (scenarioStore() || {})[name];
+    if (!rec) { refreshScenarioList(); return; }
+    applyScenario(decodeScenario(rec.s), name);
+    $("#scenario-name").value = name;
+    sel.value = name;
+  });
+
+  $("#scenario-save").addEventListener("click", () => {
+    const name = $("#scenario-name").value.trim().slice(0, 60);
+    if (!name) { $("#scenario-name").focus(); return; }
+    const map = scenarioStore() || {};
+    map[name] = {
+      s: encodeScenario(state, {includeName: false}),
+      at: new Date().toISOString(),
+    };
+    if (!writeScenarioStore(map)) return;
+    state.scenario = name;
+    refreshScenarioList();
+    sel.value = name;
+    render();
+  });
+
+  $("#scenario-delete").addEventListener("click", () => {
+    const name = sel.value;
+    if (!name) return;
+    const map = scenarioStore() || {};
+    delete map[name];
+    writeScenarioStore(map);
+    if (state.scenario === name) state.scenario = null;
+    $("#scenario-name").value = "";
+    refreshScenarioList();
+    render();
+  });
+}
+
+async function copyLink() {
+  syncUrl();
+  const url = location.href;
+  const status = $("#link-status");
+  try {
+    await navigator.clipboard.writeText(url);
+    status.textContent = "Link copied — it reproduces exactly this view.";
+  } catch {
+    const area = document.createElement("textarea");
+    area.value = url;
+    document.body.appendChild(area);
+    area.select();
+    const ok = document.execCommand("copy");
+    area.remove();
+    status.textContent = ok
+      ? "Link copied — it reproduces exactly this view."
+      : url;
+  }
+  setTimeout(() => (status.textContent = ""), 6000);
 }
 
 /* Viewers cannot be handed a file — a download started by the page is blocked
@@ -2263,8 +2541,41 @@ matchMedia("(prefers-color-scheme: dark)").addEventListener("change", render);
 new MutationObserver(render).observe(document.documentElement, {
   attributes: true, attributeFilter: ["data-theme"],
 });
+/* A shared link is the whole view. Decoded before anything renders, field by
+   field, so an invalid fragment costs that field its default and nothing else. */
+{
+  const dec = decodeScenario(location.hash.replace(/^#/, ""));
+  if (dec.archetype) {
+    state.archetype = dec.archetype;
+    state.weights = { ...DATA.archetypes[dec.archetype].weights };
+  }
+  if (dec.weights) state.weights = dec.weights;
+  if (dec.hq !== undefined) state.hq = dec.hq;
+  if (dec.baseline !== undefined) state.baseline = dec.baseline;
+  if (dec.fte !== undefined) state.fte = dec.fte;
+  if (dec.loading !== undefined) state.loading = dec.loading;
+  if (dec.attrition !== undefined) state.attrition = dec.attrition;
+  if (dec.horizon !== undefined) state.horizon = dec.horizon;
+  state.scenario = dec.name || null;
+}
+
 buildControls();
+buildScenarioControls();
 render();
+
+/* A pasted link must work on a page that is already open: the browser treats a
+   fragment-only change as navigation without a reload, so it has to be caught
+   here. syncUrl uses replaceState, which fires no hashchange — no feedback
+   loop. An emptied hash reads as "back to the defaults", which is what
+   deleting the fragment means. */
+window.addEventListener("hashchange", (e) => {
+  // The event's own URL, not location.hash: a render between the change and
+  // this handler replaceStates the old fragment back, and reading location
+  // would apply the state the paste was meant to replace.
+  const frag = (e.newURL || "").split("#")[1] || "";
+  const dec = decodeScenario(frag);
+  applyScenario(dec, dec.name ?? null);
+});
 </script>
 </body>
 </html>
