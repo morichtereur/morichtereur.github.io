@@ -35,8 +35,35 @@ sync() {
   fi
 }
 
+# The location dashboard's og:image points at the published site, so its
+# social-card image has to be served next to index.html rather than from the
+# source repository's raw URL.
+sync_asset() {
+  repo="$1"
+  path="$2"
+  dest="$3"
+  url="https://raw.githubusercontent.com/morichtereur/$repo/main/$path"
+  tmp="$(mktemp)"
+
+  if ! curl -fsSL "$url" -o "$tmp"; then
+    printf '  %-26s FAILED to fetch\n' "$dest"
+    rm -f "$tmp"
+    status=1
+    return
+  fi
+
+  if cmp -s "$tmp" "public/$dest" 2>/dev/null; then
+    printf '  %-26s unchanged\n' "$dest"
+    rm -f "$tmp"
+  else
+    mv "$tmp" "public/$dest"
+    printf '  %-26s updated\n' "$dest"
+  fi
+}
+
 echo "Syncing dashboards from their source repositories:"
 sync gbs-location-selection location-dashboard
+sync_asset gbs-location-selection data/og.png location-dashboard/og.png
 sync gbs-tom-assignment     tom-dashboard
 sync gbs-agentic-shift      agentic-shift-dashboard
 sync dax-intelligence       dax-dashboard
