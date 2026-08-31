@@ -1,6 +1,6 @@
 ---
 import { Image } from 'astro:assets';
-import { NAME, EMAIL, LINKEDIN_URL, GITHUB_URL } from '../consts';
+import { NAME, EMAIL, LINKEDIN_URL, GITHUB_URL, CV_URL } from '../consts';
 import Icon from './Icon.astro';
 import moritzPhoto from '../assets/moritz.jpg';
 ---
@@ -21,6 +21,7 @@ import moritzPhoto from '../assets/moritz.jpg';
         <a href={LINKEDIN_URL}><Icon name="linkedin" />LinkedIn</a>
         <a href={GITHUB_URL}><Icon name="github" />GitHub</a>
         <a href={`mailto:${EMAIL}`}><Icon name="email" />Email</a>
+        <a href={CV_URL}><Icon name="cv" />CV</a>
       </div>
     </div>
     <div class="photo">

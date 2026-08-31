@@ -26,3 +26,5 @@ pnpm-debug.log*
 # Personal documents that live in this working directory but are not part of the site.
 *.docx
 *.pdf
+# The published CV is part of the site.
+!/public/Moritz-Richter-CV.pdf
