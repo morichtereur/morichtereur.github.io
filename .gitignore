@@ -28,3 +28,7 @@ pnpm-debug.log*
 *.pdf
 # The published CV is part of the site.
 !/public/Moritz-Richter-CV.pdf
+
+# Local tooling config, not part of the site.
+.claude/
+CLAUDE.md
