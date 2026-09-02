@@ -5,7 +5,7 @@ import Section from '../components/Section.astro';
 import CaseStudyCard from '../components/CaseStudyCard.astro';
 import explorerShot from '../assets/intelligence-explorer.png';
 import variantCoverage from '../assets/p2p-variant-coverage.png';
-import gbsTornado from '../assets/gbs-tornado.png';
+import bcDashboard from '../assets/gbs-bc-dashboard.png';
 import daxAnswer from '../assets/dax-intelligence-answer.png';
 import agenticMix from '../assets/gbs-agentic-mix.png';
 import fpaForecastError from '../assets/fpa-forecast-error.png';
@@ -110,11 +110,12 @@ const caseStudies = [
     implication:
       'At central assumptions the case does not clear the hurdle rate, which is a result rather than a dead end. The uncertainty that decides it is a handling-time study, not a vendor quote — so a week of desk observation moves the answer further than another round of estimating, and the model says which week to spend.',
     repoUrl: 'https://github.com/morichtereur/gbs-business-case',
+    demoUrl: 'https://morichtereur.github.io/bc-dashboard/',
     figure: {
-      src: gbsTornado,
-      alt: 'Horizontal tornado chart of NPV sensitivity by assumption, low value to high value, bars coloured by whether diligence could measure the assumption or not. Minutes per rework touch, a measurable assumption, produces the widest swing — ahead of the implementation one-off cost.',
+      src: bcDashboard,
+      alt: 'The business-case tool in use. A headline reads “One unmeasured number decides this business case”; an answer panel states that at central assumptions the case does not clear its 9% hurdle rate — NPV −€142,931, with a 26% chance of a positive NPV — and that 62% of the variance sits in assumptions a week of diligence could measure. Below it, the first of seven assumption sliders, grouped under “measurable in diligence”, set to 12 minutes per rework touch with its defensible range and central estimate marked.',
       caption:
-        'The widest swing comes from a measurable assumption, not the implementation cost quote — the opposite of what a workshop case usually assumes.',
+        'The tool as it runs. Every slider spans only the range the study will defend, and the NPV, the Monte Carlo verdict and the diligence plan all recompute as you drag — the model on the page is the model in the repository.',
       blend: true,
     },
   },
