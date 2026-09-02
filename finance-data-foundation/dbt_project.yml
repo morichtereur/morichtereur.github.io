@@ -1,0 +1,13 @@
+name: finance_data_foundation
+version: "1.0.0"
+profile: fdf
+
+model-paths: ["models"]
+test-paths: ["tests_dbt"]
+
+models:
+  finance_data_foundation:
+    staging:
+      +materialized: view
+    marts:
+      +materialized: table

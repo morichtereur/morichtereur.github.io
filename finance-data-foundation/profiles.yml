@@ -1,0 +1,7 @@
+fdf:
+  target: local
+  outputs:
+    local:
+      type: duckdb
+      path: fdf.duckdb
+      threads: 4
