@@ -65,6 +65,7 @@ echo "Syncing dashboards from their source repositories:"
 sync gbs-location-selection location-dashboard
 sync_asset gbs-location-selection data/og.png location-dashboard/og.png
 sync gbs-tom-assignment     tom-dashboard
+sync gbs-business-case      bc-dashboard
 sync gbs-agentic-shift      agentic-shift-dashboard
 sync dax-intelligence       dax-dashboard
 
