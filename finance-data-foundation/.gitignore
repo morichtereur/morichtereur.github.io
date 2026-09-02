@@ -4,3 +4,4 @@ logs/
 dbt_packages/
 __pycache__/
 .pytest_cache/
+.user.yml
