@@ -1,0 +1,76 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+---
+
+<BaseLayout>
+  <section class="not-found">
+    <div class="inner">
+      <p class="code">404</p>
+      <h1>Page not found</h1>
+      <p class="note">
+        Nothing lives at this address. The case studies, the dashboards and the
+        contact links are all on the front page.
+      </p>
+      <a class="home" href="/">Back to the front page</a>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .not-found {
+    padding-block: var(--space-8);
+  }
+
+  .inner {
+    max-width: var(--content-width);
+    margin-inline: auto;
+    padding-inline: var(--space-5);
+  }
+
+  .code {
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    text-transform: uppercase;
+    letter-spacing: var(--tracking-label);
+    color: var(--color-text-secondary);
+    padding-bottom: var(--space-3);
+    margin-bottom: var(--space-5);
+    border-bottom: 1px solid var(--color-border-strong);
+  }
+
+  h1 {
+    font-family: var(--font-display);
+    font-size: var(--text-xl);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+
+  .note {
+    margin-top: var(--space-4);
+    max-width: 31rem;
+    font-family: var(--font-serif);
+    line-height: var(--leading-normal);
+    color: var(--color-text-secondary);
+    text-wrap: pretty;
+  }
+
+  .home {
+    display: inline-block;
+    margin-top: var(--space-6);
+    font-family: var(--font-mono);
+    font-size: var(--text-sm);
+    text-decoration: none;
+    color: var(--color-accent);
+    border-bottom: 1px solid var(--color-border-strong);
+    padding-bottom: 0.15rem;
+    transition:
+      color var(--duration-fast) var(--ease-standard),
+      border-color var(--duration-fast) var(--ease-standard);
+  }
+
+  .home:hover,
+  .home:focus-visible {
+    color: var(--color-accent-hover);
+    border-bottom-color: var(--color-accent);
+  }
+</style>
