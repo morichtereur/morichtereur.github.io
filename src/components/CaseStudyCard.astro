@@ -33,6 +33,13 @@ interface Props {
    *  field of marks. Only meaningful once the reader already knows what's
    *  being counted, so it lives in the outcome row rather than the page. */
   signal?: { total: number; signal: number };
+  /** A featured card renders at full depth on the page. The rest open with
+   *  summary, data and outcome, and fold the long-form fields behind a native
+   *  disclosure — most readers give the page ninety seconds, and nine cards of
+   *  equal weight spend that budget before the strongest work is reached.
+   *  Nothing is removed: the full case study is one click away, with no
+   *  JavaScript in the path. */
+  featured?: boolean;
 }
 
 const {
@@ -49,10 +56,11 @@ const {
   demoUrl,
   figure,
   signal,
+  featured = false,
 } = Astro.props;
 ---
 
-<article class="case-study" data-reveal>
+<article class:list={['case-study', { 'is-compact': !featured }]} data-reveal>
   <header>
     <h4>{title}</h4>
     <div class="links">
@@ -75,40 +83,93 @@ const {
 
   <p class="summary">{summary}</p>
   <p class="data"><span>Data</span>{data}</p>
-  <dl>
-    <dt>Problem</dt>
-    <dd>{problem}</dd>
 
-    <dt>What I built</dt>
-    <dd>{build}</dd>
-
-    <dt>Stack</dt>
-    <dd class="stack">
-      {stack.map((item) => <span class="tag">{item}</span>)}
-    </dd>
-
-    <dt>Outcome</dt>
-    <dd class="outcome">
-      <span class="metric-value">{metricValue}</span>
-      <span class="metric-label">{metricLabel}</span>
-      {
-        signal && (
-          <div class="signal-wrap">
-            <SignalField total={signal.total} signal={signal.signal} />
-          </div>
-        )
-      }
-    </dd>
-
-    <dt>So what</dt>
-    <dd>{implication}</dd>
-  </dl>
   {
-    figure && (
-      <figure class={figure.blend ? 'shot is-blended' : 'shot'}>
-        <Image src={figure.src} alt={figure.alt} widths={[700, 1100]} sizes="(max-width: 48rem) 100vw, 44rem" />
-        <figcaption>{figure.caption}</figcaption>
-      </figure>
+    featured ? (
+      <>
+        <dl>
+          <dt>Problem</dt>
+          <dd>{problem}</dd>
+
+          <dt>What I built</dt>
+          <dd>{build}</dd>
+
+          <dt>Stack</dt>
+          <dd class="stack">
+            {stack.map((item) => (
+              <span class="tag">{item}</span>
+            ))}
+          </dd>
+
+          <dt>Outcome</dt>
+          <dd class="outcome">
+            <span class="metric-value">{metricValue}</span>
+            <span class="metric-label">{metricLabel}</span>
+            {signal && (
+              <div class="signal-wrap">
+                <SignalField total={signal.total} signal={signal.signal} />
+              </div>
+            )}
+          </dd>
+
+          <dt>So what</dt>
+          <dd>{implication}</dd>
+        </dl>
+        {figure && (
+          <figure class={figure.blend ? 'shot is-blended' : 'shot'}>
+            <Image
+              src={figure.src}
+              alt={figure.alt}
+              widths={[700, 1100]}
+              sizes="(max-width: 48rem) 100vw, 44rem"
+            />
+            <figcaption>{figure.caption}</figcaption>
+          </figure>
+        )}
+      </>
+    ) : (
+      <>
+        <p class="outcome outcome-row">
+          <span class="metric-value">{metricValue}</span>
+          <span class="metric-label">{metricLabel}</span>
+          {signal && (
+            <span class="signal-wrap">
+              <SignalField total={signal.total} signal={signal.signal} />
+            </span>
+          )}
+        </p>
+        <details class="more">
+          <summary>Full case study</summary>
+          <dl>
+            <dt>Problem</dt>
+            <dd>{problem}</dd>
+
+            <dt>What I built</dt>
+            <dd>{build}</dd>
+
+            <dt>Stack</dt>
+            <dd class="stack">
+              {stack.map((item) => (
+                <span class="tag">{item}</span>
+              ))}
+            </dd>
+
+            <dt>So what</dt>
+            <dd>{implication}</dd>
+          </dl>
+          {figure && (
+            <figure class={figure.blend ? 'shot is-blended' : 'shot'}>
+              <Image
+                src={figure.src}
+                alt={figure.alt}
+                widths={[700, 1100]}
+                sizes="(max-width: 48rem) 100vw, 44rem"
+              />
+              <figcaption>{figure.caption}</figcaption>
+            </figure>
+          )}
+        </details>
+      </>
     )
   }
 </article>
@@ -117,6 +178,13 @@ const {
   .case-study {
     padding-block: var(--space-7);
     border-top: 1px solid var(--color-border);
+  }
+
+  /* A compact card holds less, so it earns less vertical ground; the featured
+     cards keep the full measure and the size contrast is what says
+     "start here" without a label saying it. */
+  .case-study.is-compact {
+    padding-block: var(--space-6);
   }
 
   /* The first card in a group sits directly under the group heading's own
@@ -134,6 +202,10 @@ const {
     justify-content: space-between;
     gap: var(--space-3) var(--space-5);
     margin-bottom: var(--space-6);
+  }
+
+  .is-compact header {
+    margin-bottom: var(--space-4);
   }
 
   h4 {
@@ -259,6 +331,13 @@ const {
     gap: var(--space-1) var(--space-3);
   }
 
+  /* On a compact card the outcome is the whole argument above the fold, so it
+     stands as its own row instead of a dl entry. */
+  .outcome-row {
+    margin: var(--space-4) 0 0;
+    max-width: 46rem;
+  }
+
   .metric-value {
     font-family: var(--font-display);
     font-size: var(--text-xl);
@@ -274,8 +353,57 @@ const {
   }
 
   .signal-wrap {
+    display: block;
     flex-basis: 100%;
     margin-top: var(--space-4);
+  }
+
+  /* The fold. A native disclosure, so it works with no JavaScript and costs a
+     reader one click; the summary sits in the same register as the card's
+     links because it is one — an offer, not a heading. */
+  .more {
+    margin-top: var(--space-5);
+  }
+
+  .more summary {
+    display: inline-flex;
+    align-items: baseline;
+    gap: var(--space-2);
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    letter-spacing: var(--tracking-label);
+    text-transform: uppercase;
+    color: var(--color-accent);
+    cursor: pointer;
+    list-style: none;
+    border-bottom: 1px solid var(--color-border-strong);
+    padding-bottom: 0.15rem;
+    transition:
+      color var(--duration-fast) var(--ease-standard),
+      border-color var(--duration-fast) var(--ease-standard);
+  }
+
+  .more summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .more summary::before {
+    content: '+';
+    font-family: var(--font-mono);
+  }
+
+  .more[open] summary::before {
+    content: '−';
+  }
+
+  .more summary:hover,
+  .more summary:focus-visible {
+    color: var(--color-accent-hover);
+    border-bottom-color: var(--color-accent);
+  }
+
+  .more[open] summary {
+    margin-bottom: var(--space-6);
   }
 
   .shot {

@@ -24,14 +24,14 @@ const caseStudies = [
       'Ranks the cities where finance shared-services work is genuinely advertised, on seven pillars of public data \u2014 and refuses to rank the ones the evidence cannot tell apart.',
     data: 'Public job postings, ILOSTAT earnings and employment, World Bank governance indicators, Eurostat regional accounts.',
     group: 'gbs',
+    featured: true,
     problem:
-      'A location study arrives as three cities and a weighted scorecard. The weights were agreed in a workshop, and the weights are what chose the three cities \u2014 which is then presented to a steering committee as measurement.',
+      'A location study arrives as three cities and a weighted scorecard. The weights were agreed in a workshop, and the weights are what chose the three cities \u2014 so the ranking inherits the room\u2019s assumptions instead of testing them.',
     build:
       "The first version rested on a sample searched for ‘finance operations’ and similar. Only 13% of those 2,159 postings carried any shared-services or capability-centre signal — the pillar meant to describe GBS was describing retained finance nine times out of ten. The population is now fetched for the delivery model instead, and every posting passes two independent classifiers. Eleven cities are scored on seven pillars of public data, then re-ranked 10,000 times across every defensible weighting, resampling each input inside its own measured error. Cities the draws cannot separate share a band rather than being given invented positions: seven of the fifty-five city pairs finish closer than 65/35. Ten further locations are priced on the five pillars that reach them and never ranked, because the two built from job postings stop at the feed’s country list.",
     stack: ['Python', 'NumPy', 'DuckDB', 'Matplotlib', 'JavaScript', 'pytest'],
     metricValue: '13%',
-    metricLabel:
-      'of the original sample was actually GBS or GCC work \u2014 the rest was retained finance, the work a shared-services centre exists not to do',
+    metricLabel: 'of the original sample was actually GBS or GCC work \u2014 the rest was retained finance',
     implication:
       'Restricting the population changes which city leads: Warsaw dominated Poland on the broad sample because it is the largest finance job market, while Kraków leads on GBS and GCC work because it is the largest shared-services one. The ablation matters more than the ranking it produced — removing each pillar in turn shows that for a transactional hub the answer is a cost ranking wearing six other pillars, every one of which can be deleted without moving the shortlist, while five of seven move the judgment one.',
     repoUrl: 'https://github.com/morichtereur/gbs-location-selection',
@@ -50,16 +50,16 @@ const caseStudies = [
       'Prices how often purchase-to-pay work crosses between delivery units, solves the assignment to proven optimality — and reports a price and a set of bands rather than a target operating model.',
     data: 'The same public SAP event log, plus the public wage panel and posting classifier from the two upstream studies.',
     group: 'gbs',
+    featured: true,
     problem:
       'A target operating model arrives as four columns on a slide — retained, captive, provider, automated — with the activities sorted into them by the people whose functions are being sorted. The expensive part is not where an activity sits. It is how often work crosses between columns, and nobody in the room has measured which activities actually follow each other.',
     build:
-      'Measured the crossings from the same 1.6M-event SAP log: 498 directly-follows pairs across 11,973 variants, of which 681,352 transitions are priced once repeats and unavoidable vendor or system steps are excluded and reported. OR-Tools CP-SAT then assigns 29 activities to one delivery model and one city, proven optimal at every price, under four declared constraints — segregation of duties ported from the Finance Control Agent, minimum viable site size, contact coverage, and a cap on judgment work in a measured transactional hub. Both metrics were fixed in writing before the solve ran, and automation is allowed only where the log already shows an activity running in batch: Clear Invoice is 194,393 events with zero batch, so this model cannot automate it however much a slide would like to.',
+      'Measured the crossings from the same 1.6M-event SAP log: 498 directly-follows pairs across 11,973 variants, of which 681,352 transitions are priced once repeats and unavoidable vendor or system steps are excluded and reported. OR-Tools CP-SAT then assigns 29 activities to one delivery model and one city, proven optimal at every price, under four declared constraints — segregation of duties ported from the Finance Control Agent, minimum viable site size, contact coverage, and a cap on judgment work in a measured transactional hub. Both metrics were fixed in writing before the solve ran, and automation is allowed only where the log already shows an activity running in batch: Clear Invoice is 194,393 events with zero batch, so the model does not automate it — the log has to show the capability first.',
     stack: ['Python', 'OR-Tools CP-SAT', 'DuckDB', 'LLM API', 'pytest'],
     metricValue: '13 of 29',
-    metricLabel:
-      'positions the cost model actually decides — the other 16 are ties, and the tool leaves them blank rather than filling them in',
+    metricLabel: 'positions the cost model actually decides — the other 16 are ties, left blank rather than filled in',
     implication:
-      'Concentrating purchase-to-pay pays only above USD 3.38 per handoff — the top half of the range declared before the sweep ran, not the middle of it. At the declared price of USD 1.50 the crossings already cost 1.85× the wage bill they coordinate, so the four-column slide is taking a position on a number larger than the one it optimises. Contact coverage — that somebody can answer a supplier inside their working day — is then worth more than the entire labour-arbitrage argument: remove it and 28 of 29 activities move and the bill falls by about half a million dollars. And retained is empty at every price, because nothing in the brief said authority over company spend has to sit inside the company; wanting one is not the same as having written it down.',
+      'Concentrating purchase-to-pay pays only above USD 3.38 per handoff — the top half of the range declared before the sweep ran, not the middle of it. At the declared price of USD 1.50 the crossings already cost 1.85× the wage bill they coordinate, so the four-column slide is taking a position on a number larger than the one it optimises. Contact coverage — that somebody can answer a supplier inside their working day — is then worth more than the entire labour-arbitrage argument: remove it and 28 of 29 activities move and the bill falls by about half a million dollars. And retained is empty at every price, because no constraint in the brief required authority over company spend to sit inside the company — if that matters, it belongs in the constraint set, and the tool makes the omission visible.',
     repoUrl: 'https://github.com/morichtereur/gbs-tom-assignment',
     demoUrl: 'https://morichtereur.github.io/tom-dashboard/',
     figure: {
@@ -67,6 +67,33 @@ const caseStudies = [
       alt: 'The target-operating-model tool in use. A headline reads “What a handoff costs decides the operating model”; an answer panel states that concentrating purchase-to-pay pays only above USD 3.38 per handoff, near the top edge of the range the study will defend, and that cost decides 13 of the 29 positions while the other 16 are ties left undecided. Below it a slider sets what one handoff costs, currently USD 1.50, with the defensible range and the 3.38 tipping point marked on the track.',
       caption:
         'The tool as it runs. Every stop on the slider is a price the model was actually solved at, so nothing on the page is an assignment the solver did not produce.',
+      blend: true,
+    },
+  },
+  {
+    title: 'FP&A Decision Intelligence Accelerator',
+    summary:
+      'A driver-based forecast for adidas that ranks which drivers deserve management attention, backtested against two years of the company\u2019s own guidance.',
+    data: 'adidas AG published annual reports and guidance.',
+    group: 'operations',
+    featured: true,
+    problem:
+      'FP&A review cycles reliably produce analysis and much less reliably produce decisions. The pack lands, the variances are explained, the sensitivity table is admired — and the meeting ends without anyone naming which exposure is worth the next thirty minutes, who owns it, or what would have to change for the answer to move.',
+    build:
+      "A driver-based forecast for adidas, built from published filings, backtested against two vintages: FY2023\u2192FY2024 and FY2024\u2192FY2025, each using the initial guidance from the prior year's report rather than a figure revised part-way through the year it describes. On top of it, a decision layer. Each driver's financial exposure is computed by re-running the forecast across its plausible range, then ranked against two declared judgements — how firm the assumption is, and whether management can move it inside the year. Low controllability caps a driver at Monitor however large it is, because attention is a budget and should be spent where it converts. The engine is separated from the client: drivers, scenarios, thresholds and mappings live in configuration, a second client with materially different economics runs on the same code, and a third can be stood up from a spreadsheet without touching it.",
+    stack: ['Python', 'NumPy', 'FastAPI', 'Next.js', 'LLM API', 'pytest', 'Vitest'],
+    metricValue: '\u20ac900m',
+    metricLabel:
+      'working-capital release the FY2024 forecast missed \u2014 the largest error contributor in both backtest years, in opposite directions',
+    implication:
+      "The ranking and the backtest agree, and neither was tuned to the other: the driver the materiality engine puts first for management attention is the one that has actually broken the forecast, twice. The second vintage also falsified a claim this project had been making. Carrying FY2023's 189% effective tax rate forward \u2014 tax on a near-zero pre-tax result in the write-off year \u2014 made the model look worse than a naive extrapolation on cash. That was the model being wrong, not the method being weak; the rule is guarded now, and the correction is in the repository history rather than quietly removed.",
+    repoUrl: 'https://github.com/morichtereur/fpa-decision-intelligence',
+    demoUrl: 'https://fpa-decision-intelligence.vercel.app/priorities',
+    figure: {
+      src: fpaForecastError,
+      alt: 'Two stacked bar charts on a shared scale, one per backtest vintage. FY2023 to FY2024: naive extrapolation errs 13.9% on revenue, 84.8% on operating profit and 72.2% on free cash flow, against 5.0%, 62.6% and 54.7% for the driver-based forecast. FY2024 to FY2025: naive errs 5.5%, 22.3% and 14.8%, against 3.1%, 14.9% and 3.4%. The driver-based bar is shorter in all six, and the FY2024 misses are several times the FY2025 ones.',
+      caption:
+        'Two vintages, not a track record. The driver-based forecast lands closer on all six metric-year pairs \u2014 a statement about a weak baseline, not about accuracy, since both methods undershot in both years and the FY2024 operating-profit forecast was wrong by 63%.',
       blend: true,
     },
   },
@@ -145,32 +172,6 @@ const caseStudies = [
     },
   },
   {
-    title: 'FP&A Decision Intelligence Accelerator',
-    summary:
-      'A driver-based forecast for adidas that ranks which drivers deserve management attention, backtested against two years of the company\u2019s own guidance.',
-    data: 'adidas AG published annual reports and guidance.',
-    group: 'operations',
-    problem:
-      'FP&A review cycles reliably produce analysis and much less reliably produce decisions. The pack lands, the variances are explained, the sensitivity table is admired — and the meeting ends without anyone naming which exposure is worth the next thirty minutes, who owns it, or what would have to change for the answer to move.',
-    build:
-      "A driver-based forecast for adidas, built from published filings, backtested against two vintages: FY2023\u2192FY2024 and FY2024\u2192FY2025, each using the initial guidance from the prior year's report rather than a figure revised part-way through the year it describes. On top of it, a decision layer. Each driver's financial exposure is computed by re-running the forecast across its plausible range, then ranked against two declared judgements — how firm the assumption is, and whether management can move it inside the year. Low controllability caps a driver at Monitor however large it is, because attention is a budget and should be spent where it converts. The engine is separated from the client: drivers, scenarios, thresholds and mappings live in configuration, a second client with materially different economics runs on the same code, and a third can be stood up from a spreadsheet without touching it.",
-    stack: ['Python', 'NumPy', 'FastAPI', 'Next.js', 'LLM API', 'pytest', 'Vitest'],
-    metricValue: '\u20ac900m',
-    metricLabel:
-      'unforecast working-capital release in FY2024 \u2014 the same assumption then cost \u20ac372m in FY2025, making it the largest error contributor in both years, in opposite directions',
-    implication:
-      "The ranking and the backtest agree, and neither was tuned to the other: the driver the materiality engine puts first for management attention is the one that has actually broken the forecast, twice. The second vintage also falsified a claim this project had been making. Carrying FY2023's 189% effective tax rate forward \u2014 tax on a near-zero pre-tax result in the write-off year \u2014 made the model look worse than a naive extrapolation on cash. That was the model being wrong, not the method being weak; the rule is guarded now, and the correction is in the repository history rather than quietly removed.",
-    repoUrl: 'https://github.com/morichtereur/fpa-decision-intelligence',
-    demoUrl: 'https://fpa-decision-intelligence.vercel.app/priorities',
-    figure: {
-      src: fpaForecastError,
-      alt: 'Two stacked bar charts on a shared scale, one per backtest vintage. FY2023 to FY2024: naive extrapolation errs 13.9% on revenue, 84.8% on operating profit and 72.2% on free cash flow, against 5.0%, 62.6% and 54.7% for the driver-based forecast. FY2024 to FY2025: naive errs 5.5%, 22.3% and 14.8%, against 3.1%, 14.9% and 3.4%. The driver-based bar is shorter in all six, and the FY2024 misses are several times the FY2025 ones.',
-      caption:
-        'Two vintages, not a track record. The driver-based forecast lands closer on all six metric-year pairs \u2014 a statement about a weak baseline, not about accuracy, since both methods undershot in both years and the FY2024 operating-profit forecast was wrong by 63%.',
-      blend: true,
-    },
-  },
-  {
     title: 'Finance Control Agent',
     summary:
       'Runs two finance queues \u2014 month-end close and invoice-to-pay \u2014 on deterministic checks, with no language model allowed near arithmetic, matching or a tolerance decision.',
@@ -202,12 +203,12 @@ const caseStudies = [
     data: 'Public RSS and news feeds from consulting firms, analyst houses and listed companies.',
     group: 'intelligence',
     problem:
-      'Competitor and client intelligence reached the team through whoever happened to read the right article — usually weeks after it could have changed a proposal.',
+      'Market intelligence usually travels through whoever happens to read the right article — which means it arrives unevenly, and often weeks after it could have changed a proposal.',
     build:
       'A pipeline that reads 69 feeds across 33 consulting firms, analyst houses and client companies, then has the LLM score every article 1–3 for strategic relevance. Only a 3 reaches the Monday brief; everything below the cut stays searchable in a dashboard.',
     stack: ['Python', 'LLM API', 'SQLite'],
-    metricValue: '16 weeks',
-    metricLabel: 'delivered end to end, no manual step',
+    metricValue: '30 of 1,132',
+    metricLabel: 'articles cleared the relevance bar for the Monday brief — everything below the cut stays searchable',
     implication:
       'Market awareness stops depending on who happened to read what. The summarising is the least of it — the point is that the filter runs on a Monday whether or not anyone remembers to look, which is the difference between a tool that was built and one that is used.',
     repoUrl: 'https://github.com/morichtereur/gbs-intelligence-agent',
@@ -232,7 +233,7 @@ const caseStudies = [
       'Hybrid retrieval across 15 DAX 40 annual reports: BM25 and dense search unioned rather than one re-scoring the other, then a cross-encoder re-ranks the combined pool. Every chunk carries the real page range its text came from rather than an estimate, so a citation resolves to a page that exists. The guardrail is the point — each citation is re-parsed out of the generated prose and checked against the excerpts the model was actually given before the answer is shown, and confidence bands calibrated against this corpus stop a query with no support in it from reaching the model at all. Precision@k, recall@k and a claim-level faithfulness judge are measured rather than asserted.',
     stack: ['Python', 'ChromaDB', 'BM25', 'sentence-transformers', 'LLM API', 'Streamlit', 'pytest'],
     metricValue: '15 reports',
-    metricLabel: 'answerable in one query, with page citations',
+    metricLabel: 'answerable in one query — every citation checked against its source excerpt before it is shown',
     implication:
       'Analyst time shifts from finding a passage to judging it. The citation check is what makes that shift safe: an answer carrying a verified page number can go into a client document as it stands, while an unsourced one has to be found by hand anyway — which is the work it was supposed to save.',
     repoUrl: 'https://github.com/morichtereur/dax-intelligence',
