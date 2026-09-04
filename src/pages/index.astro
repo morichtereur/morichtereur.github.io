@@ -387,6 +387,13 @@ const groups = [
     scroll-margin-top: calc(var(--nav-height) + var(--space-5));
   }
 
+  /* The rule belongs to the group, not the heading: cards now run the full
+     wide measure, and a divider that stopped at the reading measure read as
+     a mistake rather than a margin. */
+  .group {
+    border-top: 1px solid var(--color-border-strong);
+  }
+
   .group + .group {
     margin-top: var(--space-8);
   }
@@ -395,7 +402,6 @@ const groups = [
     max-width: 46rem;
     margin-bottom: var(--space-6);
     padding-top: var(--space-3);
-    border-top: 1px solid var(--color-border-strong);
   }
 
   /* The group heading has to read as a level between the section label and a

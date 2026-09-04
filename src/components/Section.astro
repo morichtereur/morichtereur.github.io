@@ -23,8 +23,10 @@ const { id, heading } = Astro.props;
     padding-block: var(--space-8);
   }
 
+  /* Wide, so the cards can set narrative and exhibit side by side; prose
+     blocks inside cap themselves at the reading measure. */
   .inner {
-    max-width: var(--content-width);
+    max-width: var(--content-width-wide);
     margin-inline: auto;
     padding-inline: var(--space-5);
   }
