@@ -33,14 +33,6 @@ interface Props {
    *  field of marks. Only meaningful once the reader already knows what's
    *  being counted, so it lives in the outcome block rather than the page. */
   signal?: { total: number; signal: number };
-  /** A featured card renders at full depth on the page, with its exhibit in
-   *  the rail beside the narrative. The rest open with summary, data and
-   *  outcome, and fold the long-form fields behind a native disclosure — most
-   *  readers give the page ninety seconds, and nine cards of equal weight
-   *  spend that budget before the strongest work is reached. Nothing is
-   *  removed: the full case study is one click away, with no JavaScript in
-   *  the path. */
-  featured?: boolean;
 }
 
 const {
@@ -57,11 +49,10 @@ const {
   demoUrl,
   figure,
   signal,
-  featured = false,
 } = Astro.props;
 ---
 
-<article class:list={['case-study', { 'is-compact': !featured }]} data-reveal>
+<article class="case-study" data-reveal>
   <header>
     <h4>{title}</h4>
     <div class="links">
@@ -82,9 +73,10 @@ const {
     </div>
   </header>
 
-  {/* Narrative on the left, evidence on the right. The rail is sticky, so the
-      exhibit and its number stay in view while the reader is in the prose that
-      explains them — the two halves of the argument never lose each other. */}
+  {/* Narrative on the left, evidence on the right. Every card carries the
+      same contract: summary, sources and the folded long form in the prose
+      column; the number and the exhibit always visible in the rail, which is
+      sticky so the evidence tracks the reading. */}
   <div class="body">
     <div class="lead">
       <p class="summary">{summary}</p>
@@ -104,7 +96,7 @@ const {
         }
       </p>
       {
-        featured && figure && (
+        figure && (
           <figure class="exhibit">
             <span class="exhibit-label" aria-hidden="true">Exhibit</span>
             <div class:list={['plate', { 'is-blended': figure.blend }]}>
@@ -122,62 +114,26 @@ const {
     </aside>
 
     <div class="detail">
-      {
-        featured ? (
-          <dl>
-            <dt>Problem</dt>
-            <dd>{problem}</dd>
+      <details class="more">
+        <summary>Full case study</summary>
+        <dl>
+          <dt>Problem</dt>
+          <dd>{problem}</dd>
 
-            <dt>What I built</dt>
-            <dd>{build}</dd>
+          <dt>What I built</dt>
+          <dd>{build}</dd>
 
-            <dt>Stack</dt>
-            <dd class="stack">
-              {stack.map((item) => (
-                <span class="tag">{item}</span>
-              ))}
-            </dd>
+          <dt>Stack</dt>
+          <dd class="stack">
+            {stack.map((item) => (
+              <span class="tag">{item}</span>
+            ))}
+          </dd>
 
-            <dt>So what</dt>
-            <dd>{implication}</dd>
-          </dl>
-        ) : (
-          <details class="more">
-            <summary>Full case study</summary>
-            <dl>
-              <dt>Problem</dt>
-              <dd>{problem}</dd>
-
-              <dt>What I built</dt>
-              <dd>{build}</dd>
-
-              <dt>Stack</dt>
-              <dd class="stack">
-                {stack.map((item) => (
-                  <span class="tag">{item}</span>
-                ))}
-              </dd>
-
-              <dt>So what</dt>
-              <dd>{implication}</dd>
-            </dl>
-            {figure && (
-              <figure class="exhibit">
-                <span class="exhibit-label" aria-hidden="true">Exhibit</span>
-                <div class:list={['plate', { 'is-blended': figure.blend }]}>
-                  <Image
-                    src={figure.src}
-                    alt={figure.alt}
-                    widths={[700, 1200]}
-                    sizes="(max-width: 56.25rem) 100vw, 34rem"
-                  />
-                </div>
-                <figcaption>{figure.caption}</figcaption>
-              </figure>
-            )}
-          </details>
-        )
-      }
+          <dt>So what</dt>
+          <dd>{implication}</dd>
+        </dl>
+      </details>
     </div>
   </div>
 </article>
@@ -186,13 +142,6 @@ const {
   .case-study {
     padding-block: var(--space-7);
     border-top: 1px solid var(--color-border);
-  }
-
-  /* A compact card holds less, so it earns less vertical ground; the featured
-     cards keep the full measure and the size contrast is what says
-     "start here" without a label saying it. */
-  .case-study.is-compact {
-    padding-block: var(--space-6);
   }
 
   /* The first card in a group sits directly under the group heading's own
@@ -212,10 +161,6 @@ const {
     margin-bottom: var(--space-5);
   }
 
-  .is-compact header {
-    margin-bottom: var(--space-4);
-  }
-
   /* Serif, like every headline from the hero down — the grotesque now speaks
      only where data does (metric values, nothing else). */
   h4 {
@@ -232,11 +177,16 @@ const {
   .body {
     display: grid;
     grid-template-columns: minmax(0, 6.5fr) minmax(0, 5fr);
+    /* auto + 1fr, not auto + auto: a spanning rail hands its extra height to
+       the auto rows in equal parts, which floats the fold away from the lead
+       it belongs under. Pinning row one to its content sends all of the
+       rail's surplus into row two, below the fold. */
+    grid-template-rows: auto 1fr;
     grid-template-areas:
       'lead rail'
       'detail rail';
     column-gap: var(--space-7);
-    row-gap: var(--space-6);
+    row-gap: var(--space-5);
     align-items: start;
   }
 
