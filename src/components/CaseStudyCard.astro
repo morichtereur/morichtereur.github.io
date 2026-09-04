@@ -2,8 +2,12 @@
 import { Image } from 'astro:assets';
 import type { ImageMetadata } from 'astro';
 import SignalField from './SignalField.astro';
+import Icon from './Icon.astro';
 
 interface Props {
+  /** Two-digit position in page order ("01"…"10"), assigned by the page so a
+   *  reader can name a card and be understood. */
+  index?: string;
   title: string;
   /** One plain sentence saying what the thing is, read before any of the
    *  detail below it. The problem/build pair explains why it exists and how it
@@ -36,6 +40,7 @@ interface Props {
 }
 
 const {
+  index,
   title,
   summary,
   data,
@@ -54,19 +59,22 @@ const {
 
 <article class="case-study" data-reveal>
   <header>
-    <h4>{title}</h4>
+    <h4>
+      {index && <span class="no" aria-hidden="true">{index}</span>}
+      {title}
+    </h4>
     <div class="links">
       {
         demoUrl && (
           <a class="demo" href={demoUrl}>
-            Live demo <span aria-hidden="true">↗</span>
+            Live demo <Icon name="arrow" />
           </a>
         )
       }
       {
         repoUrl && (
           <a class="repo" href={repoUrl}>
-            Source <span aria-hidden="true">↗</span>
+            Source <Icon name="arrow" />
           </a>
         )
       }
@@ -80,7 +88,10 @@ const {
   <div class="body">
     <div class="lead">
       <p class="summary">{summary}</p>
-      <p class="data"><span>Data</span>{data}</p>
+      <p class="data">
+        <span><Icon name="database" />Data</span>
+        {data}
+      </p>
     </div>
 
     <aside class="rail">
@@ -164,11 +175,24 @@ const {
   /* Serif, like every headline from the hero down — the grotesque now speaks
      only where data does (metric values, nothing else). */
   h4 {
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-3);
     font-family: var(--font-serif);
     font-size: var(--text-xl);
     font-weight: 600;
     line-height: var(--leading-snug);
     letter-spacing: -0.015em;
+  }
+
+  /* The case number, in the data register: a handle, not a headline. Page
+     order rather than group order, so "case 07" is unambiguous. */
+  .no {
+    font-family: var(--font-mono);
+    font-size: var(--text-sm);
+    font-weight: 400;
+    letter-spacing: 0.04em;
+    color: var(--color-accent);
   }
 
   /* Two columns of one argument: the prose that makes the case, and the rail
@@ -226,11 +250,19 @@ const {
   }
 
   .data span {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
     font-family: var(--font-mono);
     font-size: var(--text-xs);
     letter-spacing: var(--tracking-label);
     text-transform: uppercase;
     color: var(--color-text-secondary);
+  }
+
+  .data :global(.icon) {
+    width: 0.9em;
+    height: 0.9em;
   }
 
   .links {
@@ -244,6 +276,9 @@ const {
      and reading its code are different invitations and should not dress
      alike. */
   .demo {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
     font-family: var(--font-mono);
     font-size: var(--text-xs);
     letter-spacing: 0.04em;
@@ -255,6 +290,11 @@ const {
     transition: background-color var(--duration-fast) var(--ease-standard);
   }
 
+  .links :global(.icon) {
+    width: 0.85em;
+    height: 0.85em;
+  }
+
   .demo:hover,
   .demo:focus-visible {
     background: var(--color-accent-hover);
@@ -262,6 +302,9 @@ const {
   }
 
   .repo {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
     font-family: var(--font-mono);
     font-size: var(--text-xs);
     text-decoration: none;
@@ -322,6 +365,17 @@ const {
   .outcome {
     margin: 0;
     padding-top: var(--space-1);
+  }
+
+  /* The exhibit tick: a short rule in the signal colour opening the callout,
+     the way a consulting exhibit opens with its kicker rule. */
+  .outcome::before {
+    content: '';
+    display: block;
+    width: 2rem;
+    height: 2px;
+    background: var(--color-accent);
+    margin-bottom: var(--space-3);
   }
 
   .metric-value {

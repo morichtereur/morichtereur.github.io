@@ -3,6 +3,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 import Hero from '../components/Hero.astro';
 import Section from '../components/Section.astro';
 import CaseStudyCard from '../components/CaseStudyCard.astro';
+import Icon from '../components/Icon.astro';
 import explorerShot from '../assets/intelligence-explorer.png';
 import variantCoverage from '../assets/p2p-variant-coverage.png';
 import bcDashboard from '../assets/gbs-bc-dashboard.png';
@@ -268,39 +269,62 @@ const caseStudies = [
   },
 ];
 
+// Each group carries a mark in the site's own stroke style \u2014 wayfinding, not
+// decoration, so the same mark could label the practice on a slide.
 const groups = [
   {
     key: 'gbs',
+    icon: 'globe' as const,
     heading: 'GBS & Shared Services',
     blurb:
       'Where to put a finance centre, whether the case for building one holds, and what work it will actually be doing.',
   },
   {
     key: 'operations',
+    icon: 'pulse' as const,
     heading: 'Finance Operations & Planning',
     blurb:
       'Diagnosing a process from its own event log, running the controls that clear a month-end queue, and ranking what actually drives a forecast.',
   },
   {
     key: 'intelligence',
+    icon: 'radar' as const,
     heading: 'Market & Competitive Intelligence',
     blurb:
       'Reading more published material than a person has time for, and answering with the source attached.',
   },
   {
     key: 'tooling',
+    icon: 'layers' as const,
     heading: 'Delivery Tooling',
     blurb:
       'The mechanics of consulting delivery, automated \u2014 starting with the deck.',
   },
 ];
+
+// Cases are numbered in page order, across groups \u2014 a reader or a client can
+// say "case 07" and both people open the same card.
+const orderedTitles = groups.flatMap((g) =>
+  caseStudies.filter((cs) => cs.group === g.key).map((cs) => cs.title),
+);
+const caseNumber = new Map(orderedTitles.map((t, i) => [t, String(i + 1).padStart(2, '0')]));
+const groupCount = new Map(
+  groups.map((g) => [g.key, caseStudies.filter((cs) => cs.group === g.key).length]),
+);
 ---
 
 <BaseLayout>
   <Hero />
   <Section id="case-studies" heading="Case Studies">
     <nav class="index" aria-label="Case study groups">
-      {groups.map((g) => <a href={`#${g.key}`}>{g.heading}</a>)}
+      {
+        groups.map((g) => (
+          <a href={`#${g.key}`}>
+            {g.heading}
+            <span class="count">{groupCount.get(g.key)}</span>
+          </a>
+        ))
+      }
     </nav>
     {
       /* Grouped by what the work does rather than by subject. Some of these
@@ -317,10 +341,17 @@ const groups = [
         <>
           <div class:list={['group', { 'is-tinted': g.key === 'intelligence' }]} id={g.key}>
             <div class="group-head">
-              <h3>{g.heading}</h3>
+              <h3>
+                <Icon name={g.icon} />
+                {g.heading}
+              </h3>
               <p>{g.blurb}</p>
             </div>
-            {caseStudies.filter((cs) => cs.group === g.key).map((cs) => <CaseStudyCard {...cs} />)}
+            {caseStudies
+              .filter((cs) => cs.group === g.key)
+              .map((cs) => (
+                <CaseStudyCard {...cs} index={caseNumber.get(cs.title)} />
+              ))}
           </div>
           {i === 0 && (
             <aside class="provenance-band" aria-label="Data provenance" data-reveal>
@@ -412,6 +443,9 @@ const groups = [
   }
 
   .index a {
+    display: inline-flex;
+    align-items: baseline;
+    gap: var(--space-2);
     font-family: var(--font-mono);
     font-size: var(--text-xs);
     letter-spacing: var(--tracking-label);
@@ -421,6 +455,13 @@ const groups = [
     border-bottom: 1px solid var(--color-border-strong);
     padding-bottom: 0.15rem;
     transition: color 0.15s ease, border-color 0.15s ease;
+  }
+
+  /* The count is information a jump mark can carry for free: how much sits
+     behind each label before the reader commits to the jump. */
+  .index .count {
+    color: var(--color-accent);
+    letter-spacing: 0;
   }
 
   .index a:hover,
@@ -480,6 +521,9 @@ const groups = [
      and earns its separation from the rule above rather than from weight. */
   .group-head h3 {
     margin: 0;
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
     font-family: var(--font-serif);
     /* Card titles are 24px. A group heading at 22px made the container quieter
        than its contents, which reads as an accident rather than a level. */
@@ -489,6 +533,14 @@ const groups = [
     line-height: 1.25;
     color: var(--color-text-primary);
     text-wrap: balance;
+  }
+
+  /* The practice mark: stroke icon in the accent, sized to the heading's cap
+     height rather than its em box so the pair reads as one lockup. */
+  .group-head h3 :global(.icon) {
+    width: 1.5rem;
+    height: 1.5rem;
+    color: var(--color-accent);
   }
 
   .group-head p {
