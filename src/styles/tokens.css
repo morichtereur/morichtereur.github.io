@@ -15,6 +15,16 @@
   --color-accent-muted: rgba(20, 107, 84, 0.14);
   --color-noise: #b9bdb2;
 
+  /* The band — the hero's deep-viridian ground. Same family as the accent,
+     taken down to where bone type can sit on it. The on-band roles mirror the
+     page roles: text, secondary text, hairline, and a light viridian that does
+     on the band what the accent does on the paper. */
+  --color-band: #113a2e;
+  --color-band-text: #eef0e9;
+  --color-band-text-secondary: rgba(238, 240, 233, 0.72);
+  --color-band-line: rgba(238, 240, 233, 0.28);
+  --color-band-accent: #8fd0b9;
+
   /* Typography — grotesque display over serif body, inverting the usual
      pairing; mono carries anything that is data rather than prose. */
   --font-display: var(--font-archivo), 'Helvetica Neue', Arial, sans-serif;

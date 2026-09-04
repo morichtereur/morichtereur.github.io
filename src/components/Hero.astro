@@ -6,6 +6,30 @@ import moritzPhoto from '../assets/moritz.jpg';
 ---
 
 <section class="hero">
+  {/* The ground behind the band: three sheets of near-tone viridian and two
+      hairlines, drawn once and left alone. Slice-fitted so the curves stay
+      curves at any width; decorative, so hidden from readers. */}
+  <svg
+    class="flow"
+    viewBox="0 0 1440 640"
+    preserveAspectRatio="xMidYMid slice"
+    aria-hidden="true"
+  >
+    <path d="M0 400 C 360 300, 760 480, 1440 330 L 1440 640 L 0 640 Z" fill="#154437"></path>
+    <path d="M0 500 C 420 400, 920 580, 1440 440 L 1440 640 L 0 640 Z" fill="#0d2f24"></path>
+    <path d="M0 580 C 480 500, 980 640, 1440 540 L 1440 640 L 0 640 Z" fill="#1a4e3e"></path>
+    <path
+      d="M0 430 C 380 330, 780 500, 1440 355"
+      fill="none"
+      stroke="rgba(238, 240, 233, 0.12)"
+      stroke-width="1"></path>
+    <path
+      d="M0 530 C 440 430, 940 600, 1440 465"
+      fill="none"
+      stroke="rgba(238, 240, 233, 0.08)"
+      stroke-width="1"></path>
+  </svg>
+
   <div class="inner">
     <div class="text">
       <p class="eyebrow">Zürich · Finance Transformation &amp; AI</p>
@@ -38,19 +62,35 @@ import moritzPhoto from '../assets/moritz.jpg';
 </section>
 
 <style>
+  /* Full-bleed band. The page opens on the signal colour instead of mentioning
+     it, and everything on the band uses the band roles from tokens.css. */
   .hero {
-    padding-block: var(--space-8) var(--space-7);
+    position: relative;
+    overflow: hidden;
+    background: var(--color-band);
+    color: var(--color-band-text);
+    padding-block: clamp(4rem, 9vw, 6.5rem);
+  }
+
+  .flow {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+
+  /* The page-level focus ring is accent-on-bone; on the band it needs the
+     on-band accent to be visible at all. */
+  .hero :focus-visible {
+    outline-color: var(--color-band-accent);
   }
 
   .inner {
+    position: relative;
     max-width: var(--content-width-wide);
     margin-inline: auto;
     padding-inline: var(--space-5);
     display: grid;
-    /* The text column was 1fr, so it stretched to the full width while the copy
-       kept its reading measure -- 638px of column carrying 414px of text, and
-       the portrait pushed 305px away from the words it belongs to. Content-sized
-       columns packed left put it back beside them. */
     grid-template-columns: auto auto;
     justify-content: start;
     align-items: end;
@@ -66,27 +106,24 @@ import moritzPhoto from '../assets/moritz.jpg';
     font-size: var(--text-xs);
     text-transform: uppercase;
     letter-spacing: var(--tracking-label);
-    color: var(--color-text-secondary);
+    color: var(--color-band-text-secondary);
     padding-bottom: var(--space-4);
     margin-bottom: var(--space-5);
-    border-bottom: 1px solid var(--color-border);
+    border-bottom: 1px solid var(--color-band-line);
   }
 
+  /* Serif display on the band — the one place the site raises its voice.
+     Everywhere else the serif is the body face; here it carries the headline,
+     so the weight stays at 600 and the size does the work. */
   h1 {
-    font-family: var(--font-display);
+    font-family: var(--font-serif);
     font-size: var(--text-3xl);
     line-height: var(--leading-tight);
-    font-weight: 700;
-    letter-spacing: var(--tracking-tight);
+    font-weight: 600;
+    letter-spacing: -0.02em;
     text-wrap: balance;
   }
 
-  /* Both paragraphs used a ch-based reading measure — 30ch and 46ch — while the
-     column itself is sized by the headline, which reaches ~31rem once the h1
-     hits its 5rem cap. The copy therefore stopped 60-100px short of the rule
-     above it, and the portrait read as pushed away from words that had simply
-     stopped early. Capping both at the headline's own width makes the text a
-     single block, and the gap to the photo the 2rem it always was. */
   .positioning {
     font-family: var(--font-serif);
     margin-top: var(--space-5);
@@ -96,14 +133,12 @@ import moritzPhoto from '../assets/moritz.jpg';
     text-wrap: pretty;
   }
 
-  /* Steps down from the positioning line rather than competing with it: the
-     claim reads first, the scope second. */
   .subline {
     font-family: var(--font-serif);
     margin-top: var(--space-4);
     font-size: var(--text-base);
     line-height: var(--leading-snug);
-    color: var(--color-text-secondary);
+    color: var(--color-band-text-secondary);
     max-width: 31rem;
     text-wrap: pretty;
   }
@@ -122,9 +157,9 @@ import moritzPhoto from '../assets/moritz.jpg';
     font-family: var(--font-mono);
     font-size: var(--text-sm);
     text-decoration: none;
-    color: var(--color-accent);
+    color: var(--color-band-text);
     padding-bottom: var(--space-1);
-    border-bottom: 1px solid var(--color-border-strong);
+    border-bottom: 1px solid var(--color-band-line);
     transition:
       color var(--duration-fast) var(--ease-standard),
       border-color var(--duration-fast) var(--ease-standard);
@@ -132,22 +167,23 @@ import moritzPhoto from '../assets/moritz.jpg';
 
   .links a:hover,
   .links a:focus-visible {
-    color: var(--color-accent-hover);
-    border-color: var(--color-accent);
+    color: var(--color-band-accent);
+    border-color: var(--color-band-accent);
   }
 
   .photo {
     width: clamp(9rem, 20vw, 14rem);
     aspect-ratio: 1;
     overflow: hidden;
-    border: 1px solid var(--color-border-strong);
+    border: 1px solid var(--color-band-line);
     border-radius: 50%;
   }
 
   /* Source is landscape 3:2 with the subject right of centre, so a square
      cover crop fills the height and leaves him off-axis. Scale and origin are
      solved to put the head on the circle's vertical axis with the eye line at
-     43% height, at ~60% of the diameter. */
+     43% height, at ~60% of the diameter. On the band the crop keeps its
+     grayscale but drops the multiply — there is no paper to multiply onto. */
   .photo :global(img) {
     width: 100%;
     height: 100%;
@@ -156,12 +192,11 @@ import moritzPhoto from '../assets/moritz.jpg';
     transform: scale(1.38);
     transform-origin: 67.7% 6.6%;
     filter: grayscale(1) contrast(1.04);
-    mix-blend-mode: multiply;
   }
 
   @media (max-width: 760px) {
     .hero {
-      padding-block: var(--space-6) var(--space-6);
+      padding-block: var(--space-7) var(--space-7);
     }
 
     .inner {
