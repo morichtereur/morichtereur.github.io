@@ -13,26 +13,43 @@ import { NAME, EMAIL } from '../consts';
 </header>
 
 <style>
+  /* The nav floats as a detached glass bar instead of owning a full-width
+     strip: fixed, inset from the edges, frosted over whatever passes under
+     it — the viridian band at the top, white paper once the page scrolls.
+     The hero clears it with its own top padding. */
   .site-header {
-    position: sticky;
-    top: 0;
+    position: fixed;
+    top: var(--space-3);
+    left: 0;
+    right: 0;
     z-index: 50;
-    background: var(--color-bg);
-    /* On white the strong rule read as a bar; a light hairline keeps the nav
-       a margin note rather than a header. */
-    border-bottom: 1px solid var(--color-border);
+    padding-inline: var(--space-3);
   }
 
   .inner {
     max-width: var(--content-width-wide);
     margin-inline: auto;
-    min-height: var(--nav-height);
+    min-height: 3.25rem;
     padding-inline: var(--space-5);
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     justify-content: space-between;
     gap: var(--space-2) var(--space-6);
+    background: rgba(255, 255, 255, 0.68);
+    -webkit-backdrop-filter: blur(14px) saturate(1.5);
+    backdrop-filter: blur(14px) saturate(1.5);
+    border: 1px solid rgba(18, 26, 23, 0.08);
+    border-radius: 0.75rem;
+    box-shadow: 0 8px 24px rgba(18, 26, 23, 0.07);
+  }
+
+  /* No frost, no translucency — a browser that cannot blur gets a solid bar
+     rather than text floating over text. */
+  @supports not (backdrop-filter: blur(1px)) {
+    .inner {
+      background: rgba(255, 255, 255, 0.96);
+    }
   }
 
   .wordmark {

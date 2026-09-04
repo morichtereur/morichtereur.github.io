@@ -69,7 +69,9 @@ import moritzPhoto from '../assets/moritz.jpg';
     overflow: hidden;
     background: var(--color-band);
     color: var(--color-band-text);
-    padding-block: clamp(4rem, 9vw, 6.5rem);
+    /* The nav is fixed and floats over the band, so the band itself clears
+       it: nav offset + bar height + breathing room, then the display scale. */
+    padding-block: calc(4.75rem + clamp(2.5rem, 7vw, 5rem)) clamp(4rem, 9vw, 6.5rem);
   }
 
   .flow {
@@ -77,6 +79,20 @@ import moritzPhoto from '../assets/moritz.jpg';
     inset: 0;
     width: 100%;
     height: 100%;
+  }
+
+  /* A soft light falling from the upper left — depth the flat fill lacks,
+     kept far below the threshold where it would read as an effect. */
+  .hero::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(
+      120% 90% at 15% -10%,
+      rgba(238, 240, 233, 0.07),
+      transparent 60%
+    );
+    pointer-events: none;
   }
 
   /* The page-level focus ring is accent-on-bone; on the band it needs the
@@ -150,6 +166,9 @@ import moritzPhoto from '../assets/moritz.jpg';
     margin-top: var(--space-6);
   }
 
+  /* Frosted chips: the one place the glass vocabulary appears on the band
+     itself. The blur picks up the flow sheets moving behind each chip, so
+     they read as cut from the band rather than laid on it. */
   .links a {
     display: inline-flex;
     align-items: center;
@@ -158,17 +177,23 @@ import moritzPhoto from '../assets/moritz.jpg';
     font-size: var(--text-sm);
     text-decoration: none;
     color: var(--color-band-text);
-    padding-bottom: var(--space-1);
-    border-bottom: 1px solid var(--color-band-line);
+    padding: var(--space-2) var(--space-4);
+    background: rgba(255, 255, 255, 0.07);
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(238, 240, 233, 0.25);
+    border-radius: 999px;
     transition:
       color var(--duration-fast) var(--ease-standard),
-      border-color var(--duration-fast) var(--ease-standard);
+      border-color var(--duration-fast) var(--ease-standard),
+      background-color var(--duration-fast) var(--ease-standard);
   }
 
   .links a:hover,
   .links a:focus-visible {
-    color: var(--color-band-accent);
-    border-color: var(--color-band-accent);
+    background: rgba(255, 255, 255, 0.14);
+    border-color: rgba(238, 240, 233, 0.55);
+    color: var(--color-band-text);
   }
 
   .photo {
@@ -177,6 +202,9 @@ import moritzPhoto from '../assets/moritz.jpg';
     overflow: hidden;
     border: 1px solid var(--color-band-line);
     border-radius: 50%;
+    /* Lifted off the band by shadow rather than outline — the same depth
+       grammar as the nav bar. */
+    box-shadow: 0 24px 48px rgba(0, 0, 0, 0.28);
   }
 
   /* Source is landscape 3:2 with the subject right of centre, so a square
@@ -196,7 +224,9 @@ import moritzPhoto from '../assets/moritz.jpg';
 
   @media (max-width: 760px) {
     .hero {
-      padding-block: var(--space-7) var(--space-7);
+      /* The fixed bar can wrap to two rows at phone widths, so the clearance
+         is generous rather than exact. */
+      padding-block: 6.5rem var(--space-7);
     }
 
     .inner {

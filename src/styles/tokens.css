@@ -60,7 +60,9 @@
   /* Layout */
   --content-width: 46rem;
   --content-width-wide: 64rem;
-  --nav-height: 3.5rem;
+  /* Clearance for the floating nav: its top offset plus the bar. Only scroll
+     margins consume this — the bar is fixed and owns no flow space. */
+  --nav-height: 4.75rem;
 
   /* Motion */
   --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
