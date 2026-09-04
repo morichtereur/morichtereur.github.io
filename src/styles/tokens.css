@@ -1,19 +1,21 @@
 :root {
   color-scheme: light;
 
-  /* Color — "Ledger": cool bone stock, ink with a green cast, one accent.
-     Viridian is the signal colour and is reserved for things that carry
-     meaning: scored-through marks, metrics, link affordances. */
-  --color-bg: #e9eae4;
-  --color-surface: #f2f3ee;
-  --color-border: #c6cac0;
-  --color-border-strong: #7e857a;
+  /* Color — "Ledger" on white paper: ink with a green cast, one accent.
+     The ground is white so the band and the exhibits carry the colour;
+     surface is a faint green-grey tint for panels and tags. Viridian is the
+     signal colour and is reserved for things that carry meaning:
+     scored-through marks, metrics, link affordances. */
+  --color-bg: #ffffff;
+  --color-surface: #f4f6f1;
+  --color-border: #dee2da;
+  --color-border-strong: #848b81;
   --color-text-primary: #121a17;
   --color-text-secondary: #59635e;
   --color-accent: #146b54;
   --color-accent-hover: #0d4c3b;
   --color-accent-muted: rgba(20, 107, 84, 0.14);
-  --color-noise: #b9bdb2;
+  --color-noise: #c5c9bf;
 
   /* The band — the hero's deep-viridian ground. Same family as the accent,
      taken down to where bone type can sit on it. The on-band roles mirror the

@@ -18,7 +18,9 @@ import { NAME, EMAIL } from '../consts';
     top: 0;
     z-index: 50;
     background: var(--color-bg);
-    border-bottom: 1px solid var(--color-border-strong);
+    /* On white the strong rule read as a bar; a light hairline keeps the nav
+       a margin note rather than a header. */
+    border-bottom: 1px solid var(--color-border);
   }
 
   .inner {

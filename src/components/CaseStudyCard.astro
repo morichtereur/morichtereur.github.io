@@ -340,11 +340,15 @@ const {
     max-width: 46rem;
   }
 
+  /* The stat is the loudest thing on the card after the title — on white
+     ground it earns display scale, the way an exhibit callout carries a
+     number rather than mentioning it. */
   .metric-value {
     font-family: var(--font-display);
-    font-size: var(--text-xl);
+    font-size: clamp(1.5rem, 3vw, 2.125rem);
     font-weight: 700;
     letter-spacing: var(--tracking-tight);
+    line-height: 1.1;
     color: var(--color-accent);
   }
 
@@ -415,7 +419,7 @@ const {
   .shot :global(img) {
     width: 100%;
     height: auto;
-    border: 1px solid var(--color-border-strong);
+    border: 1px solid var(--color-border);
   }
 
   /* Charts render on white. Multiplying drops that white to the paper colour

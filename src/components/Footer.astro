@@ -15,14 +15,20 @@ import { NAME, EMAIL, LINKEDIN_URL, GITHUB_URL, CV_URL } from '../consts';
 </footer>
 
 <style>
+  /* The band again — the page closes on the colour it opened with, so the
+     white body reads as the sheet between two boards. */
   .site-footer {
-    border-top: 1px solid var(--color-border-strong);
+    background: var(--color-band);
+  }
+
+  .site-footer :focus-visible {
+    outline-color: var(--color-band-accent);
   }
 
   .inner {
     max-width: var(--content-width-wide);
     margin-inline: auto;
-    padding: var(--space-5) var(--space-5) var(--space-8);
+    padding: var(--space-6) var(--space-5) var(--space-7);
     display: flex;
     flex-wrap: wrap;
     align-items: baseline;
@@ -36,7 +42,7 @@ import { NAME, EMAIL, LINKEDIN_URL, GITHUB_URL, CV_URL } from '../consts';
     font-size: var(--text-xs);
     text-transform: uppercase;
     letter-spacing: var(--tracking-label);
-    color: var(--color-text-secondary);
+    color: var(--color-band-text-secondary);
   }
 
   .links {
@@ -55,6 +61,6 @@ import { NAME, EMAIL, LINKEDIN_URL, GITHUB_URL, CV_URL } from '../consts';
 
   .links a:hover,
   .links a:focus-visible {
-    color: var(--color-accent);
+    color: var(--color-band-accent);
   }
 </style>
