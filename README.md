@@ -58,10 +58,14 @@ page renders group by group.
 
 ## Interactive dashboards
 
-Five case studies link to a live dashboard served from this site under
+Six case studies link to a live dashboard served from this site under
 `public/`. Each is a single self-contained HTML file that is built and published
 in its own project repository and vendored in here, so serving it costs one copy
-and no build step.
+and no build step. The one exception is the Finance Data Foundation dashboard,
+whose project currently lives in this repository under
+`finance-data-foundation/` — see that directory's README for the pipeline that
+builds it; `sync:dashboards` copies it into `public/` alongside the fetched
+ones.
 
 A vendored copy drifts, and a stale dashboard is worse than none — it shows a
 reader numbers the study has already corrected. Re-sync before a release, or

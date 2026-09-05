@@ -1,0 +1,118 @@
+version: 2
+
+models:
+  - name: stg_gl_lines
+    description: >
+      The governed general ledger: three entity extracts normalised into one
+      view — dates parsed per dialect, decimal commas repaired, account codes
+      trimmed, the doubled DE01 March 2025 extract deduplicated, and every
+      amount carried in both document currency and EUR.
+    columns:
+      - name: entity
+        tests:
+          - not_null
+          - accepted_values:
+              values: ["DE01", "NL01", "PL01"]
+      - name: doc_id
+        tests: [not_null]
+      - name: line_no
+        tests: [not_null]
+      - name: posting_date
+        tests: [not_null]
+      - name: account
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_accounts')
+              field: account
+      - name: currency
+        tests:
+          - not_null
+          - accepted_values:
+              values: ["EUR", "PLN"]
+      - name: debit_eur
+        tests: [not_null]
+      - name: credit_eur
+        tests: [not_null]
+
+  - name: stg_accounts
+    description: The chart of accounts, each account mapped once to a statement and a line.
+    columns:
+      - name: account
+        tests: [not_null, unique]
+      - name: statement
+        tests:
+          - not_null
+          - accepted_values:
+              values: ["PL", "BS"]
+      - name: line
+        tests:
+          - not_null
+          - accepted_values:
+              values: ["asset", "liability", "equity", "revenue", "cogs", "opex"]
+
+  - name: stg_ar_invoices
+    description: The receivables subledger, typed and converted.
+    columns:
+      - name: invoice_id
+        tests: [not_null, unique]
+      - name: entity
+        tests: [not_null]
+      - name: amount_dc
+        tests: [not_null]
+      - name: amount_eur
+        tests: [not_null]
+
+  - name: stg_ap_invoices
+    description: The payables subledger, typed and converted.
+    columns:
+      - name: invoice_id
+        tests: [not_null, unique]
+      - name: amount_eur
+        tests: [not_null]
+
+  - name: fct_pnl_monthly
+    description: Monthly P&L in EUR, long format, lines inherited from the chart of accounts.
+    columns:
+      - name: entity
+        tests: [not_null]
+      - name: month
+        tests: [not_null]
+      - name: line
+        tests:
+          - not_null
+          - accepted_values:
+              values: ["revenue", "cogs", "opex"]
+      - name: amount_eur
+        tests: [not_null]
+
+  - name: fct_working_capital_monthly
+    description: >
+      Working capital per entity and month with governed ratio definitions;
+      ratios are NULL until their full trailing window exists.
+    columns:
+      - name: entity
+        tests: [not_null]
+      - name: month
+        tests: [not_null]
+      - name: ar_end_eur
+        tests: [not_null]
+      - name: ap_end_eur
+        tests: [not_null]
+      - name: inv_end_eur
+        tests: [not_null]
+
+  - name: fct_dso_definitions
+    description: Three accepted DSO formulas computed side by side at group level.
+    columns:
+      - name: month
+        tests: [not_null, unique]
+
+  - name: fct_naive_consolidation
+    description: >
+      The un-staged consolidation kept as a foil — duplicates in, złoty read
+      as euros — so the cost of skipping the staging layer stays measured
+      rather than asserted.
+    columns:
+      - name: month
+        tests: [not_null, unique]
