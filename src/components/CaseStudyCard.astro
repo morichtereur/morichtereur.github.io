@@ -2,8 +2,12 @@
 import { Image } from 'astro:assets';
 import type { ImageMetadata } from 'astro';
 import SignalField from './SignalField.astro';
+import Icon from './Icon.astro';
 
 interface Props {
+  /** Two-digit position in page order ("01"…"10"), assigned by the page so a
+   *  reader can name a card and be understood. */
+  index?: string;
   title: string;
   /** One plain sentence saying what the thing is, read before any of the
    *  detail below it. The problem/build pair explains why it exists and how it
@@ -26,16 +30,17 @@ interface Props {
    *  louder: reading code and using the thing are different offers, and only
    *  one of them survives a reader who does not code. */
   demoUrl?: string;
-  /** `blend` multiplies a white-background chart onto the paper, so it sits on
-   *  the page rather than floating in a white panel. */
+  /** `blend` multiplies a white-background chart onto the exhibit plate, so it
+   *  sits in the mount rather than floating in a white panel. */
   figure?: { src: ImageMetadata; alt: string; caption: string; blend?: boolean };
   /** The scored/reached-brief ratio behind the outcome metric, rendered as a
    *  field of marks. Only meaningful once the reader already knows what's
-   *  being counted, so it lives in the outcome row rather than the page. */
+   *  being counted, so it lives in the outcome block rather than the page. */
   signal?: { total: number; signal: number };
 }
 
 const {
+  index,
   title,
   summary,
   data,
@@ -54,63 +59,94 @@ const {
 
 <article class="case-study" data-reveal>
   <header>
-    <h4>{title}</h4>
+    <h4>
+      {index && <span class="no" aria-hidden="true">{index}</span>}
+      {title}
+    </h4>
     <div class="links">
       {
         demoUrl && (
           <a class="demo" href={demoUrl}>
-            Live demo <span aria-hidden="true">↗</span>
+            Live demo <Icon name="arrow" />
           </a>
         )
       }
       {
         repoUrl && (
           <a class="repo" href={repoUrl}>
-            Source <span aria-hidden="true">↗</span>
+            Source <Icon name="arrow" />
           </a>
         )
       }
     </div>
   </header>
 
-  <p class="summary">{summary}</p>
-  <p class="data"><span>Data</span>{data}</p>
-  <dl>
-    <dt>Problem</dt>
-    <dd>{problem}</dd>
+  {/* Narrative on the left, evidence on the right. Every card carries the
+      same contract: summary, sources and the folded long form in the prose
+      column; the number and the exhibit always visible in the rail, which is
+      sticky so the evidence tracks the reading. */}
+  <div class="body">
+    <div class="lead">
+      <p class="summary">{summary}</p>
+      <p class="data">
+        <span><Icon name="database" />Data</span>
+        {data}
+      </p>
+    </div>
 
-    <dt>What I built</dt>
-    <dd>{build}</dd>
-
-    <dt>Stack</dt>
-    <dd class="stack">
-      {stack.map((item) => <span class="tag">{item}</span>)}
-    </dd>
-
-    <dt>Outcome</dt>
-    <dd class="outcome">
-      <span class="metric-value">{metricValue}</span>
-      <span class="metric-label">{metricLabel}</span>
+    <aside class="rail">
+      <p class="outcome">
+        <span class="metric-value">{metricValue}</span>
+        <span class="metric-label">{metricLabel}</span>
+        {
+          signal && (
+            <span class="signal-wrap">
+              <SignalField total={signal.total} signal={signal.signal} />
+            </span>
+          )
+        }
+      </p>
       {
-        signal && (
-          <div class="signal-wrap">
-            <SignalField total={signal.total} signal={signal.signal} />
-          </div>
+        figure && (
+          <figure class="exhibit">
+            <span class="exhibit-label" aria-hidden="true">Exhibit</span>
+            <div class:list={['plate', { 'is-blended': figure.blend }]}>
+              <Image
+                src={figure.src}
+                alt={figure.alt}
+                widths={[560, 1000, 1400]}
+                sizes="(max-width: 56.25rem) 100vw, 26rem"
+              />
+            </div>
+            <figcaption>{figure.caption}</figcaption>
+          </figure>
         )
       }
-    </dd>
+    </aside>
 
-    <dt>So what</dt>
-    <dd>{implication}</dd>
-  </dl>
-  {
-    figure && (
-      <figure class={figure.blend ? 'shot is-blended' : 'shot'}>
-        <Image src={figure.src} alt={figure.alt} widths={[700, 1100]} sizes="(max-width: 48rem) 100vw, 44rem" />
-        <figcaption>{figure.caption}</figcaption>
-      </figure>
-    )
-  }
+    <div class="detail">
+      <details class="more">
+        <summary>Full case study</summary>
+        <dl>
+          <dt>Problem</dt>
+          <dd>{problem}</dd>
+
+          <dt>What I built</dt>
+          <dd>{build}</dd>
+
+          <dt>Stack</dt>
+          <dd class="stack">
+            {stack.map((item) => (
+              <span class="tag">{item}</span>
+            ))}
+          </dd>
+
+          <dt>So what</dt>
+          <dd>{implication}</dd>
+        </dl>
+      </details>
+    </div>
+  </div>
 </article>
 
 <style>
@@ -130,23 +166,71 @@ const {
   header {
     display: flex;
     flex-wrap: wrap;
-    align-items: baseline;
+    align-items: center;
     justify-content: space-between;
     gap: var(--space-3) var(--space-5);
-    margin-bottom: var(--space-6);
+    margin-bottom: var(--space-5);
   }
 
+  /* Serif, like every headline from the hero down — the grotesque now speaks
+     only where data does (metric values, nothing else). */
   h4 {
-    font-family: var(--font-display);
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-3);
+    font-family: var(--font-serif);
     font-size: var(--text-xl);
     font-weight: 600;
     line-height: var(--leading-snug);
-    letter-spacing: -0.02em;
+    letter-spacing: -0.015em;
+  }
+
+  /* The case number, in the data register: a handle, not a headline. Page
+     order rather than group order, so "case 07" is unambiguous. */
+  .no {
+    font-family: var(--font-mono);
+    font-size: var(--text-sm);
+    font-weight: 400;
+    letter-spacing: 0.04em;
+    color: var(--color-accent);
+  }
+
+  /* Two columns of one argument: the prose that makes the case, and the rail
+     that carries its number and its exhibit. The rail spans both prose rows
+     and sticks below the floating nav, so the evidence tracks the reading. */
+  .body {
+    display: grid;
+    grid-template-columns: minmax(0, 6.5fr) minmax(0, 5fr);
+    /* auto + 1fr, not auto + auto: a spanning rail hands its extra height to
+       the auto rows in equal parts, which floats the fold away from the lead
+       it belongs under. Pinning row one to its content sends all of the
+       rail's surplus into row two, below the fold. */
+    grid-template-rows: auto 1fr;
+    grid-template-areas:
+      'lead rail'
+      'detail rail';
+    column-gap: var(--space-7);
+    row-gap: var(--space-5);
+    align-items: start;
+  }
+
+  .lead {
+    grid-area: lead;
+  }
+
+  .rail {
+    grid-area: rail;
+    position: sticky;
+    top: calc(var(--nav-height) + var(--space-4));
+  }
+
+  .detail {
+    grid-area: detail;
+    min-width: 0;
   }
 
   .summary {
-    margin: var(--space-3) 0 0;
-    max-width: 46rem;
+    margin: 0;
     font-family: var(--font-serif);
     font-size: var(--text-lg);
     line-height: 1.45;
@@ -160,13 +244,15 @@ const {
     gap: 0 var(--space-3);
     align-items: baseline;
     margin: var(--space-3) 0 0;
-    max-width: 46rem;
     font-size: var(--text-sm);
     line-height: 1.55;
     color: var(--color-text-secondary);
   }
 
   .data span {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
     font-family: var(--font-mono);
     font-size: var(--text-xs);
     letter-spacing: var(--tracking-label);
@@ -174,29 +260,51 @@ const {
     color: var(--color-text-secondary);
   }
 
+  .data :global(.icon) {
+    width: 0.9em;
+    height: 0.9em;
+  }
+
   .links {
     display: flex;
     flex-wrap: wrap;
-    align-items: baseline;
+    align-items: center;
     gap: var(--space-4);
   }
 
+  /* The primary offer is a button, the secondary a footnote: using the thing
+     and reading its code are different invitations and should not dress
+     alike. */
   .demo {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
     font-family: var(--font-mono);
     font-size: var(--text-xs);
+    letter-spacing: 0.04em;
     text-decoration: none;
-    color: var(--color-accent);
-    border-bottom: 1px solid var(--color-accent);
-    padding-bottom: 2px;
-    transition: color var(--duration-fast) var(--ease-standard);
+    color: #fff;
+    background: var(--color-accent);
+    padding: var(--space-2) var(--space-4);
+    border-radius: 999px;
+    transition: background-color var(--duration-fast) var(--ease-standard);
+  }
+
+  .links :global(.icon) {
+    width: 0.85em;
+    height: 0.85em;
   }
 
   .demo:hover,
   .demo:focus-visible {
-    color: var(--color-accent-hover);
+    background: var(--color-accent-hover);
+    color: #fff;
   }
 
   .repo {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
     font-family: var(--font-mono);
     font-size: var(--text-xs);
     text-decoration: none;
@@ -252,56 +360,157 @@ const {
     padding: var(--space-1) var(--space-2);
   }
 
+  /* The stat opens the rail the way a callout opens an exhibit page: the
+     number first, the sentence that earns it underneath. */
   .outcome {
-    display: flex;
-    align-items: baseline;
-    flex-wrap: wrap;
-    gap: var(--space-1) var(--space-3);
+    margin: 0;
+    padding-top: var(--space-1);
+  }
+
+  /* The exhibit tick: a short rule in the signal colour opening the callout,
+     the way a consulting exhibit opens with its kicker rule. */
+  .outcome::before {
+    content: '';
+    display: block;
+    width: 2rem;
+    height: 2px;
+    background: var(--color-accent);
+    margin-bottom: var(--space-3);
   }
 
   .metric-value {
+    display: block;
     font-family: var(--font-display);
-    font-size: var(--text-xl);
+    font-size: clamp(1.5rem, 3vw, 2.125rem);
     font-weight: 700;
     letter-spacing: var(--tracking-tight);
+    line-height: 1.1;
     color: var(--color-accent);
   }
 
   .metric-label {
+    display: block;
+    margin-top: var(--space-2);
     font-family: var(--font-mono);
     font-size: var(--text-xs);
+    line-height: var(--leading-snug);
     color: var(--color-text-secondary);
+    max-width: 30rem;
   }
 
   .signal-wrap {
-    flex-basis: 100%;
+    display: block;
     margin-top: var(--space-4);
   }
 
-  .shot {
+  /* The fold. A native disclosure, so it works with no JavaScript and costs a
+     reader one click; the summary sits in the same register as the card's
+     links because it is one — an offer, not a heading. */
+  .more summary {
+    display: inline-flex;
+    align-items: baseline;
+    gap: var(--space-2);
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    letter-spacing: var(--tracking-label);
+    text-transform: uppercase;
+    color: var(--color-accent);
+    cursor: pointer;
+    list-style: none;
+    border-bottom: 1px solid var(--color-border-strong);
+    padding-bottom: 0.15rem;
+    transition:
+      color var(--duration-fast) var(--ease-standard),
+      border-color var(--duration-fast) var(--ease-standard);
+  }
+
+  .more summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .more summary::before {
+    content: '+';
+    font-family: var(--font-mono);
+  }
+
+  .more[open] summary::before {
+    content: '−';
+  }
+
+  .more summary:hover,
+  .more summary:focus-visible {
+    color: var(--color-accent-hover);
+    border-bottom-color: var(--color-accent);
+  }
+
+  .more[open] summary {
+    margin-bottom: var(--space-6);
+  }
+
+  /* The exhibit: a labelled plate, not a pasted screenshot. The mount is the
+     surface tint with a hairline, the label sits above it in the data
+     register, and the caption reads as the footnote it is. */
+  .exhibit {
     margin: var(--space-6) 0 0;
   }
 
-  .shot :global(img) {
+  .exhibit-label {
+    display: block;
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    letter-spacing: var(--tracking-label);
+    text-transform: uppercase;
+    color: var(--color-text-secondary);
+    padding-bottom: var(--space-2);
+    margin-bottom: var(--space-3);
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .plate {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    padding: var(--space-3);
+  }
+
+  .plate :global(img) {
     width: 100%;
     height: auto;
-    border: 1px solid var(--color-border-strong);
+    border: 1px solid var(--color-border);
+    background: #fff;
   }
 
-  /* Charts render on white. Multiplying drops that white to the paper colour
-     without touching the ink, so the plot sits on the page instead of in a
+  /* Charts render on white. Multiplying drops that white to the plate tint
+     without touching the ink, so the plot sits in the mount instead of in a
      bright panel — and anti-aliased edges blend correctly for free. */
-  .shot.is-blended :global(img) {
+  .plate.is-blended :global(img) {
     mix-blend-mode: multiply;
     border: 0;
+    background: transparent;
   }
 
-  .shot figcaption {
+  .exhibit figcaption {
     margin-top: var(--space-3);
     font-family: var(--font-mono);
     font-size: var(--text-xs);
     line-height: var(--leading-snug);
     color: var(--color-text-secondary);
+  }
+
+  /* One column again below the pairing width. The rail slots between summary
+     and detail, so the phone reader still meets the number and the exhibit
+     before the long-form prose — the same impact order, stacked. */
+  @media (max-width: 56.25rem) {
+    .body {
+      grid-template-columns: minmax(0, 1fr);
+      grid-template-areas:
+        'lead'
+        'rail'
+        'detail';
+    }
+
+    .rail {
+      position: static;
+    }
   }
 
   @media (max-width: 600px) {

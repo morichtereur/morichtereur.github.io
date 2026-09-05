@@ -47,6 +47,7 @@ Append an object to `caseStudies`. `CaseStudyCard` reads:
 | `stack` | yes | Array of strings, rendered as tags |
 | `metricValue` / `metricLabel` | yes | The outcome figure and its caption |
 | `implication` | yes | The "so what" |
+| `featured` | no | `true` renders the card at full depth; without it the long-form fields fold behind a "Full case study" disclosure |
 | `repoUrl` | no | Source repository |
 | `demoUrl` | no | A deployed, working version |
 | `figure` | no | `{ src, alt, caption, blend? }` — `src` is an imported image; `blend` multiplies a white-background chart onto the paper |
@@ -57,7 +58,7 @@ page renders group by group.
 
 ## Interactive dashboards
 
-Several case studies link to a live dashboard served from this site under
+Six case studies link to a live dashboard served from this site under
 `public/`. Each is a single self-contained HTML file that is built and published
 in its own project repository and vendored in here, so serving it costs one copy
 and no build step. The one exception is the Finance Data Foundation dashboard,
