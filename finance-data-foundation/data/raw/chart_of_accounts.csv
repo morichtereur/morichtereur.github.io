@@ -1,0 +1,17 @@
+account,account_name,statement,line
+1000,Cash and equivalents,BS,asset
+1200,Trade receivables,BS,asset
+1300,Inventory,BS,asset
+1500,"Property, plant and equipment",BS,asset
+1590,Accumulated depreciation,BS,asset
+2100,Trade payables,BS,liability
+3000,Equity and retained earnings,BS,equity
+4000,Product revenue,PL,revenue
+4100,Service revenue,PL,revenue
+5000,Cost of goods sold,PL,cogs
+6000,Payroll,PL,opex
+6100,Rent and facilities,PL,opex
+6200,IT and software,PL,opex
+6300,Travel,PL,opex
+6400,Other operating expense,PL,opex
+6900,Depreciation,PL,opex

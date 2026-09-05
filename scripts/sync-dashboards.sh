@@ -61,6 +61,26 @@ sync_asset() {
   fi
 }
 
+# The Finance Data Foundation project lives in this repository for now, so
+# its dashboard is copied rather than fetched. When it moves to its own
+# repository, replace this block with: sync finance-data-foundation fdf-dashboard
+sync_local() {
+  src="$1"
+  dest="$2"
+  if [ ! -f "$src" ]; then
+    printf '  %-26s FAILED to find %s\n' "$dest" "$src"
+    status=1
+    return
+  fi
+  mkdir -p "public/$dest"
+  if cmp -s "$src" "public/$dest/index.html" 2>/dev/null; then
+    printf '  %-26s unchanged\n' "$dest"
+  else
+    cp "$src" "public/$dest/index.html"
+    printf '  %-26s updated\n' "$dest"
+  fi
+}
+
 echo "Syncing dashboards from their source repositories:"
 sync gbs-location-selection location-dashboard
 sync_asset gbs-location-selection data/og.png location-dashboard/og.png
@@ -68,5 +88,6 @@ sync gbs-tom-assignment     tom-dashboard
 sync gbs-business-case      bc-dashboard
 sync gbs-agentic-shift      agentic-shift-dashboard
 sync dax-intelligence       dax-dashboard
+sync_local finance-data-foundation/dashboard.html fdf-dashboard
 
 exit "$status"
