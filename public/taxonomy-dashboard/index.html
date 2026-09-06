@@ -405,13 +405,19 @@ select.pick{font:inherit; font-family:var(--ui); font-size:.8125rem; text-transf
 .start{max-width:72rem}
 .start-head{max-width:60ch; margin-bottom:1.5rem}
 .start-head h2{font-size:1.75rem; margin:.25rem 0 .5rem; text-wrap:balance}
-.start-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(14rem,1fr)); gap:.75rem; margin-bottom:1.5rem}
+.start-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(15rem,1fr)); gap:.75rem; margin-bottom:1.5rem}
 .start-fn{appearance:none; text-align:left; background:var(--panel); border:1px solid var(--line); border-radius:4px; padding:.875rem 1rem; cursor:pointer; display:flex; flex-direction:column; gap:.5rem; min-width:0; transition:border-color .12s ease, box-shadow .12s ease, transform .12s ease}
 .start-fn:hover{border-color:var(--accent); box-shadow:0 6px 18px rgba(20,32,27,.08); transform:translateY(-1px)}
 .start-fn.is-on{border-color:var(--accent); box-shadow:inset 0 0 0 1px var(--accent)}
 .start-fn .code{font-family:var(--mono); font-size:.5625rem; letter-spacing:.12em; text-transform:uppercase; color:var(--accent)}
 .start-fn .name{font-family:var(--serif); font-weight:600; font-size:1.0625rem; line-height:1.2}
-.start-fn .scope{font-size:.75rem; color:var(--ink-2); line-height:1.4; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden}
+.start-fn .span{font-size:.75rem; color:var(--ink); line-height:1.4}
+.start-fn .scope{font-size:.6875rem; color:var(--ink-2); line-height:1.4; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden}
+.start-fn.is-off{background:var(--bg); border-style:dashed; cursor:default; box-shadow:none}
+.start-fn.is-off:hover{transform:none; border-color:var(--line-strong)}
+.start-fn.is-off .code{color:var(--ink-2)}
+.start-fn.is-off .name{color:var(--ink-2)}
+.start-fn .nums .linkish{font-size:.75rem}
 .start-fn .nums{display:flex; flex-wrap:wrap; gap:.25rem .75rem; font-family:var(--mono); font-size:.5625rem; color:var(--ink-2); letter-spacing:.04em; margin-top:auto; min-width:0}
 .start-fn .nums b{color:var(--ink); font-weight:600; margin-right:.2rem}
 .start-fn .bar{display:flex; height:.25rem; background:var(--none)} .start-fn .bar i{display:block; height:100%}
@@ -589,8 +595,8 @@ body.dropping::after{content:'Drop to load'; position:fixed; inset:0; z-index:9;
         <div class="page start">
           <div class="start-head">
             <span class="eyebrow">Start here</span>
-            <h2>Which process are you working on?</h2>
-            <p class="lead">Open a function's reference taxonomy, tell the tool which systems you run, and load your own sheet when you have one. Everything stays in this browser.</p>
+            <h2>Which end-to-end process are you working on?</h2>
+            <p class="lead">Finance work runs in end-to-end clusters. Five of them are in this tool's reference to level 4; the others load from your own sheet. Pick one, tell the tool which systems you run, and say where transactional work sits today. Everything stays in this browser.</p>
           </div>
           <div class="start-grid" id="start-fns"></div>
           <div class="start-row">
@@ -749,6 +755,7 @@ body.dropping::after{content:'Drop to load'; position:fixed; inset:0; z-index:9;
             <p><b>Reference taxonomies.</b> Five finance functions to level 4 - Record to Report, Invoice to Pay, Invoice to Cash, Acquire to Retire, Intercompany - this tool's own reference design, checked against APQC PCF 7.4 category 9.0 and SAP S/4HANA Best Practices scope items. A design view written to be argued with, not a survey.</p>
             <p><b>Your systems.</b> Twenty-three answers grouped by function, with presets for a whole landscape. An automation suggestion names the system it needs; without it the suggestion falls back to GBS, and the mix strip says how many are held back.</p>
             <p><b>What happens to a sheet you load.</b> Structural repairs (numbering, missing parents, rows numbered under the wrong parent, a title row), names cleaned (routings and conditions out, spelling, abbreviations written out), steps without a destination placed by a rule that is shown (dashed edge), and a process left without steps beside a twin that has them takes the twin's steps with the noun swapped. Everything of that kind is marked on the page and in the export.</p>
+            <p><b>End-to-end clusters.</b> The start screen uses the cluster names common to ERP and consulting practice - order to cash, procure to pay, record to report, acquire to retire, plan to report, treasury, hire to retire - as in <a href="https://learn.microsoft.com/en-us/dynamics365/guidance/business-processes/order-to-cash-overview">Microsoft's business-process guidance</a> and <a href="https://www.deloitte.com/dk/en/services/consulting/perspectives/designing-end-to-end-solutions-that-are-fit-for-purpose.html">Deloitte on fit-for-purpose end-to-end solutions</a>. The reference holds the finance part of each; the card says which.</p>
             <p><b>Operating model.</b> The tiering language - transactional shared services, centres of expertise, retained organisation - follows the global business services literature, e.g. <a href="https://www.thehackettgroup.com/global-business-services-hackett/">The Hackett Group</a> and <a href="https://www.deloitte.com/global/en/services/consulting/services/global-business-services.html">Deloitte</a>. The rules on this page are a design view built on that language; no survey figure is quoted.</p>
             <p><b>Interface.</b> The column browser is a Miller-columns view, the pattern behind the Finder's column view since 1986. <a href="https://en.wikipedia.org/wiki/Miller_columns">Miller columns</a></p>
             <p class="attrib">APQC&#x27;s Process Classification Framework® (PCF) is an open standard developed by APQC, a nonprofit that promotes benchmarking and best practices worldwide. The PCF is intended to facilitate organizational improvement through process management and benchmarking, regardless of industry, size, or geography. To download the full PCF or industry-specific versions of the PCF, as well as associated measures and benchmarking, please visit www.apqc.org/pcf.</p>
@@ -3742,16 +3749,35 @@ function renderCoverage() {
 
 const MODELS = { none: 'No shared service centre yet: every GBS suggestion is a candidate for one.', captive: 'Captive shared service centre: GBS suggestions are work the centre can take.', provider: 'Outsourced provider: GBS suggestions are work the provider can take under the contract.', mix: 'Captive centre and provider: GBS suggestions are work that leaves the entity, to either.' };
 
+/* The end-to-end clusters finance work is usually organised in. Five are
+   in the reference; the others load from a sheet. The names follow common
+   ERP and consulting vocabulary; the mapping to this tool's taxonomies says
+   which part of each cluster the reference actually holds. */
+const CLUSTERS = [
+  { key: 'O2C', name: 'Order to Cash', span: 'Sales order, credit check, delivery, invoice, cash', fn: 'I2C', part: 'The finance half: credit, billing, cash application, collections and disputes. Order and delivery sit with sales and logistics.' },
+  { key: 'P2P', name: 'Procure to Pay', span: 'Sourcing, purchase order, goods receipt, invoice, payment', fn: 'I2P', part: 'The finance half: from the invoice to the payment, plus travel and expense. Sourcing and ordering sit with procurement.' },
+  { key: 'R2R', name: 'Record to Report', span: 'Journals, close, reconciliation, consolidation, reporting', fn: 'R2R', part: 'The whole cluster.' },
+  { key: 'A2R', name: 'Acquire to Retire', span: 'Asset request, capitalisation, depreciation, retirement; inventory valuation', fn: 'A2R', part: 'The whole cluster: asset accounting and inventory accounting.' },
+  { key: 'ICO', name: 'Intercompany', span: 'Across the clusters: billing, settlement and reconciliation between entities', fn: 'ICO', part: 'The whole cluster.' },
+  { key: 'P2R', name: 'Plan to Report', span: 'Budgeting, forecasting, management reporting and analysis', fn: null, part: 'Not in the reference. A sheet you load is repaired and placed, with no reference to compare against.' },
+  { key: 'TRE', name: 'Treasury and cash', span: 'Cash visibility, liquidity planning, funding, bank relationships', fn: null, part: 'Not in the reference. Payments and bank connectivity appear inside Invoice to Pay and Intercompany.' },
+  { key: 'H2R', name: 'Hire to Retire', span: 'Payroll, time, benefits, the employee lifecycle', fn: null, part: 'Not in the reference. Employee expenses sit in Invoice to Pay.' },
+];
+
 function renderStart() {
-  const cards = [...library.values()].filter((m) => !m.reference && PANEL_KEYS.has(m.key)).sort((a, b) => cycleRank(a.code) - cycleRank(b.code)).map((m) => {
-    const fn = fnOf(m);
-    const note = NOTES[fn];
+  const cards = CLUSTERS.map((c) => {
+    const m = c.fn ? library.get(c.fn) : null;
+    if (!m) {
+      return `<div class="start-fn is-off"><span class="code">${escape(c.key)} &middot; not in the reference</span><span class="name">${escape(c.name)}</span>` +
+        `<span class="span">${escape(c.span)}</span><span class="scope">${escape(c.part)}</span>` +
+        `<span class="nums"><button type="button" class="linkish" data-act="load">Load your own sheet</button></span></div>`;
+    }
     const mx = mix(m.nodes);
     const total = mx.placed + mx.counts.unassigned;
     const l2 = children(m.nodes, null, 1).flatMap((i) => children(m.nodes, i, 2)).length;
     const l3 = m.nodes.filter((n) => n.level === 3).length;
-    return `<button class="start-fn${m.key === active ? ' is-on' : ''}" data-open="${escape(m.key)}"><span class="code">${escape(m.code)}</span><span class="name">${escape(m.label)}</span>` +
-      `<span class="scope">${escape(note ? note.scope : '')}</span>${total ? stack(mx, 'bar') : ''}` +
+    return `<button type="button" class="start-fn${m.key === active ? ' is-on' : ''}" data-open="${escape(m.key)}"><span class="code">${escape(c.key)}${c.fn !== c.key ? ` &middot; in this tool: ${escape(m.label)}` : ''}</span><span class="name">${escape(c.name)}</span>` +
+      `<span class="span">${escape(c.span)}</span><span class="scope">${escape(c.part)}</span>${total ? stack(mx, 'bar') : ''}` +
       `<span class="nums"><span><b>${l2}</b>blocks</span><span><b>${l3}</b>processes</span><span><b>${total}</b>steps</span><span><b>${Math.round(mx.gbsShare * 100)}%</b>GBS</span></span></button>`;
   });
   $('start-fns').innerHTML = cards.join('');
@@ -4015,7 +4041,7 @@ $('tooling-fn').addEventListener('change', (e) => { toolFn = e.target.value; ren
 $('tooling-model').addEventListener('change', (e) => { model = e.target.value; save(); render(); });
 $('start-model').addEventListener('change', (e) => { model = e.target.value; save(); render(); });
 $('start-preset').addEventListener('change', (e) => { const p = PRESETS.find((x) => x.key === e.target.value); e.target.value = ''; if (!p) return; tools = { ...defaultTools(), ...p.values() }; save(); render(); });
-$('start-fns').addEventListener('click', (e) => { const b = e.target.closest('[data-open]'); if (!b) return; active = b.dataset.open; sel = { l1: null, l2: null, l3: null, step: null }; render(); showView('browse'); save(); });
+$('start-fns').addEventListener('click', (e) => { if (e.target.closest('[data-act="load"]')) { $('file').click(); return; } const b = e.target.closest('[data-open]'); if (!b) return; active = b.dataset.open; sel = { l1: null, l2: null, l3: null, step: null }; render(); showView('browse'); save(); });
 $('start-load').addEventListener('click', () => $('file').click());
 $('start-template').addEventListener('click', () => $('template').click());
 $('tooling-preset').addEventListener('change', (e) => {
