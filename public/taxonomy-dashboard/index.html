@@ -215,7 +215,7 @@ select.pick.small{font-size:.75rem; padding:.125rem .25rem}
 .flow-title{grid-area:title; min-width:0}
 .eyebrow{font-family:var(--mono); font-size:.5625rem; letter-spacing:.12em; text-transform:uppercase; color:var(--ink-2); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:block}
 .flow-name-row{display:flex; align-items:center; gap:.5rem; min-width:0; margin-top:.25rem}
-.flow-name{font-family:var(--serif); font-size:1.5rem; font-weight:600; letter-spacing:-.012em; line-height:1.15; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0}
+.flow-name{font-family:var(--serif); font-size:1.5rem; font-weight:600; letter-spacing:-.012em; line-height:1.15; min-width:0; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; text-wrap:balance}
 .nav-btn{
   border:1px solid var(--line); background:var(--panel); width:1.625rem; height:1.625rem; padding:0 0 .125rem; line-height:1; font-size:1.125rem; cursor:pointer;
   color:var(--ink-2); display:inline-flex; align-items:center; justify-content:center; border-radius:2px; flex:none; transition:color .12s ease, border-color .12s ease
@@ -249,7 +249,7 @@ select.pick.small{font-size:.75rem; padding:.125rem .25rem}
 
 /* the board */
 .l-gbs{--lane:var(--gbs)} .l-local{--lane:var(--local)} .l-coe{--lane:var(--coe)} .l-auto{--lane:var(--auto)} .l-unassigned{--lane:var(--ink-2)}
-.board{position:relative; display:grid; grid-template-columns:8.75rem 1fr; min-width:max-content; width:max-content; max-width:none; border:1px solid var(--line); background:var(--panel); box-shadow:0 1px 3px rgba(20,32,27,.05)}
+.board{position:relative; display:grid; grid-template-columns:8.75rem 1fr; min-width:max-content; width:max-content; max-width:none; border:1px solid var(--line); border-radius:4px; background:var(--panel); box-shadow:0 1px 3px rgba(20,32,27,.05); overflow:hidden}
 .ruler-corner{
   position:sticky; left:0; z-index:2; background:var(--panel); border-bottom:1px solid var(--line-strong); padding:.5rem .875rem .375rem;
   font-family:var(--mono); font-size:.5rem; letter-spacing:.14em; text-transform:uppercase; color:var(--ink-2); display:flex; align-items:end
@@ -266,7 +266,7 @@ select.pick.small{font-size:.75rem; padding:.125rem .25rem}
 .lane-label .ct{font-size:.6875rem; color:var(--ink-2); font-variant-numeric:tabular-nums}
 .lane-label.is-empty{box-shadow:inset 3px 0 0 var(--line)}
 .lane-label.is-empty .lb{color:var(--ink-2); opacity:.6}
-.lane{display:grid; border-top:1px solid var(--line); min-height:5.75rem; position:relative}
+.lane{display:grid; border-top:1px solid var(--line); min-height:6rem; position:relative}
 .lane.l-gbs{background:rgba(20,107,84,.05)} .lane.l-local{background:rgba(47,58,53,.04)} .lane.l-coe{background:rgba(183,121,31,.06)} .lane.l-auto{background:rgba(74,127,165,.06)} .lane.l-unassigned{background:transparent}
 .lane.is-empty{background:repeating-linear-gradient(-45deg, transparent 0 7px, rgba(20,32,27,.03) 7px 8px)}
 .cell{position:relative; height:100%; display:flex; align-items:center; padding:.625rem .75rem; min-width:0; border-left:1px solid var(--line)}
@@ -287,7 +287,7 @@ select.pick.small{font-size:.75rem; padding:.125rem .25rem}
 .fcard .k.control::before{border-radius:0; transform:rotate(45deg) scale(.85)}
 .fcard .k.system::before{border-radius:1px; background:var(--auto)}
 .fcard .k.handling::before{background:transparent; border:1px solid currentColor}
-.fcard .t{font-size:.8125rem; font-weight:500; line-height:1.3; margin-top:.25rem; color:var(--ink); letter-spacing:-.005em}
+.fcard .t{font-size:.8125rem; font-weight:500; line-height:1.35; margin-top:.3125rem; color:var(--ink); letter-spacing:-.005em; text-wrap:pretty}
 .slot{position:absolute; inset:.375rem; border:1px dashed transparent; border-radius:3px; z-index:0; transition:background-color .12s ease}
 body.is-dragging .slot{border-color:var(--line-strong); z-index:3}
 body.is-dragging .slot.is-over{border-color:var(--accent); background:var(--accent-soft)}
@@ -347,15 +347,45 @@ select.pick{font:inherit; font-family:var(--ui); font-size:.8125rem; text-transf
 .card-sugg .sd{font-weight:500; flex:none}
 .card-sugg .sw{overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0; flex:1 1 auto}
 .card-sugg .apply{appearance:none; border:0; background:none; cursor:pointer; color:var(--accent); font-family:var(--mono); font-size:.5625rem; text-decoration:underline; padding:0; flex:none; margin-left:auto}
-.card-acts{display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:.1875rem; margin-top:.375rem; min-width:0}
-.chip{appearance:none; cursor:pointer; background:var(--panel); border:1px solid var(--line); color:var(--ink-2); padding:.25rem .125rem; font-family:var(--mono); font-size:.5625rem; display:inline-flex; align-items:center; justify-content:center; gap:.25rem; min-width:0; white-space:nowrap}
-.chip .i{width:.625rem; height:.625rem}
-.chip:hover{border-color:var(--accent); color:var(--accent)}
-.chip[aria-pressed="true"]{color:#fff; border-color:transparent}
-.chip[data-send="gbs"][aria-pressed="true"]{background:var(--gbs)}
-.chip[data-send="local"][aria-pressed="true"]{background:var(--local)}
-.chip[data-send="coe"][aria-pressed="true"]{background:var(--coe)}
-.chip[data-send="auto"][aria-pressed="true"]{background:var(--auto)}
+.card-acts{margin-top:.4375rem; min-width:0}
+.seg{display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); border:1px solid var(--line); border-radius:3px; overflow:hidden; background:var(--panel)}
+.seg .chip{appearance:none; cursor:pointer; background:transparent; border:0; border-right:1px solid var(--line); color:var(--ink-2); padding:.3125rem .125rem; font-family:var(--mono); font-size:.5625rem; letter-spacing:.04em; display:inline-flex; align-items:center; justify-content:center; gap:.25rem; min-width:0; white-space:nowrap; transition:background-color .12s ease, color .12s ease}
+.seg .chip:last-child{border-right:0}
+.seg .chip .i{width:.625rem; height:.625rem}
+.seg .chip:hover{background:var(--bg); color:var(--ink)}
+.seg .chip[aria-pressed="true"]{color:#fff}
+.seg .chip[data-send="gbs"][aria-pressed="true"]{background:var(--gbs)}
+.seg .chip[data-send="local"][aria-pressed="true"]{background:var(--local)}
+.seg .chip[data-send="coe"][aria-pressed="true"]{background:var(--coe)}
+.seg .chip[data-send="auto"][aria-pressed="true"]{background:var(--auto)}
+.seg.mini{width:auto; display:inline-grid; grid-template-columns:repeat(4,auto); margin-left:auto}
+.seg.mini .chip{padding:.125rem .375rem; font-size:.5rem}
+.mcol-head{flex-wrap:wrap; row-gap:.25rem}
+.mcol-tools{display:flex; align-items:center; gap:.5rem; width:100%; padding:.25rem .75rem .375rem; background:var(--bg); border-bottom:1px solid var(--line)}
+.mcol-tools .lbl{font-family:var(--mono); font-size:.5rem; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-2)}
+.mcol-tools .linkish{font-size:.6875rem; margin-left:auto}
+.card-share{font-family:var(--mono); font-size:.5625rem; color:var(--ink-2); margin-left:.5rem; flex:none; font-variant-numeric:tabular-nums}
+
+/* start */
+.start{max-width:72rem}
+.start-head{max-width:60ch; margin-bottom:1.5rem}
+.start-head h2{font-size:1.75rem; margin:.25rem 0 .5rem; text-wrap:balance}
+.start-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(14rem,1fr)); gap:.75rem; margin-bottom:1.5rem}
+.start-fn{appearance:none; text-align:left; background:var(--panel); border:1px solid var(--line); border-radius:4px; padding:.875rem 1rem; cursor:pointer; display:flex; flex-direction:column; gap:.5rem; min-width:0; transition:border-color .12s ease, box-shadow .12s ease, transform .12s ease}
+.start-fn:hover{border-color:var(--accent); box-shadow:0 6px 18px rgba(20,32,27,.08); transform:translateY(-1px)}
+.start-fn.is-on{border-color:var(--accent); box-shadow:inset 0 0 0 1px var(--accent)}
+.start-fn .code{font-family:var(--mono); font-size:.5625rem; letter-spacing:.12em; text-transform:uppercase; color:var(--accent)}
+.start-fn .name{font-family:var(--serif); font-weight:600; font-size:1.0625rem; line-height:1.2}
+.start-fn .scope{font-size:.75rem; color:var(--ink-2); line-height:1.4; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden}
+.start-fn .nums{display:flex; flex-wrap:wrap; gap:.25rem .75rem; font-family:var(--mono); font-size:.5625rem; color:var(--ink-2); letter-spacing:.04em; margin-top:auto; min-width:0}
+.start-fn .nums b{color:var(--ink); font-weight:600; margin-right:.2rem}
+.start-fn .bar{display:flex; height:.25rem; background:var(--none)} .start-fn .bar i{display:block; height:100%}
+.start-row{display:grid; grid-template-columns:repeat(auto-fit,minmax(16rem,1fr)); gap:.75rem}
+.start-box{border-top:2px solid var(--line-strong); padding:.75rem 0 0; display:flex; flex-direction:column; gap:.5rem; align-items:flex-start}
+.start-box p{margin:0; font-size:.8125rem; color:var(--ink-2); line-height:1.45}
+.start-box .dot{color:var(--ink-2)}
+.start-box .links{display:flex; gap:.5rem; align-items:center; color:var(--ink)}
+.notes .model{font-family:var(--mono); font-size:.5625rem; letter-spacing:.06em; color:var(--ink-2)}
 
 /* compare */
 .cmp-grid{display:grid; grid-template-columns:1fr 1fr; gap:1rem}
@@ -386,18 +416,6 @@ select.pick{font:inherit; font-family:var(--ui); font-size:.8125rem; text-transf
 .cov-which{font-family:var(--mono); font-size:.625rem; color:var(--ink-2)}
 
 /* shape strips */
-.metric{padding:.75rem 0; border-top:1px solid var(--line)}
-.metric:first-child{border-top:0; padding-top:0}
-.mhead{display:flex; align-items:baseline; gap:.625rem}
-.mname{font-weight:600; font-size:.875rem}
-.munit{font-family:var(--mono); font-size:.5625rem; letter-spacing:.06em; color:var(--ink-2)}
-.strip{position:relative; height:2.5rem; margin:.5rem 0 0}
-.strip .axis{position:absolute; left:0; right:0; top:1.125rem; height:1px; background:var(--line-strong)}
-.strip .tick{position:absolute; top:.75rem; width:1px; height:.75rem; background:var(--ink-2); transform:translateX(-.5px)}
-.strip .tick-label{position:absolute; top:1.625rem; font-family:var(--mono); font-size:.5rem; color:var(--ink-2); transform:translateX(-50%); white-space:nowrap}
-.strip .mine{position:absolute; top:.4375rem; width:3px; height:1.375rem; background:var(--accent); transform:translateX(-1.5px)}
-.strip .mine-label{position:absolute; top:0; font-family:var(--mono); font-size:.625rem; font-weight:500; color:var(--accent); transform:translateX(-50%); white-space:nowrap}
-
 /* coverage */
 .model-top{display:grid; grid-template-columns:repeat(auto-fit,minmax(8rem,1fr)); gap:1rem; padding-bottom:1rem; margin-bottom:1rem; border-bottom:1px solid var(--line)}
 .stat .n{font-size:1.5rem; font-weight:600; letter-spacing:-.02em; line-height:1}
@@ -493,12 +511,12 @@ body.dropping::after{content:'Drop to load'; position:fixed; inset:0; z-index:9;
     <div class="side-section">
       <div class="side-label">Views</div>
       <div class="views" id="views">
+        <button class="view-btn" data-view="start"><svg class="i"><use href="#i-check"/></svg>Start</button>
+        <button class="view-btn" data-view="settings"><svg class="i"><use href="#i-gear"/></svg>Your systems</button>
         <button class="view-btn is-on" data-view="browse"><svg class="i"><use href="#i-layers"/></svg>Browse</button>
         <button class="view-btn" data-view="flow"><svg class="i"><use href="#i-flow"/></svg>Process flow</button>
         <button class="view-btn" data-view="split"><svg class="i"><use href="#i-grid"/></svg>Activity split</button>
-        <button class="view-btn" data-view="compare"><svg class="i"><use href="#i-compare"/></svg>Compare</button>
-        <button class="view-btn" data-view="coverage"><svg class="i"><use href="#i-check"/></svg>APQC coverage</button>
-        <button class="view-btn" data-view="shape"><svg class="i"><use href="#i-shape"/></svg>Shape</button>
+        <button class="view-btn" data-view="compare"><svg class="i"><use href="#i-compare"/></svg>Compare and coverage</button>
       </div>
     </div>
     <div class="side-foot">
@@ -506,7 +524,6 @@ body.dropping::after{content:'Drop to load'; position:fixed; inset:0; z-index:9;
       <button class="view-btn" id="template"><svg class="i"><use href="#i-out"/></svg>Export as template</button>
       <button class="view-btn" id="export-xlsx"><svg class="i"><use href="#i-out"/></svg>Export .xlsx</button>
       <button class="view-btn" id="project-save"><svg class="i"><use href="#i-out"/></svg>Save project</button>
-      <button class="view-btn" data-view="settings"><svg class="i"><use href="#i-gear"/></svg>Your systems</button>
       <button class="view-btn" data-view="help"><svg class="i"><use href="#i-help"/></svg>Help and sources<span class="keyhint">?</span></button>
       <input type="file" id="file" accept=".xlsx,.json" hidden>
     </div>
@@ -533,6 +550,35 @@ body.dropping::after{content:'Drop to load'; position:fixed; inset:0; z-index:9;
     </div>
 
     <div class="work">
+      <section class="view" data-view="start">
+        <div class="page start">
+          <div class="start-head">
+            <span class="eyebrow">Start here</span>
+            <h2>Which process are you working on?</h2>
+            <p class="lead">Open a function's reference taxonomy, tell the tool which systems you run, and load your own sheet when you have one. Everything stays in this browser.</p>
+          </div>
+          <div class="start-grid" id="start-fns"></div>
+          <div class="start-row">
+            <div class="start-box">
+              <span class="eyebrow">Your systems</span>
+              <p>Whether "automate" is a real option depends on them. Pick a landscape now; adjust the 23 answers any time.</p>
+              <label class="pickwrap">Landscape <select class="pick" id="start-preset"><option value="">Keep current answers</option><option value="sap">SAP landscape</option><option value="best">Best of breed</option><option value="erp">ERP only</option><option value="none">No systems (manual baseline)</option></select></label>
+              <button class="linkish" data-goto="settings">All answers</button>
+            </div>
+            <div class="start-box">
+              <span class="eyebrow">Delivery model today</span>
+              <p>Where transactional finance work sits now. It sets how the page reads a GBS suggestion.</p>
+              <label class="pickwrap">Model <select class="pick" id="start-model"><option value="none">No shared service centre yet</option><option value="captive">Captive shared service centre</option><option value="provider">Outsourced provider</option><option value="mix">Captive centre and provider</option></select></label>
+            </div>
+            <div class="start-box">
+              <span class="eyebrow">Your own taxonomy</span>
+              <p>Drop an .xlsx sheet or a project file anywhere on the page. It is repaired, placed and compared against the reference for its function.</p>
+              <p class="links"><button class="linkish" id="start-load">Choose a file</button> <span class="dot">&middot;</span> <button class="linkish" id="start-template">Download the template</button></p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <section class="view is-on" data-view="browse">
         <div class="browse">
           <div class="notes" id="notes" hidden></div>
@@ -588,7 +634,7 @@ body.dropping::after{content:'Drop to load'; position:fixed; inset:0; z-index:9;
       <section class="view" data-view="split">
         <div class="page">
           <div class="h2row"><h2>Activity split</h2><label class="pickwrap">Show <select class="pick" id="map-filter"><option value="all">All processes</option><option value="disagree">Where the rules disagree with the baseline</option><option value="norule">Where no rule fires</option><option value="moved">Moved from baseline</option><option value="gbs">Suggested GBS</option><option value="local">Suggested Local</option><option value="coe">Suggested CoE</option><option value="auto">Suggested Automate</option></select></label><button class="linkish" id="apply-all">Apply all suggestions</button></div>
-          <p class="lead">Level 2 across, level 3 beneath. Each process carries where it sits, what the rules suggest, and four destinations. Send one and every activity under it goes.</p>
+          <p class="lead">Blocks across, processes beneath. Click a destination on a process to send it and every step under it; click one on a block to send the whole block. The rule that fires is shown, and undo covers everything.</p>
           <div class="legend"><span class="mk"><i class="s-gbs"></i>GBS</span><span class="mk"><i class="s-local"></i>Local</span><span class="mk"><i class="s-coe"></i>CoE</span><span class="mk"><i class="s-auto"></i>Automated</span></div>
           <div id="map"></div>
         </div>
@@ -596,7 +642,7 @@ body.dropping::after{content:'Drop to load'; position:fixed; inset:0; z-index:9;
 
       <section class="view" data-view="compare">
         <div class="page">
-          <h2>Compare</h2>
+          <h2>Compare and coverage</h2>
           <div class="bar">
             <label class="pickwrap">Taxonomy <select class="pick" id="cmp-subject"></select></label>
             <label class="pickwrap" id="cmp-fn-wrap">Function <select class="pick" id="cmp-fn"></select></label>
@@ -610,15 +656,8 @@ body.dropping::after{content:'Drop to load'; position:fixed; inset:0; z-index:9;
           </div>
           <p class="status" id="cmp-hint" hidden></p>
           <figure class="exhibit" id="cmp-blocks-exhibit"><div class="exhibit-head"><span class="tag">Exhibit 3</span><span class="ttl">Level-2 blocks, yours beside the reference</span><span class="note">paired by name where a pair exists</span></div><div class="exhibit-body"><div id="cmp-blocks"></div></div></figure>
-          <p class="source">The reference is this tool's own taxonomy for the same function, a design view checked against APQC PCF 7.4 and SAP scope items, not a market benchmark. APQC figures are structure only.</p>
-        </div>
-      </section>
-
-      <section class="view" data-view="coverage">
-        <div class="page">
-          <h2>Coverage of APQC's framework</h2>
-          <figure class="exhibit">
-            <div class="exhibit-head"><span class="tag">Exhibit 4</span><span class="ttl">PCF 9.0 finance processes</span>
+          <figure class="exhibit" id="cov-exhibit">
+            <div class="exhibit-head"><span class="tag">Exhibit 4</span><span class="ttl">Coverage of APQC's 46 finance processes</span>
               <span class="note">
                 <label class="pickwrap">Show <select class="pick" id="cov-show"><option value="gaps">Gaps and possible</option><option value="all">All 46</option></select></label>
                 <label class="pickwrap">Scope <select class="pick" id="cov-scope"><option value="all">All combined</option><option value="one">Open taxonomy</option><option value="function">This function's APQC groups</option></select></label>
@@ -626,13 +665,7 @@ body.dropping::after{content:'Drop to load'; position:fixed; inset:0; z-index:9;
             <div class="exhibit-body"><div class="model-top" id="cov-stats"></div><div id="coverage"></div>
               <p class="source">Matched on names and everything beneath them. Trust the gaps; treat a match as a suggestion. Element IDs are APQC's.</p></div>
           </figure>
-        </div>
-      </section>
-
-      <section class="view" data-view="shape">
-        <div class="page">
-          <h2>Shape against the others</h2>
-          <figure class="exhibit"><div class="exhibit-head"><span class="tag">Exhibit 5</span><span class="ttl">Nine measures</span><span class="note">filled mark is the open taxonomy &middot; none of these is a score</span></div><div class="exhibit-body"><div id="metrics"></div></div></figure>
+          <p class="source">The reference is this tool's own taxonomy for the same function, a design view checked against APQC PCF 7.4 and SAP scope items, not a market benchmark. APQC figures are structure only.</p>
         </div>
       </section>
 
@@ -642,6 +675,7 @@ body.dropping::after{content:'Drop to load'; position:fixed; inset:0; z-index:9;
             <div><h2>Your systems</h2>
             <p class="lead">Each function runs on its own systems, and they decide whether "automate" is a real option. A suggestion names the tool it needs; without it, it falls back to GBS and says so. Answers are kept with the project.</p></div>
             <div class="page-picks">
+              <label class="pickwrap">Delivery model <select class="pick" id="tooling-model"><option value="none">No shared service centre yet</option><option value="captive">Captive shared service centre</option><option value="provider">Outsourced provider</option><option value="mix">Captive centre and provider</option></select></label>
               <label class="pickwrap">Preset <select class="pick" id="tooling-preset"><option value="">Choose a landscape</option><option value="sap">SAP landscape (default)</option><option value="best">Best of breed</option><option value="erp">ERP only</option><option value="none">No systems (manual baseline)</option></select></label>
               <label class="pickwrap">Systems for <select class="pick" id="tooling-fn"></select></label>
             </div>
@@ -656,11 +690,11 @@ body.dropping::after{content:'Drop to load'; position:fixed; inset:0; z-index:9;
           <h2>Help and sources</h2>
           <div class="help-cols">
             <div><h3>Flow</h3><ol class="help-list">
-              <li>Pick a taxonomy in the sidebar, or drop your own sheet anywhere on the page.</li>
-              <li>Browse it left to right: level 1, 2, 3, then the steps. Select a process to see where it sits and what the rules suggest.</li>
-              <li>Send a process to GBS, Local, CoE or Automate; or apply all suggestions on the split view.</li>
-              <li>Compare with the reference design for its function, or with any other taxonomy.</li>
-              <li>Export the taxonomy, or save the project to share.</li></ol></div>
+              <li>Start: pick a function, choose a system landscape, say where transactional work sits today.</li>
+              <li>Browse left to right: level 1, 2, 3, then the steps. The detail rail says where a process sits and what the rules suggest.</li>
+              <li>Walk a process as a flow; drag a step between lanes to change where it is delivered.</li>
+              <li>Send a process or a whole block to GBS, Local, CoE or Automate on the split view; or apply all suggestions.</li>
+              <li>Compare with the reference for the function and with APQC; export, or save the project to share.</li></ol></div>
             <div><h3>Keys</h3><dl class="help-keys">
               <dt>Up / Down</dt><dd>Move the selection within a column</dd>
               <dt>Left / Right</dt><dd>Move between columns</dd>
@@ -2857,17 +2891,6 @@ const FUNCTIONS = {
   R2R: { label: 'Record to Report', pcf: ['PCF 9.3', 'PCF 9.10'], sap: ['J58', '1GA', '1GI', '2QL', '1SG', '3AF', '1J2', '4X8'] },
 };
 
-const METRICS = [
-  { key: 'granularity', name: 'Granularity', unit: 'activities per L3', format: (v) => v.toFixed(1) },
-  { key: 'balance', name: 'Balance', unit: 'largest / median L2', format: (v) => v.toFixed(2) + 'x' },
-  { key: 'span', name: 'Span', unit: 'children per parent', format: (v) => v.toFixed(1) },
-  { key: 'depthConsistency', name: 'Depth', unit: 'leaves at modal level', format: (v) => (v * 100).toFixed(0) + '%' },
-  { key: 'verbLed', name: 'Verb-led', unit: 'names starting with a verb', format: (v) => (v * 100).toFixed(0) + '%' },
-  { key: 'duplication', name: 'Duplication', unit: 'names that recur', format: (v) => (v * 100).toFixed(0) + '%' },
-  { key: 'nameLength', name: 'Name length', unit: 'characters, median', format: (v) => Math.round(v) + '' },
-  { key: 'defectRate', name: 'ID defects', unit: 'per 1,000 rows, as loaded', format: (v) => v.toFixed(0) },
-  { key: 'gbsShare', name: 'GBS share', unit: 'of placed activities', format: (v) => (v * 100).toFixed(0) + '%', optional: true },
-];
 
 /* ---- library ---------------------------------------------------------- */
 
@@ -2913,6 +2936,8 @@ let fPlace = '';
 let fOrigin = '';
 let fKind = '';
 let order = 'cycle';
+let model = 'captive';
+let firstRun = false;
 let mapFilter = 'all';
 let view = 'browse';
 let sel = { l1: null, l2: null, l3: null, step: null };
@@ -2930,6 +2955,7 @@ const history = () => { if (!histories.has(active)) histories.set(active, new Hi
 
 function restoreSession() {
   const state = restore();
+  firstRun = !state;
   if (!state) return false;
   let n = 0;
   for (const s of state.entries) {
@@ -2947,12 +2973,13 @@ function restoreSession() {
       n++;
     }
   }
-  if (state.active && library.has(state.active)) active = state.active;
+  if (state.active && library.has(state.active) && !library.get(state.active).reference) active = state.active;
   if (state.tools) tools = { ...defaultTools(), ...state.tools };
   if (state.order) order = state.order;
+  if (state.model) model = state.model;
   return n > 0 || Boolean(state.tools);
 }
-const save = autosaver(() => persist({ ...snapshot(library, active, PANEL_KEYS), tools, order }));
+const save = autosaver(() => persist({ ...snapshot(library, active, PANEL_KEYS), tools, order, model }));
 
 function apply(next, { structural = true } = {}) {
   if (!next) return;
@@ -3037,7 +3064,7 @@ function print(nodes) {
 }
 
 function sidebarEntries() {
-  const list = [...library.values()];
+  const list = [...library.values()].filter((m) => !m.reference);
   const rank = (m) => (m.reference ? 100 : PANEL_KEYS.has(m.key) ? cycleRank(m.code) : 50);
   const by = {
     cycle: (a, b) => rank(a) - rank(b),
@@ -3093,6 +3120,7 @@ function renderNotes() {
   const fn = fnOf(e);
   const note = NOTES[fn];
   const box = $('notes');
+  const modelLine = `<p class="model">Delivery model today: ${escape(MODELS[model] || MODELS.captive)}</p>`;
   if (!note || e.reference) { box.hidden = true; return; }
   box.hidden = false;
   const item = (ic, label, text) => `<div class="n-item"><b>${icon(ic)}${escape(label)}</b>${escape(text)}</div>`;
@@ -3430,12 +3458,14 @@ function renderMap() {
             (agreed ? '' : `<button class="apply" data-apply="${k}" data-dest="${s.dest}">apply</button>`) + `</div>`
           : `<div class="card-sugg"><span class="sw">no rule fires; baseline split shown</span></div>`;
         cards.push(`<div class="card${agreed ? ' is-agreed' : ''}" data-i="${k}"><div class="card-top"><span class="card-name">${escape(nodes[k].name)}${variants.has(k) ? '<span class="tag-var" title="Tool-dependent variant of one process">variant</span>' : ''}</span><button class="linkish tiny" data-flow="${k}" title="Open in process flow">flow</button><span class="card-n">${where.total}</span></div>` +
-          bar(where, 'card-bar') + sugg + `<div class="card-acts">` +
-          DESTS.map(([d, l]) => `<button class="chip" data-send="${d}" data-at="${k}" aria-pressed="${where.size === 1 && where.top === d}">${icon(DEST_ICON[d])}${SHORT[d]}</button>`).join('') +
-          `</div></div>`);
+          bar(where, 'card-bar') + sugg + `<div class="card-acts"><div class="seg">` +
+          DESTS.map(([d, l]) => `<button class="chip" data-send="${d}" data-at="${k}" aria-pressed="${where.size === 1 && where.top === d}" title="Send this process and every step to ${l}">${icon(DEST_ICON[d])}${SHORT[d]}</button>`).join('') +
+          `</div></div></div>`);
       }
       if (!cards.length) continue;
-      cols.push(`<div class="mcol"><div class="mcol-head" data-i="${j}"><span class="mcol-name">${escape(nodes[j].name)}</span><span class="mcol-n">${block.total}</span></div>${bar(block, 'mcol-bar')}<div class="cards">${cards.join('')}</div></div>`);
+      cols.push(`<div class="mcol"><div class="mcol-head" data-i="${j}"><span class="mcol-name">${escape(nodes[j].name)}</span><span class="mcol-n">${block.total} &middot; ${Math.round(((block.counts.get('gbs') || 0) + (block.counts.get('split') || 0)) / (block.total || 1) * 100)}% GBS</span></div>${bar(block, 'mcol-bar')}` +
+        `<div class="mcol-tools"><span class="lbl">Whole block</span><div class="seg mini">` + DESTS.map(([d, l]) => `<button class="chip" data-send="${d}" data-at="${j}" aria-pressed="${block.size === 1 && block.top === d}" title="Send every process in this block to ${l}">${SHORT[d]}</button>`).join('') + `</div><button class="linkish" data-revert="${j}">revert</button></div>` +
+        `<div class="cards">${cards.join('')}</div></div>`);
     }
     if (!cols.length) continue;
     const chain = placesUnder(nodes, i);
@@ -3562,26 +3592,25 @@ function renderCoverage() {
   }).join('');
 }
 
-/* ---- shape ------------------------------------------------------------------- */
+/* ---- start ------------------------------------------------------------------- */
 
-function renderShape() {
-  const members = [...library.values()];
-  $('metrics').innerHTML = METRICS.filter((m) => !m.optional || members.some((p) => Number.isFinite(p[m.key]))).map((metric) => {
-    const values = members.map((m) => ({ code: m.code, value: m[metric.key], on: m.key === active })).filter((d) => Number.isFinite(d.value));
-    if (!values.length) return '';
-    const all = values.map((d) => d.value);
-    const low = Math.min(...all), high = Math.max(...all);
-    const pad = (high - low) * 0.15 || Math.abs(high) * 0.15 || 1;
-    const at = (v) => ((v - (low - pad)) / (high - low + pad * 2)) * 100;
-    let last = -Infinity;
-    const marks = values.map((d) => ({ ...d, at: at(d.value) })).sort((a, b) => a.at - b.at).map((d) => {
-      const room = d.at - last > 9;
-      if (room) last = d.at;
-      return `<i class="${d.on ? 'mine' : 'tick'}" style="left:${d.at.toFixed(2)}%" title="${escape(d.code + ': ' + metric.format(d.value))}"></i>` +
-        (room || d.on ? `<span class="${d.on ? 'mine-label' : 'tick-label'}" style="left:${d.at.toFixed(2)}%">${escape(d.on ? metric.format(d.value) : d.code)}</span>` : '');
-    }).join('');
-    return `<div class="metric"><div class="mhead"><span class="mname">${escape(metric.name)}</span><span class="munit">${escape(metric.unit)}</span></div><div class="strip"><i class="axis"></i>${marks}</div></div>`;
-  }).join('');
+const MODELS = { none: 'No shared service centre yet: every GBS suggestion is a candidate for one.', captive: 'Captive shared service centre: GBS suggestions are work the centre can take.', provider: 'Outsourced provider: GBS suggestions are work the provider can take under the contract.', mix: 'Captive centre and provider: GBS suggestions are work that leaves the entity, to either.' };
+
+function renderStart() {
+  const cards = [...library.values()].filter((m) => !m.reference && PANEL_KEYS.has(m.key)).sort((a, b) => cycleRank(a.code) - cycleRank(b.code)).map((m) => {
+    const fn = fnOf(m);
+    const note = NOTES[fn];
+    const mx = mix(m.nodes);
+    const total = mx.placed + mx.counts.unassigned;
+    const l2 = children(m.nodes, null, 1).flatMap((i) => children(m.nodes, i, 2)).length;
+    const l3 = m.nodes.filter((n) => n.level === 3).length;
+    return `<button class="start-fn${m.key === active ? ' is-on' : ''}" data-open="${escape(m.key)}"><span class="code">${escape(m.code)}</span><span class="name">${escape(m.label)}</span>` +
+      `<span class="scope">${escape(note ? note.scope : '')}</span>${total ? stack(mx, 'bar') : ''}` +
+      `<span class="nums"><span><b>${l2}</b>blocks</span><span><b>${l3}</b>processes</span><span><b>${total}</b>steps</span><span><b>${Math.round(mx.gbsShare * 100)}%</b>GBS</span></span></button>`;
+  });
+  $('start-fns').innerHTML = cards.join('');
+  $('start-model').value = model;
+  $('start-preset').value = '';
 }
 
 /* ---- settings ------------------------------------------------------------------ */
@@ -3624,6 +3653,7 @@ function renderSettings() {
   }
   $('tooling-picks').innerHTML = html;
   const missing = toolsFor(fn).filter((t) => tools[t.key] === 'None').map((t) => t.label.toLowerCase());
+  $('tooling-model').value = model;
   $('tooling-note').textContent = missing.length ? `Without ${missing.join(', ')}: those automation suggestions fall back to GBS.` : 'Suggestions assume these systems are in place.';
 }
 
@@ -3639,8 +3669,8 @@ function render() {
   renderMap();
   renderCompare();
   renderCoverage();
-  renderShape();
   renderSettings();
+  renderStart();
 }
 
 function showView(name) {
@@ -3765,6 +3795,8 @@ $('map').addEventListener('click', (e) => {
   if (ap) { apply(place(entry().nodes, Number(ap.dataset.apply), ap.dataset.dest), { structural: false }); return; }
   const send = e.target.closest('[data-send]');
   if (send) { apply(place(entry().nodes, Number(send.dataset.at), send.dataset.send), { structural: false }); return; }
+  const rv = e.target.closest('[data-revert]');
+  if (rv) { const nodes = entry().nodes, at = Number(rv.dataset.revert), end = subtree(nodes, at); apply(nodes.map((n, k) => (k >= at && k < end && n.basePlace ? { ...n, place: n.basePlace } : n)), { structural: false }); return; }
   const box = e.target.closest('[data-i]');
   if (box) { const i = Number(box.dataset.i), nodes = entry().nodes; sel = { l1: parentOfIndex(nodes, i, 1), l2: nodes[i].level === 2 ? i : parentOfIndex(nodes, i, 2), l3: nodes[i].level === 3 ? i : null, step: null }; showView('browse'); renderColumns(); }
 });
@@ -3815,6 +3847,12 @@ $('apply-all').addEventListener('click', () => {
 });
 $('tooling-picks').addEventListener('change', (e) => { const s = e.target.closest('[data-tool]'); if (!s) return; tools[s.dataset.tool] = s.value; save(); render(); });
 $('tooling-fn').addEventListener('change', (e) => { toolFn = e.target.value; renderSettings(); });
+$('tooling-model').addEventListener('change', (e) => { model = e.target.value; save(); render(); });
+$('start-model').addEventListener('change', (e) => { model = e.target.value; save(); render(); });
+$('start-preset').addEventListener('change', (e) => { const p = PRESETS.find((x) => x.key === e.target.value); e.target.value = ''; if (!p) return; tools = { ...defaultTools(), ...p.values() }; save(); render(); });
+$('start-fns').addEventListener('click', (e) => { const b = e.target.closest('[data-open]'); if (!b) return; active = b.dataset.open; sel = { l1: null, l2: null, l3: null, step: null }; render(); showView('browse'); save(); });
+$('start-load').addEventListener('click', () => $('file').click());
+$('start-template').addEventListener('click', () => $('template').click());
 $('tooling-preset').addEventListener('change', (e) => {
   const p = PRESETS.find((x) => x.key === e.target.value); e.target.value = '';
   if (!p) return; tools = { ...defaultTools(), ...p.values() }; save(); render();
@@ -3954,6 +3992,7 @@ const [wanted, wantedQuery] = location.hash.slice(1).split('?');
 render();
 // Views are addressable: dashboard.html#flow opens on the flow.
 if (wanted && document.querySelector(`.view[data-view="${wanted}"]`)) showView(wanted);
+else if (firstRun) showView('start');
 
 </script>
 </body>
