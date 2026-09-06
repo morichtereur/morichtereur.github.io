@@ -596,7 +596,7 @@ body.dropping::after{content:'Drop to load'; position:fixed; inset:0; z-index:9;
           <div class="start-head">
             <span class="eyebrow">Start here</span>
             <h2>Which end-to-end process are you working on?</h2>
-            <p class="lead">Finance work runs in end-to-end clusters. Five of them are in this tool's reference to level 4; the others load from your own sheet. Pick one, tell the tool which systems you run, and say where transactional work sits today. Everything stays in this browser.</p>
+            <p class="lead">Finance work runs in end-to-end clusters. All eight are in this tool's reference to level 4, and your own sheet loads beside them. Pick one, tell the tool which systems you run, and say where transactional work sits today. Everything stays in this browser.</p>
           </div>
           <div class="start-grid" id="start-fns"></div>
           <div class="start-row">
@@ -752,7 +752,7 @@ body.dropping::after{content:'Drop to load'; position:fixed; inset:0; z-index:9;
           </div>
           <h3 style="margin-top:1.5rem">Sources</h3>
           <div class="sources">
-            <p><b>Reference taxonomies.</b> Five finance functions to level 4 - Record to Report, Invoice to Pay, Invoice to Cash, Acquire to Retire, Intercompany - this tool's own reference design, checked against APQC PCF 7.4 category 9.0 and SAP S/4HANA Best Practices scope items. A design view written to be argued with, not a survey.</p>
+            <p><b>Reference taxonomies.</b> Eight finance clusters to level 4 - Record to Report, Invoice to Pay, Invoice to Cash, Acquire to Retire, Intercompany, Plan to Report, Treasury and Cash, Hire to Retire - this tool's own reference design, checked against APQC PCF 7.4 category 9.0 (groups 9.1 to 9.10) and SAP S/4HANA Best Practices scope items. Plan to Report, Treasury and Cash and Hire to Retire are written from APQC's element list and common practice, and every level-3 process names its source. A design view written to be argued with, not a survey.</p>
             <p><b>Your systems.</b> Twenty-three answers grouped by function, with presets for a whole landscape. An automation suggestion names the system it needs; without it the suggestion falls back to GBS, and the mix strip says how many are held back.</p>
             <p><b>What happens to a sheet you load.</b> Structural repairs (numbering, missing parents, rows numbered under the wrong parent, a title row), names cleaned (routings and conditions out, spelling, abbreviations written out), steps without a destination placed by a rule that is shown (dashed edge), and a process left without steps beside a twin that has them takes the twin's steps with the noun swapped. Everything of that kind is marked on the page and in the export.</p>
             <p><b>End-to-end clusters.</b> The start screen uses the cluster names common to ERP and consulting practice - order to cash, procure to pay, record to report, acquire to retire, plan to report, treasury, hire to retire - as in <a href="https://learn.microsoft.com/en-us/dynamics365/guidance/business-processes/order-to-cash-overview">Microsoft's business-process guidance</a> and <a href="https://www.deloitte.com/dk/en/services/consulting/perspectives/designing-end-to-end-solutions-that-are-fit-for-purpose.html">Deloitte on fit-for-purpose end-to-end solutions</a>. The reference holds the finance part of each; the card says which.</p>
@@ -2486,7 +2486,7 @@ const TOOLS = [
   { key: 'dms', label: 'Document archive', fn: 'all', hint: 'Invoices and evidence attached to the posting', options: ['OpenText', 'SAP DMS', 'SharePoint', 'M-Files', 'Box', 'None'], value: 'OpenText' },
   { key: 'mining', label: 'Process mining', fn: 'all', hint: 'Continuous monitoring instead of periodic review', options: ['Celonis', 'SAP Signavio', 'UiPath Process Mining', 'Software AG ARIS', 'IBM Process Mining', 'Other', 'None'], value: 'Celonis' },
   { key: 'rpa', label: 'RPA and bots', fn: 'all', hint: 'Data moved between systems by hand', options: ['UiPath', 'Automation Anywhere', 'Blue Prism', 'Microsoft Power Automate', 'SAP Build Process Automation', 'None'], value: 'None' },
-  { key: 'bi', label: 'Reporting and analytics', fn: ['R2R', 'A2R', 'I2C', 'I2P'], hint: 'Standard and management report packs', options: ['SAP Analytics Cloud', 'Power BI', 'Tableau', 'Qlik', 'Looker', 'SAP BW/4HANA', 'None'], value: 'None' },
+  { key: 'bi', label: 'Reporting and analytics', fn: ['R2R', 'A2R', 'I2C', 'I2P', 'P2R', 'TRE'], hint: 'Standard and management report packs', options: ['SAP Analytics Cloud', 'Power BI', 'Tableau', 'Qlik', 'Looker', 'SAP BW/4HANA', 'None'], value: 'None' },
   // Record to Report
   { key: 'recon', label: 'Reconciliation and close', fn: ['R2R', 'ICO'], hint: 'Close tasks, matching, certification', options: ['BlackLine', 'Trintech Cadency', 'FloQast', 'SAP Advanced Financial Closing', 'Oracle ARCS', 'None'], value: 'BlackLine' },
   { key: 'consol', label: 'Consolidation', fn: ['R2R'], hint: 'Eliminations, currency translation', options: ['SAP Group Reporting', 'SAP BPC', 'OneStream', 'Oracle FCCS', 'Tagetik', 'LucaNet', 'HFM', 'None'], value: 'SAP Group Reporting' },
@@ -2496,7 +2496,7 @@ const TOOLS = [
   // Invoice to Pay
   { key: 'apcapture', label: 'Invoice capture', fn: ['I2P', 'ICO'], hint: 'OCR, matching, duplicate check', options: ['OpenText VIM', 'Basware', 'Coupa', 'Esker', 'Tungsten (Kofax)', 'Medius', 'SAP Ariba Invoice Management', 'None'], value: 'OpenText VIM' },
   { key: 'expense', label: 'Travel and expense', fn: ['I2P'], hint: 'Claims, policy checks, per diems', options: ['SAP Concur', 'Expensify', 'Rydoo', 'Coupa Expense', 'Emburse', 'Other', 'None'], value: 'SAP Concur' },
-  { key: 'payments', label: 'Payments and bank connectivity', fn: ['I2P', 'ICO'], hint: 'Payment files to the bank', options: ['SAP Bank Communication Management', 'SAP Multi-Bank Connectivity', 'Kyriba', 'TIS', 'Serrala', 'FIS Trax', 'Bottomline', 'SWIFT Alliance', 'None'], value: 'SAP Bank Communication Management' },
+  { key: 'payments', label: 'Payments and bank connectivity', fn: ['I2P', 'ICO', 'TRE', 'H2R'], hint: 'Payment files to the bank', options: ['SAP Bank Communication Management', 'SAP Multi-Bank Connectivity', 'Kyriba', 'TIS', 'Serrala', 'FIS Trax', 'Bottomline', 'SWIFT Alliance', 'None'], value: 'SAP Bank Communication Management' },
   { key: 'supplierportal', label: 'Supplier portal', fn: ['I2P'], hint: 'Invoice and payment status self-service', options: ['SAP Business Network (Ariba)', 'Coupa', 'Jaggaer', 'Taulia', 'Tradeshift', 'None'], value: 'None' },
   { key: 'einvoicing', label: 'E-invoicing and tax reporting', fn: ['I2P', 'I2C'], hint: 'Clearance models, digital reporting', options: ['SAP Document and Reporting Compliance', 'Pagero', 'Sovos', 'Edicom', 'Comarch', 'Vertex e-Invoicing', 'None'], value: 'None' },
   { key: 'taxengine', label: 'Tax determination', fn: ['I2P', 'I2C'], hint: 'Tax codes at document level', options: ['Vertex', 'Thomson Reuters ONESOURCE', 'Avalara', 'SAP native', 'None'], value: 'SAP native' },
@@ -2504,7 +2504,12 @@ const TOOLS = [
   { key: 'credit', label: 'Credit management', fn: ['I2C'], hint: 'Limit checks, scoring runs, exposure', options: ['SAP FSCM Credit Management', 'HighRadius', 'Serrala', 'Esker', 'D&B Finance Analytics', 'Creditsafe', 'None'], value: 'SAP FSCM Credit Management' },
   { key: 'collections', label: 'Collections and disputes', fn: ['I2C', 'ICO'], hint: 'Worklists, dunning strategies, dispute cases', options: ['SAP FSCM Collections and Dispute', 'HighRadius', 'Esker', 'Sidetrade', 'BlackLine AR Automation', 'Emagia', 'None'], value: 'SAP FSCM Collections and Dispute' },
   { key: 'cashapp', label: 'Cash application', fn: ['I2C', 'ICO'], hint: 'Bank statements, lockbox, auto-matching', options: ['SAP native', 'HighRadius', 'Serrala', 'BlackLine Cash Application', 'Esker', 'Emagia', 'None'], value: 'SAP native' },
-  { key: 'treasury', label: 'Treasury management', fn: ['ICO', 'I2C', 'I2P'], hint: 'Cash positioning, guarantees, interest', options: ['SAP Treasury and Risk Management', 'Kyriba', 'FIS Quantum', 'ION Treasury', 'Coupa Treasury', 'None'], value: 'SAP Treasury and Risk Management' },
+  { key: 'treasury', label: 'Treasury management', fn: ['TRE', 'ICO', 'I2C', 'I2P'], hint: 'Cash positioning, guarantees, interest', options: ['SAP Treasury and Risk Management', 'Kyriba', 'FIS Quantum', 'ION Treasury', 'Coupa Treasury', 'None'], value: 'SAP Treasury and Risk Management' },
+  // Plan to Report
+  { key: 'planning', label: 'Planning and forecasting', fn: ['P2R'], hint: 'Driver-based models, versions, consolidation of submissions', options: ['SAP Analytics Cloud Planning', 'Anaplan', 'Oracle EPM Planning', 'Workday Adaptive Planning', 'Board', 'None'], value: 'SAP Analytics Cloud Planning' },
+  // Hire to Retire
+  { key: 'payroll', label: 'Payroll', fn: ['H2R'], hint: 'Gross-to-net runs, payslips, statutory reports', options: ['SAP SuccessFactors Employee Central Payroll', 'SAP HCM Payroll', 'Workday Payroll', 'ADP', 'Dayforce', 'None'], value: 'SAP HCM Payroll' },
+  { key: 'time', label: 'Time and attendance', fn: ['H2R'], hint: 'Time recording, absences, evaluation runs', options: ['SAP SuccessFactors Time', 'UKG', 'Workday Time', 'Other', 'None'], value: 'SAP SuccessFactors Time' },
   // Intercompany
   { key: 'ichub', label: 'Intercompany matching', fn: ['ICO', 'R2R'], hint: 'Both legs matched in one place', options: ['BlackLine Intercompany', 'SAP ICMR', 'SAP Group Reporting matching', 'Trintech Cadency', 'FloQast', 'OneStream', 'None'], value: 'BlackLine Intercompany' },
   { key: 'netting', label: 'Netting and in-house cash', fn: ['ICO'], hint: 'Netting cycles, payments on behalf', options: ['SAP In-House Cash', 'Kyriba', 'Coprocess', 'Serrala', 'FIS Integrity', 'None'], value: 'SAP In-House Cash' },
@@ -2624,6 +2629,14 @@ const RULES = [
   { dest: 'auto', test: /\b(archive (the )?(invoice|document|documents|posting)|store (signed )?.*(documentation|confirmation|report)s? (on|in) (the )?(shared[- ]drive|sharepoint|agreed storage)|attach (the )?(document|evidence|scan)s? to (the )?(posting|document|invoice))\b/i,
     why: 'Attached to the posting and archived by the document system.', needs: 'dms' },
 
+  { dest: 'auto', test: /\b(consolidat\w* (submissions|entity forecasts|the budget)|recalculate forecast|seed forecast|roll periods|open forecast version|load (budget|forecast) (version|to)|run validation rules)\b/i,
+    why: 'Version, consolidation and driver logic in the planning tool.', needs: 'planning' },
+  { dest: 'auto', test: /\b(payroll (run|simulation|bank transfer)|productive payroll|generate payslips|publish payslips|payroll posting document|year-end employee statements|payroll tax report|social security report)\b/i,
+    why: 'Gross-to-net, payslips and statutory reports from the payroll system.', needs: 'payroll' },
+  { dest: 'auto', test: /\b(time evaluation|check time against|check entitlement)\b/i,
+    why: 'Time rules and entitlements evaluated by the time system.', needs: 'time' },
+  { dest: 'auto', test: /\b(cash position|intraday statement|automated sweeps|cash pooling|liquidity forecast consolidat|mark-to-market|run valuation|effectiveness test|import market rates|monitor utilisation)\b/i,
+    why: 'Positions, sweeps and valuations in the treasury management system.', needs: 'treasury' },
   // Automate: what the newer layer of tools takes, given it exists.
   { dest: 'auto', test: /\b(monitor(ing)? (of )?(open items|invoices|aging|kpi|process|throughput|backlog)|aging (analysis|report)|kpi (report|dashboard)|process (performance|monitoring))\b/i,
     why: 'Continuous monitoring in the process-mining tool rather than a periodic manual review.', needs: 'mining' },
@@ -2809,6 +2822,33 @@ const NOTES = {
     tools: 'ERP sales and credit modules, bank statement and lockbox feeds for matching, a request workflow for disputes and credit cases.',
     watch: 'Collections split cleanly by tier: routine reminders and dunning delegate; the difficult conversation stays with whoever owns the customer.',
   },
+  P2R: {
+    title: 'Plan to Report',
+    scope: 'Planning models and drivers, budget and forecast cycles, cost accounting, profitability, performance reporting and capital planning.',
+    gbs: 'Model maintenance, template distribution, submission handling and validation, consolidation runs, cost centre and order maintenance, variance reports, dashboard refresh, the report pack itself.',
+    local: 'The numbers: targets, budget submissions, forecast drivers, the review with the business and the commentary that explains a variance - budget owners speak for their own figures.',
+    coe: 'Model design, group assumptions, allocation logic, profitability and activity-based costing methods, the capital plan and its prioritisation.',
+    tools: 'A planning tool with driver-based models and version control, the reporting layer for packs and dashboards, and the ERP for cost objects and actuals.',
+    watch: 'A planning cycle is a calendar with a model behind it; the GBS share rises with the share of the pack that refreshes itself.',
+  },
+  TRE: {
+    title: 'Treasury and Cash',
+    scope: 'Bank master data and mandates, daily cash position and liquidity forecast, bank accounts, payments and connectivity, debt and investment, hedging, guarantees, the treasury close.',
+    gbs: 'Bank master data, statement processing, position consolidation, bank fee checks, payment execution and rejections, deal recording and confirmations, interest postings, reconciliations, the treasury close and reports.',
+    local: 'Mandates and signatories, payment release per delegation of authority, opening and closing accounts with the bank, petty cash, lender reporting - anything that needs the entity\'s signature.',
+    coe: 'Policy and limits, the funding and investment decision of the day, hedging decisions and hedge accounting design, counterparty limits, facility negotiation.',
+    tools: 'A treasury management system for positions, deals and limits, bank connectivity for statements and payment files, and the ERP for postings.',
+    watch: 'Treasury delegates the recording and the reconciliation, never the decision: the split is between the desk and the back office, and the back office is what a GBS takes.',
+  },
+  H2R: {
+    title: 'Hire to Retire',
+    scope: 'Employee master data, onboarding and offboarding, time and absence, payroll processing and payments, benefits and deductions, payroll taxes and statutory reporting.',
+    gbs: 'Master data changes with four-eye checks, time evaluation runs, payroll inputs, simulation and productive runs, exception review, payslips, postings and reconciliations, third-party payments, inquiries and reports.',
+    local: 'Approvals: contract changes, time and absences, the payroll itself, final settlements, third-party payments; and the statutory filings the entity signs.',
+    coe: 'Little: payroll rules and country configuration sit with a payroll specialist or the provider, and policy sits with HR.',
+    tools: 'A payroll system with country rules, a time system feeding it, the employee portal for payslips and requests, and the ERP for postings.',
+    watch: 'Payroll is the one process where a mistake reaches every employee on the same day; the split follows the approval chain, and the approval stays with the entity.',
+  },
   ICO: {
     title: 'Intercompany',
     scope: 'Intercompany customer and vendor master data, billing, invoice processing, collections and disputes, settlement and netting, reconciliation and period-end.',
@@ -2819,6 +2859,637 @@ const NOTES = {
     watch: 'Intercompany has no category of its own in APQC; it spans consolidation, billing and payables, and the mapping on this page says which groups were used.',
   },
 };
+
+/* ---- reference.js ---- */
+/* Authored reference taxonomies for the clusters the panel does not hold.
+
+   Plan to Report, Treasury and Cash, and Hire to Retire, to level 4, written
+   for this tool from APQC's Process Classification Framework 7.4 - groups
+   9.1 planning and management accounting, 9.7 treasury operations, 9.5
+   payroll - and common practice. Every level-3 process names its source and
+   every step carries the design view of where it sits. Steps are written
+   once per shape of process and specialised by the thing they act on, so the
+   vocabulary stays consistent; where a process has a shape of its own, its
+   steps are written out. */
+
+const L = 'local';
+const G = 'gbs';
+const C = 'coe';
+const A = 'auto';
+
+/* ---- step shapes ---------------------------------------------------------- */
+
+const SHAPES = {
+  create: (x) => [
+    [`Raise request to create ${x} with supporting documents`, L],
+    ['Check request for completeness and duplicates', G],
+    ['Return incomplete request to requester', G],
+    [`Create ${x} in the system`, G],
+    ['Perform four-eye check of the new record', G],
+    [`Activate ${x} and notify requester`, G],
+  ],
+  change: (x) => [
+    [`Raise change request for ${x} with evidence`, L],
+    ['Validate requested change against policy', G],
+    [`Change ${x} in the system`, G],
+    ['Perform four-eye check of the change', G],
+    ['Confirm change to requester and close request', G],
+  ],
+  deactivate: (x) => [
+    [`Submit deactivation request for ${x}`, L],
+    ['Check for open items and open documents', G],
+    [`Set deletion flag on ${x}`, G],
+    ['Archive record and supporting documents', A],
+    ['Confirm deactivation to requester', G],
+  ],
+  run: (x) => [
+    [`Prepare ${x} parameters and scope`, G],
+    [`Execute ${x} in test mode`, G],
+    ['Review test log and resolve errors', G],
+    [`Execute ${x} productively`, A],
+    ['Check results and totals', G],
+    ['Distribute run log to stakeholders', G],
+  ],
+  recon: (x) => [
+    [`Extract balances and open items for ${x}`, G],
+    ['Match items automatically', A],
+    ['Investigate unmatched items', G],
+    ['Request clarification from the counterparty or business', G],
+    ['Post correcting entries', G],
+    ['Certify reconciliation', G],
+    ['Approve reconciliation above threshold', L],
+  ],
+  close: (x) => [
+    ['Confirm prerequisites completed in the close calendar', G],
+    [`Post ${x}`, G],
+    ['Validate postings against the checklist', G],
+    ['Report completion in the close calendar', G],
+  ],
+  report: (x) => [
+    [`Run standard ${x} from the reporting layer`, A],
+    ['Validate figures against the source system', G],
+    ['Add commentary on variances', L],
+    ['Distribute report to recipients', G],
+    ['Handle follow-up questions', G],
+  ],
+  audit: (x) => [
+    [`Receive ${x} request list`, G],
+    ['Collect documents and reconciliations requested', G],
+    ['Provide walkthroughs of the process', G],
+    ['Answer entity-specific questions', L],
+    ['Track findings and agreed measures', L],
+  ],
+  inquiry: (x) => [
+    [`Receive ${x} inquiry through the request channel`, G],
+    ['Check status in the system', G],
+    ['Resolve or route to the responsible team', G],
+    ['Reply and close the request', G],
+    ['Analyse recurring inquiry reasons', G],
+  ],
+};
+
+/* ---- the three clusters --------------------------------------------------- */
+
+/* Entry: [name, shape or steps, subject, source]. A shape name expands
+   through SHAPES with the subject; an array is the steps written out. */
+
+const REFERENCE = [
+  { code: 'P2R', label: 'Plan to Report', l1: [
+    ['Plan to Report', [
+      ['Planning master data and models', 'APQC 9.1.1', [
+        ['Maintain planning dimensions and hierarchies', [
+          ['Receive request for a new dimension member or hierarchy change', L],
+          ['Align change with the chart of accounts and cost centre structure', G],
+          ['Approve structural change', C],
+          ['Maintain dimension in the planning tool', G],
+          ['Confirm to requester and update documentation', G],
+        ], null, 'APQC 9.1.1 Perform planning/budgeting/forecasting'],
+        ['Maintain drivers and assumptions', [
+          ['Collect driver proposals from the business', L],
+          ['Set group assumptions: rates, inflation, headcount cost', C],
+          ['Approve driver set for the cycle', C],
+          ['Load drivers into the planning model', G],
+          ['Publish assumptions to entities', G],
+        ], null, 'APQC 9.1.1'],
+        ['Maintain planning templates and models', [
+          ['Review template changes requested for the cycle', G],
+          ['Design model logic and allocations', C],
+          ['Build and test the model', G],
+          ['Release model for the cycle', G],
+        ], null, 'APQC 9.1.1'],
+        ['Manage the planning calendar', [
+          ['Set cycle dates and submission deadlines', C],
+          ['Publish calendar and instructions', G],
+          ['Track submissions against the calendar', A],
+          ['Escalate late submissions', G],
+        ], null, 'APQC 9.1.1'],
+      ]],
+      ['Budgeting', 'APQC 9.1.1', [
+        ['Prepare budget guidelines and targets', [
+          ['Derive top-down targets from strategy', C],
+          ['Agree targets with business leadership', L],
+          ['Issue guidelines and templates', G],
+        ], null, 'APQC 9.1.1'],
+        ['Collect budget submissions', [
+          ['Submit entity budget in the template', L],
+          ['Check submission for completeness and template compliance', G],
+          ['Return submission with questions', G],
+          ['Log submission as received', A],
+        ], null, 'APQC 9.1.1'],
+        ['Consolidate and validate the budget', [
+          ['Consolidate submissions across entities', A],
+          ['Run validation rules and reconcile to targets', A],
+          ['Analyse gaps to target', G],
+          ['Prepare consolidation view for review', G],
+        ], null, 'APQC 9.1.1'],
+        ['Review and approve the budget', [
+          ['Hold budget review with the business', L],
+          ['Agree adjustments and iterations', L],
+          ['Approve final budget', L],
+          ['Lock the approved version', G],
+        ], null, 'APQC 9.1.1'],
+        ['Load the approved budget', [
+          ['Map budget to ERP cost objects and accounts', G],
+          ['Load budget version to the ERP', A],
+          ['Reconcile loaded budget to the approved version', G],
+          ['Release budget for reporting', G],
+        ], null, 'APQC 9.1.1'],
+      ]],
+      ['Forecasting', 'APQC 9.1.1', [
+        ['Run the rolling forecast cycle', [
+          ['Open forecast version and roll periods', A],
+          ['Seed forecast with actuals and prior forecast', A],
+          ['Notify contributors of the cycle', G],
+          ['Close forecast version at cut-off', G],
+        ], null, 'APQC 9.1.1'],
+        ['Update the driver-based forecast', [
+          ['Update volumes, prices and headcount drivers', L],
+          ['Recalculate forecast from drivers', A],
+          ['Review calculated results for reasonableness', G],
+          ['Adjust manual lines with justification', L],
+        ], null, 'APQC 9.1.1'],
+        ['Consolidate forecast versions', [
+          ['Consolidate entity forecasts', A],
+          ['Eliminate intercompany plan items', A],
+          ['Reconcile consolidated forecast to submissions', G],
+        ], null, 'APQC 9.1.1'],
+        ['Review the forecast with the business', [
+          ['Prepare forecast bridge versus budget and prior forecast', G],
+          ['Discuss risks and opportunities', L],
+          ['Agree forecast position', L],
+        ], null, 'APQC 9.1.4'],
+        ['Publish the forecast', [
+          ['Lock forecast version', G],
+          ['Distribute forecast pack', A],
+          ['Load forecast to reporting layer', A],
+        ], null, 'APQC 9.1.1'],
+      ]],
+      ['Cost accounting', 'APQC 9.1.2', [
+        ['Create cost centre or internal order', 'create', 'the cost object', 'APQC 9.1.2 Perform cost accounting and control'],
+        ['Change cost centre or internal order', 'change', 'the cost object', 'APQC 9.1.2'],
+        ['Deactivate cost centre or internal order', 'deactivate', 'the cost object', 'APQC 9.1.2'],
+        ['Calculate overhead rates', [
+          ['Collect activity quantities and cost pools', G],
+          ['Calculate planned overhead rates', G],
+          ['Approve rates for the period', C],
+          ['Maintain rates in the system', G],
+        ], null, 'APQC 9.1.2'],
+        ['Analyse cost centre variances', [
+          ['Run cost centre actual versus plan report', A],
+          ['Investigate variances above threshold', G],
+          ['Obtain explanations from cost centre owners', L],
+          ['Document variance commentary', G],
+        ], null, 'APQC 9.1.2'],
+        ['Settle internal orders and projects', [
+          ['Maintain settlement rules', G],
+          ['Execute settlement run', A],
+          ['Review settlement errors', G],
+          ['Close completed orders', G],
+        ], null, 'APQC 9.1.2'],
+      ]],
+      ['Cost management and profitability', 'APQC 9.1.3', [
+        ['Perform profitability analysis', [
+          ['Run profitability report by product, customer and channel', A],
+          ['Validate allocation of shared costs', C],
+          ['Analyse margin movements', C],
+          ['Present findings to the business', L],
+        ], null, 'APQC 9.1.3 Perform cost management'],
+        ['Perform activity-based costing', [
+          ['Maintain activity model and drivers', C],
+          ['Collect driver quantities', G],
+          ['Run activity-based cost allocation', A],
+          ['Review results with process owners', C],
+        ], null, 'APQC 9.1.3'],
+        ['Support cost reduction initiatives', [
+          ['Baseline cost by category and driver', G],
+          ['Quantify savings hypotheses', C],
+          ['Track realised savings against plan', G],
+          ['Report savings to leadership', L],
+        ], null, 'APQC 9.1.3'],
+      ]],
+      ['Performance reporting', 'APQC 9.1.4', [
+        ['Prepare the management report pack', 'report', 'management report pack', 'APQC 9.1.4 Evaluate and manage financial performance'],
+        ['Perform variance analysis and commentary', [
+          ['Run actual versus budget and forecast bridges', A],
+          ['Identify drivers of variance', G],
+          ['Collect commentary from budget owners', L],
+          ['Consolidate commentary into the pack', G],
+        ], null, 'APQC 9.1.4'],
+        ['Maintain KPI dashboards', [
+          ['Refresh KPI data from source systems', A],
+          ['Validate KPI calculations', G],
+          ['Publish dashboards', A],
+          ['Review KPI definitions annually', C],
+        ], null, 'APQC 9.1.4'],
+        ['Support business performance reviews', [
+          ['Prepare review deck from the pack', G],
+          ['Present results and answer questions', L],
+          ['Record actions agreed', L],
+          ['Follow up actions', G],
+        ], null, 'APQC 9.1.4'],
+        ['Perform ad-hoc analysis', 'report', 'ad-hoc analysis', 'APQC 9.1.4'],
+      ]],
+      ['Capital planning', 'APQC 9.4.1', [
+        ['Prepare the capital plan', [
+          ['Collect investment proposals with business cases', L],
+          ['Assess proposals against return and strategy', C],
+          ['Prioritise portfolio within the envelope', C],
+          ['Approve capital plan', L],
+        ], null, 'APQC 9.4.1 Perform capital planning and project approval'],
+        ['Track capital spend against plan', [
+          ['Run spend versus plan report by project', A],
+          ['Investigate overruns and delays', G],
+          ['Update forecast completion cost', L],
+          ['Report portfolio status', G],
+        ], null, 'APQC 9.4.2 Perform capital project accounting'],
+      ]],
+    ]],
+  ] },
+
+  { code: 'TRE', label: 'Treasury and Cash', l1: [
+    ['Treasury and Cash', [
+      ['Treasury master data and policy', 'APQC 9.7.1', [
+        ['Create bank master record', 'create', 'the bank master record', 'APQC 9.7.1 Manage treasury policies and procedures'],
+        ['Maintain house banks and accounts in the system', 'change', 'the house bank and account data', 'SAP J77'],
+        ['Manage bank mandates and signatories', [
+          ['Receive change in authorised signatories', L],
+          ['Prepare mandate documents for the bank', G],
+          ['Sign mandate per delegation of authority', L],
+          ['Confirm mandate change with the bank', G],
+          ['Update signatory register', G],
+        ], null, 'APQC 9.7.1'],
+        ['Maintain treasury policy and limits', [
+          ['Review policy against market and regulatory change', C],
+          ['Set counterparty, instrument and exposure limits', C],
+          ['Approve policy', L],
+          ['Maintain limits in the treasury system', G],
+        ], null, 'APQC 9.7.1'],
+      ]],
+      ['Cash management', 'APQC 9.7.2; SAP BFB', [
+        ['Prepare the daily cash position', [
+          ['Import bank balances and intraday statements', A],
+          ['Consolidate positions by currency and entity', A],
+          ['Review position and expected flows', G],
+          ['Decide funding and investment of the day', C],
+        ], null, 'APQC 9.7.2 Manage cash; SAP BFB'],
+        ['Prepare the liquidity forecast', [
+          ['Collect forecast inflows and outflows from entities', L],
+          ['Load payables and receivables due dates', A],
+          ['Consolidate liquidity forecast', G],
+          ['Review forecast accuracy against actuals', C],
+        ], null, 'APQC 9.7.2'],
+        ['Execute cash pooling and sweeps', [
+          ['Maintain pooling structure and thresholds', C],
+          ['Execute automated sweeps', A],
+          ['Review sweep results and exceptions', G],
+          ['Post pooling movements', G],
+        ], null, 'APQC 9.7.3'],
+        ['Manage intercompany funding', [
+          ['Receive funding request from the entity', L],
+          ['Assess request against the liquidity plan', C],
+          ['Approve funding', C],
+          ['Execute funding through the in-house bank', G],
+        ], null, 'APQC 9.7.3 Manage in-house bank accounts'],
+        ['Process the treasury bank statement', [
+          ['Receive bank statement automatically', A],
+          ['Post statement items to treasury accounts', A],
+          ['Review items not posted automatically', G],
+          ['Post remaining items manually', G],
+        ], null, 'SAP 4X8'],
+        ['Manage petty cash', [
+          ['Record petty cash payments with receipts', L],
+          ['Count and reconcile the cash box', L],
+          ['Post petty cash journal', G],
+          ['Replenish petty cash', G],
+        ], null, 'APQC 9.7.2'],
+      ]],
+      ['Bank account management', 'APQC 9.7.3; SAP J77', [
+        ['Open bank account', [
+          ['Request new account with business justification', L],
+          ['Approve opening per policy', C],
+          ['Complete bank documentation and know-your-customer requirements', L],
+          ['Create account in the system and connectivity', G],
+          ['Update bank account register', G],
+        ], null, 'APQC 9.7.3; SAP J77'],
+        ['Close bank account', [
+          ['Confirm no open items or standing orders', G],
+          ['Approve closure', C],
+          ['Instruct the bank and transfer the balance', L],
+          ['Close account in the system and the register', G],
+        ], null, 'APQC 9.7.3; SAP J77'],
+        ['Reconcile bank accounts', 'recon', 'bank accounts', 'APQC 9.7.3'],
+        ['Manage bank fees', [
+          ['Import bank fee statements', A],
+          ['Check fees against agreed price lists', G],
+          ['Dispute incorrect fees with the bank', G],
+          ['Report fees by bank and account', G],
+        ], null, 'APQC 9.7.3'],
+        ['Review the bank account register', [
+          ['Run register of accounts, signatories and purposes', A],
+          ['Confirm each account with its owner annually', L],
+          ['Close dormant accounts', G],
+        ], null, 'APQC 9.7.3'],
+      ]],
+      ['Payments and bank connectivity', 'APQC 9.7.2; SAP BFA', [
+        ['Execute treasury payments', 'run', 'the treasury payment run', 'APQC 9.7.2'],
+        ['Release payments', [
+          ['Review payment batch against approvals', G],
+          ['Release payments per delegation of authority', L],
+          ['Transmit payment file to the bank', A],
+          ['Confirm bank acknowledgement', A],
+        ], null, 'APQC 9.7.2; SAP BFA'],
+        ['Manage bank connectivity and formats', [
+          ['Maintain bank communication channels', G],
+          ['Maintain payment formats per country and bank', G],
+          ['Test format changes with the bank', G],
+          ['Monitor transmission status', A],
+        ], null, 'SAP BFA'],
+        ['Handle payment rejections', [
+          ['Receive rejection from the bank', A],
+          ['Identify cause and correct data', G],
+          ['Re-transmit payment', G],
+          ['Inform the beneficiary owner', G],
+        ], null, 'APQC 9.7.2'],
+      ]],
+      ['Debt and investment', 'APQC 9.7.4', [
+        ['Manage loans and credit facilities', [
+          ['Negotiate facility terms', C],
+          ['Approve facility', L],
+          ['Record facility in the treasury system', G],
+          ['Monitor drawdowns, repayments and covenants', C],
+        ], null, 'APQC 9.7.4 Manage debt and investment'],
+        ['Manage short-term investments', [
+          ['Decide investment within policy limits', C],
+          ['Execute deal with the counterparty', C],
+          ['Record deal in the treasury system', G],
+          ['Confirm deal with the counterparty', G],
+          ['Settle maturity', A],
+        ], null, 'APQC 9.7.4'],
+        ['Manage intercompany loans', [
+          ['Agree loan terms per transfer pricing policy', C],
+          ['Record loan in the treasury system', G],
+          ['Calculate and post interest', A],
+          ['Process repayments', G],
+        ], null, 'APQC 9.7.4'],
+        ['Post interest and fees', [
+          ['Run interest and fee calculation', A],
+          ['Review calculation results', G],
+          ['Post accruals and settlements', G],
+        ], null, 'APQC 9.7.4'],
+        ['Report covenants and headroom', [
+          ['Calculate covenant ratios', G],
+          ['Review headroom against limits', C],
+          ['Report to lenders per agreement', L],
+        ], null, 'APQC 9.7.4'],
+      ]],
+      ['Financial risk and hedging', 'APQC 9.7.5', [
+        ['Measure foreign exchange exposure', [
+          ['Collect exposure from forecasts and open items', A],
+          ['Net exposures by currency', A],
+          ['Review exposure against policy', C],
+        ], null, 'APQC 9.7.5 Monitor and execute risk and hedging transactions'],
+        ['Execute hedges', [
+          ['Decide hedge within policy', C],
+          ['Execute deal with the counterparty', C],
+          ['Record deal in the treasury system', G],
+          ['Confirm deal with the counterparty', G],
+        ], null, 'APQC 9.7.5'],
+        ['Perform hedge accounting', [
+          ['Designate hedge relationship and document it', C],
+          ['Perform effectiveness test', A],
+          ['Post hedge accounting entries', G],
+          ['Prepare hedge disclosures', C],
+        ], null, 'APQC 9.7.5; IFRS 9'],
+        ['Perform mark-to-market valuation', [
+          ['Import market rates', A],
+          ['Run valuation', A],
+          ['Review valuation results', G],
+          ['Post valuation entries', G],
+        ], null, 'APQC 9.7.5'],
+        ['Manage counterparty limits', [
+          ['Maintain counterparty ratings and limits', C],
+          ['Monitor utilisation against limits', A],
+          ['Escalate breaches', C],
+        ], null, 'APQC 9.7.5'],
+      ]],
+      ['Guarantees and fraud', 'APQC 9.7.6', [
+        ['Manage bank guarantees and letters of credit', [
+          ['Receive request for a guarantee or letter of credit', L],
+          ['Approve issuance per policy', C],
+          ['Instruct the bank and record the instrument', G],
+          ['Monitor expiry and renewals', A],
+          ['Release or call the instrument', L],
+        ], null, 'APQC 9.7.4'],
+        ['Handle payment fraud cases', [
+          ['Detect suspicious payment or instruction', A],
+          ['Stop payment and inform the bank', G],
+          ['Investigate case with the business and security', L],
+          ['Recover funds where possible', G],
+          ['Report case and update controls', C],
+        ], null, 'APQC 9.7.6 Manage financial fraud/dispute cases'],
+      ]],
+      ['Treasury close and reporting', 'APQC 9.7.2', [
+        ['Perform treasury period-end close', 'close', 'treasury period-end postings', 'APQC 9.7.2'],
+        ['Reconcile treasury subledger to general ledger', 'recon', 'the treasury subledger', 'APQC 9.7.2'],
+        ['Perform treasury reporting', 'report', 'treasury reports', 'APQC 9.7.2'],
+        ['Support treasury audit', 'audit', 'the treasury audit', 'APQC 9.7.1'],
+      ]],
+    ]],
+  ] },
+
+  { code: 'H2R', label: 'Hire to Retire', l1: [
+    ['Hire to Retire', [
+      ['Employee master data', 'APQC 9.5.2', [
+        ['Create employee record', 'create', 'the employee record', 'APQC 9.5.2 Manage pay'],
+        ['Change employee record', 'change', 'the employee record', 'APQC 9.5.2'],
+        ['Process organisational changes', [
+          ['Receive organisational change from the business', L],
+          ['Assess impact on positions and cost centres', G],
+          ['Approve organisational change', L],
+          ['Maintain organisational structure in the system', G],
+          ['Inform payroll and finance', G],
+        ], null, 'APQC 9.5.2'],
+        ['Deactivate employee record', 'deactivate', 'the employee record', 'APQC 9.5.2'],
+      ]],
+      ['Onboarding and offboarding', 'APQC 9.5.2', [
+        ['Onboard new hire', [
+          ['Receive signed contract and personal data', L],
+          ['Check documents and work eligibility', L],
+          ['Create employee in payroll and time systems', G],
+          ['Set up bank details with verification', G],
+          ['Enrol in benefits and deductions', G],
+          ['Confirm first payroll to the employee', G],
+        ], null, 'APQC 9.5.2'],
+        ['Process contract changes', [
+          ['Receive approved contract change', L],
+          ['Update salary, hours or grade in the system', G],
+          ['Perform four-eye check of the change', G],
+          ['Confirm effective date to the employee', G],
+        ], null, 'APQC 9.5.2'],
+        ['Offboard leaver', [
+          ['Receive leaver notification with last working day', L],
+          ['Calculate final pay, leave balance and deductions', G],
+          ['Approve final settlement', L],
+          ['Process final payment', G],
+          ['Issue leaver documents', G],
+          ['Deactivate employee record', G],
+        ], null, 'APQC 9.5.2'],
+      ]],
+      ['Time and absence', 'APQC 9.5.1', [
+        ['Record and approve working time', [
+          ['Record time in the time system', L],
+          ['Approve time per delegation of authority', L],
+          ['Check time against schedule and rules', A],
+          ['Correct rejected time entries', L],
+        ], null, 'APQC 9.5.1 Report time'],
+        ['Process absences and leave', [
+          ['Submit absence request', L],
+          ['Approve absence', L],
+          ['Check entitlement and balance', A],
+          ['Record absence for payroll', G],
+        ], null, 'APQC 9.5.1'],
+        ['Run time evaluation', 'run', 'the time evaluation run', 'APQC 9.5.1'],
+        ['Handle time and absence inquiries', 'inquiry', 'time and absence', 'APQC 9.5.1'],
+      ]],
+      ['Payroll processing', 'APQC 9.5.2', [
+        ['Collect payroll inputs', [
+          ['Collect one-off payments and deductions from the business', L],
+          ['Validate inputs against approvals', G],
+          ['Enter inputs in the payroll system', G],
+          ['Confirm cut-off reached', G],
+        ], null, 'APQC 9.5.2'],
+        ['Run payroll simulation', 'run', 'the payroll simulation', 'APQC 9.5.2'],
+        ['Review payroll results and exceptions', [
+          ['Run variance report against prior period', A],
+          ['Investigate exceptions above threshold', G],
+          ['Correct inputs and rerun where needed', G],
+          ['Document review', G],
+        ], null, 'APQC 9.5.2'],
+        ['Approve payroll', [
+          ['Present payroll summary and exceptions', G],
+          ['Approve payroll per delegation of authority', L],
+          ['Release payroll for payment', G],
+        ], null, 'APQC 9.5.2'],
+        ['Run productive payroll', 'run', 'the productive payroll run', 'APQC 9.5.2'],
+        ['Distribute payslips', [
+          ['Generate payslips', A],
+          ['Publish payslips to the employee portal', A],
+          ['Handle undelivered payslips', G],
+        ], null, 'APQC 9.5.2'],
+        ['Process off-cycle payments', [
+          ['Receive approved off-cycle request', L],
+          ['Calculate off-cycle payment', G],
+          ['Approve off-cycle payment', L],
+          ['Execute payment and post', G],
+        ], null, 'APQC 9.5.2'],
+      ]],
+      ['Payroll payments and postings', 'APQC 9.5.2', [
+        ['Execute payroll bank transfer', 'run', 'the payroll bank transfer', 'APQC 9.5.2'],
+        ['Post payroll to the general ledger', [
+          ['Generate payroll posting document', A],
+          ['Review posting for errors and unassigned cost centres', G],
+          ['Post payroll journal', G],
+          ['Reconcile posting totals to payroll results', G],
+        ], null, 'APQC 9.5.2'],
+        ['Reconcile payroll to the general ledger', 'recon', 'payroll accounts', 'APQC 9.5.2'],
+        ['Pay third parties', [
+          ['Prepare payments to tax, social security and pension bodies', G],
+          ['Approve third-party payments', L],
+          ['Execute payments', G],
+          ['Reconcile payments to filings', G],
+        ], null, 'APQC 9.5.3'],
+      ]],
+      ['Benefits and deductions', 'APQC 9.5.2', [
+        ['Administer benefits enrolment', [
+          ['Enrol employee in benefit plans', L],
+          ['Validate eligibility', G],
+          ['Maintain benefit deductions in payroll', G],
+          ['Reconcile with benefit providers', G],
+        ], null, 'APQC 9.5.2'],
+        ['Process garnishments and court orders', [
+          ['Receive court order', L],
+          ['Validate order and calculate deduction', G],
+          ['Maintain deduction in payroll', G],
+          ['Remit to the ordering body', G],
+        ], null, 'APQC 9.5.2'],
+        ['Manage pension contributions', [
+          ['Calculate employer and employee contributions', A],
+          ['Reconcile contributions to the pension provider', G],
+          ['Remit contributions', G],
+        ], null, 'APQC 9.5.2'],
+      ]],
+      ['Payroll taxes and statutory reporting', 'APQC 9.5.3', [
+        ['Prepare payroll tax filings', [
+          ['Run payroll tax report', A],
+          ['Reconcile tax report to payroll results', G],
+          ['Review and file the return', L],
+          ['Archive filed return', A],
+        ], null, 'APQC 9.5.3 Manage and process payroll taxes'],
+        ['Prepare social security reporting', [
+          ['Run social security report', A],
+          ['Reconcile to payroll results', G],
+          ['Submit report to the authority', L],
+        ], null, 'APQC 9.5.3'],
+        ['Process year-end statements', [
+          ['Run year-end employee statements', A],
+          ['Validate statements against annual payroll', G],
+          ['Distribute statements to employees', A],
+          ['Handle corrections', G],
+        ], null, 'APQC 9.5.3'],
+        ['Support payroll audit', 'audit', 'the payroll audit', 'APQC 9.5.2'],
+      ]],
+      ['Payroll queries and reporting', 'APQC 9.5.2', [
+        ['Handle employee payroll inquiries', 'inquiry', 'payroll', 'APQC 9.5.2'],
+        ['Perform payroll reporting', 'report', 'payroll reports', 'APQC 9.5.2'],
+      ]],
+    ]],
+  ] },
+];
+
+/* ---- expansion ----------------------------------------------------------- */
+
+/** Rows in the shape the pipeline reads: level, id, name, place. */
+function referenceRows(member) {
+  const rows = [];
+  const code = member.code;
+  member.l1.forEach(([l1name, blocks], i) => {
+    const id1 = `${code} ${i + 1}`;
+    rows.push({ level: 1, id: id1, name: l1name, authored: true });
+    blocks.forEach(([l2name, l2source, processes], j) => {
+      const id2 = `${id1}.${j + 1}`;
+      rows.push({ level: 2, id: id2, name: l2name, authored: true, source: l2source });
+      processes.forEach(([l3name, shape, subject, source], k) => {
+        const id3 = `${id2}.${k + 1}`;
+        rows.push({ level: 3, id: id3, name: l3name, authored: true, source });
+        const steps = Array.isArray(shape) ? shape : SHAPES[shape](subject);
+        steps.forEach(([name, place], s) => {
+          rows.push({ level: 4, id: `${id3}.${s + 1}`, name, authored: true, place, basePlace: place, source });
+        });
+      });
+    });
+  });
+  return rows;
+}
 
 /* ---- store.js ---- */
 /* Keep work between visits, and move it between people.
@@ -2917,6 +3588,7 @@ function autosaver(write, delay = 400) {
 
 
 
+
 const $ = (id) => document.getElementById(id);
 const escape = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const icon = (name) => `<svg class="i" aria-hidden="true"><use href="#i-${name}"/></svg>`;
@@ -2935,6 +3607,9 @@ const FUNCTIONS = {
   I2P: { label: 'Invoice to Pay', pcf: ['PCF 9.6'], sap: ['J60', '4MT', '2V7', '2VB', '4Q0', 'BFA'] },
   ICO: { label: 'Intercompany', pcf: ['PCF 9.10', 'PCF 9.2', 'PCF 9.6'], sap: ['40Y', '4LG', '2F2', '1SG', '3AF'] },
   R2R: { label: 'Record to Report', pcf: ['PCF 9.3', 'PCF 9.10'], sap: ['J58', '1GA', '1GI', '2QL', '1SG', '3AF', '1J2', '4X8'] },
+  P2R: { label: 'Plan to Report', pcf: ['PCF 9.1', 'PCF 9.4'], sap: [] },
+  TRE: { label: 'Treasury and Cash', pcf: ['PCF 9.7'], sap: ['J77', 'BFA', 'BFB', '4X8'] },
+  H2R: { label: 'Hire to Retire', pcf: ['PCF 9.5'], sap: [] },
 };
 
 
@@ -2965,9 +3640,10 @@ function fnOf(m) {
 
 let tools = defaultTools();
 const library = new Map();
-const CYCLE = ['R2R', 'I2P', 'I2C', 'A2R', 'ICO'];
+const CYCLE = ['R2R', 'I2P', 'I2C', 'A2R', 'ICO', 'P2R', 'TRE', 'H2R'];
 const cycleRank = (code) => { const i = CYCLE.indexOf(code); return i < 0 ? CYCLE.length : i; };
-for (const member of [...window.PANEL_DATA].sort((a, b) => cycleRank(a.code) - cycleRank(b.code))) library.set(member.code, measure(build(member.label, member.code, member.nodes)));
+const PANEL = [...window.PANEL_DATA, ...REFERENCE.map((m) => ({ code: m.code, label: m.label, nodes: referenceRows(m) }))];
+for (const member of [...PANEL].sort((a, b) => cycleRank(a.code) - cycleRank(b.code))) library.set(member.code, measure(build(member.label, member.code, member.nodes)));
 const PANEL_KEYS = new Set(library.keys());
 const PCF = window.PCF_DATA;
 if (PCF) {
@@ -3759,9 +4435,9 @@ const CLUSTERS = [
   { key: 'R2R', name: 'Record to Report', span: 'Journals, close, reconciliation, consolidation, reporting', fn: 'R2R', part: 'The whole cluster.' },
   { key: 'A2R', name: 'Acquire to Retire', span: 'Asset request, capitalisation, depreciation, retirement; inventory valuation', fn: 'A2R', part: 'The whole cluster: asset accounting and inventory accounting.' },
   { key: 'ICO', name: 'Intercompany', span: 'Across the clusters: billing, settlement and reconciliation between entities', fn: 'ICO', part: 'The whole cluster.' },
-  { key: 'P2R', name: 'Plan to Report', span: 'Budgeting, forecasting, management reporting and analysis', fn: null, part: 'Not in the reference. A sheet you load is repaired and placed, with no reference to compare against.' },
-  { key: 'TRE', name: 'Treasury and cash', span: 'Cash visibility, liquidity planning, funding, bank relationships', fn: null, part: 'Not in the reference. Payments and bank connectivity appear inside Invoice to Pay and Intercompany.' },
-  { key: 'H2R', name: 'Hire to Retire', span: 'Payroll, time, benefits, the employee lifecycle', fn: null, part: 'Not in the reference. Employee expenses sit in Invoice to Pay.' },
+  { key: 'P2R', name: 'Plan to Report', span: 'Budgeting, forecasting, cost accounting, management reporting', fn: 'P2R', part: 'The whole cluster: planning models, budget and forecast cycles, cost accounting, performance reporting, capital planning.' },
+  { key: 'TRE', name: 'Treasury and Cash', span: 'Cash position, liquidity, bank accounts, payments, debt, hedging', fn: 'TRE', part: 'The whole cluster: from the daily cash position to hedge accounting and the treasury close.' },
+  { key: 'H2R', name: 'Hire to Retire', span: 'Employee data, time, payroll, benefits, payroll taxes', fn: 'H2R', part: 'The finance part: master data, time, payroll, payments, deductions and statutory reporting. Recruiting and development sit with HR; employee expenses in Invoice to Pay.' },
 ];
 
 function renderStart() {
@@ -4059,7 +4735,7 @@ $('map-filter').addEventListener('change', (e) => { mapFilter = e.target.value; 
 $('undo').addEventListener('click', () => { library.set(active, measure({ ...entry(), nodes: history().undo() })); clampSelection(); render(); save(); });
 $('redo').addEventListener('click', () => { library.set(active, measure({ ...entry(), nodes: history().redo() })); clampSelection(); render(); save(); });
 $('reset').addEventListener('click', () => {
-  const member = window.PANEL_DATA.find((m) => m.code === active); if (!member) return;
+  const member = PANEL.find((m) => m.code === active); if (!member) return;
   library.set(active, measure(build(entry().label, active, member.nodes))); histories.delete(active); sel = { l1: null, l2: null, l3: null, step: null }; render(); save();
 });
 $('cmp-subject').addEventListener('change', (e) => { cmpSubject = e.target.value; renderCompare(); });
