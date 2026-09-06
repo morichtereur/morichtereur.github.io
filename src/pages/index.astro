@@ -14,6 +14,7 @@ import fccaControlReview from '../assets/fcca-control-review.png';
 import locationDashboard from '../assets/gbs-location-dashboard.png';
 import tomDashboard from '../assets/gbs-tom-dashboard.png';
 import deckpilotShot from '../assets/deckpilot-exec-summary.png';
+import taxonomyWorkbench from '../assets/taxonomy-workbench.png';
 
 // This array is not the page order. Each card declares a `group`, and the
 // `groups` array below decides which groups render and in what order; within a
@@ -142,6 +143,31 @@ const caseStudies = [
       alt: 'The business-case tool in use, set like a working paper on the site’s bone stock. Under a folio line, a headline reads “One unmeasured number decides this business case”. The verdict at central assumptions is set as one large figure — NPV −€142,931 over five years against a 9% hurdle — over a rule of three supporting figures: 26% odds of a positive NPV across 10,000 Monte Carlo draws, 62% of the variance measurable in a diligence week, and 1.48 measured touches per reworked case.',
       caption:
         'The tool as it runs. Every slider spans only the range the study will defend, and the NPV, the Monte Carlo verdict and the diligence plan all recompute as you drag — the model on the page is the model in the repository.',
+      blend: true,
+    },
+  },
+  {
+    title: 'Taxonomy Workbench',
+    summary:
+      'A finance process reference taxonomy to level 4 with the activity split between local entity, GBS, centre of expertise and automation \u2014 and a workbench that loads any taxonomy, repairs it and compares it against the reference and against APQC, in one browser file.',
+    data: 'Five reference taxonomies, 2,471 rows across Record to Report, Invoice to Pay, Invoice to Cash, Acquire to Retire and Intercompany; APQC PCF 7.4 category 9.0 with its element IDs; SAP S/4HANA Best Practices scope items.',
+    group: 'gbs',
+    problem:
+      'A process taxonomy arrives as a spreadsheet: four levels, an ID column that does not always resolve, a name column that carries routing instructions and conditions, and two tick columns for who does the work. Deciding what goes to a shared-service centre from that sheet means reading two thousand rows and holding the whole tree in your head \u2014 and the decision leaves no trace of why.',
+    build:
+      'One self-contained HTML file with its own .xlsx reader and writer. A dropped sheet goes through the structural repairs \u2014 IDs that do not resolve, parents nobody wrote down, steps numbered under the wrong parent \u2014 then name cleaning, then a rule engine that suggests a destination for every level-3 process and says which rule fired. A step the sheet left without a destination is placed by rule and marked as such, in the tree, in the flow and in the export. Twenty-three systems, answered once, decide whether \u201cautomate\u201d is real for a given step; without the system the suggestion falls back to GBS and says so. Five views: columns, a swimlane process flow with drag-and-drop, an activity-split map, a comparison against the reference for the function, and coverage of APQC\u2019s 46 finance processes with a matcher that is reliable at absence and suggestive at presence. Nothing is uploaded; work stays in the browser and in project files.',
+    stack: ['JavaScript', 'Python', 'APQC PCF 7.4', 'SAP scope items'],
+    metricValue: '12 / 15 / 19',
+    metricLabel: 'of APQC\u2019s 46 finance processes the five taxonomies cover clearly, possibly, not at all \u2014 the gaps are payroll, taxes and planning, which are other functions\u2019 work',
+    implication:
+      'The interesting number is never the GBS share; it is the handoff count. A process that reads as 80% GBS on the tick columns can still cross the line four times, and every crossing is a queue. Laying the steps out in swimlanes turns a split percentage into a picture of who waits for whom, and the placement rules make the argument explicit: a process name decides on its own, its steps only by majority, so one specialist word in twenty steps never moves a process. Where a function runs one process two ways depending on a system, both variants stay and are marked as such \u2014 the systems questionnaire decides which applies, not a merge.',
+    repoUrl: 'https://github.com/morichtereur/taxonomy-workbench',
+    demoUrl: 'https://morichtereur.github.io/taxonomy-dashboard/',
+    figure: {
+      src: taxonomyWorkbench,
+      alt: 'The process flow view for \u201cReview useful lives and residual values\u201d in Acquire to Retire: seven steps under a numbered ruler in four swimlanes labelled Local, GBS, CoE and Automated. The line through the steps changes lane four times, each crossing drawn as a red elbow with a mark; the counter beside the title reads 7 steps, 4 handoffs, 3 lanes.',
+      caption:
+        'The flow view. Each red elbow is a handoff. Drag a step into another lane and the split, the tree and the count follow \u2014 undo covers it.',
       blend: true,
     },
   },

@@ -68,5 +68,6 @@ sync gbs-tom-assignment     tom-dashboard
 sync gbs-business-case      bc-dashboard
 sync gbs-agentic-shift      agentic-shift-dashboard
 sync dax-intelligence       dax-dashboard
+sync taxonomy-workbench     taxonomy-dashboard
 
 exit "$status"
