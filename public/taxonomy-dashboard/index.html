@@ -247,6 +247,41 @@ select.pick.small{font-size:.75rem; padding:.125rem .25rem}
 .lane-btn:hover:not(:disabled){border-color:var(--line-strong); color:var(--ink)}
 .lane-btn:disabled{cursor:default; color:var(--lane); border-color:var(--lane); background:color-mix(in srgb, var(--lane) 8%, var(--panel))}
 
+/* flow inspector, toast, keyboard */
+.flow-body{display:grid; grid-template-columns:minmax(0,1fr) 19.5rem; min-height:0; position:relative}
+.flow-side{border-left:1px solid var(--line); background:var(--panel); overflow:auto; min-height:0; padding:1rem 1.125rem 1.25rem}
+.insp{display:flex; flex-direction:column; gap:.625rem}
+.insp .eyebrow{margin-top:.5rem}
+.insp-name{font-family:var(--serif); font-size:1.0625rem; font-weight:600; line-height:1.25; text-wrap:pretty}
+.insp-meta{font-family:var(--mono); font-size:.5625rem; letter-spacing:.06em; color:var(--ink-2); line-height:1.6}
+.insp-why,.insp-empty,.insp-hint{font-size:.75rem; color:var(--ink-2); margin:0; line-height:1.45}
+.insp-sugg{display:flex; align-items:center; gap:.5rem; font-size:.75rem; color:var(--ink-2); line-height:1.35}
+.insp-sugg .why{flex:1; min-width:0}
+.insp-sugg .apply{appearance:none; border:1px solid var(--accent); background:var(--panel); color:var(--accent); font:inherit; font-size:.6875rem; padding:.125rem .5rem; border-radius:3px; cursor:pointer; flex:none}
+.insp-seg{grid-template-columns:repeat(4,minmax(0,1fr))}
+.insp-seg .chip[aria-pressed="true"]{color:#fff}
+.insp-seg .chip[data-move="gbs"][aria-pressed="true"]{background:var(--gbs)}
+.insp-seg .chip[data-move="local"][aria-pressed="true"]{background:var(--local)}
+.insp-seg .chip[data-move="coe"][aria-pressed="true"]{background:var(--coe)}
+.insp-seg .chip[data-move="auto"][aria-pressed="true"]{background:var(--auto)}
+.insp-row,.insp-acts{display:flex; flex-wrap:wrap; gap:.375rem}
+.act-btn{appearance:none; border:1px solid var(--line); background:var(--panel); color:var(--ink); font:inherit; font-size:.75rem; padding:.3125rem .625rem; border-radius:3px; cursor:pointer; transition:border-color .12s ease, background-color .12s ease}
+.act-btn:hover:not(:disabled){border-color:var(--line-strong); background:var(--bg)}
+.act-btn:disabled{opacity:.4; cursor:default}
+.act-btn.danger{color:var(--flag)} .act-btn.danger:hover:not(:disabled){border-color:var(--flag)}
+.insp-input{font:inherit; font-size:.875rem; width:100%; padding:.375rem .5rem; border:1px solid var(--accent); border-radius:3px; background:var(--panel); color:var(--ink); box-shadow:0 0 0 2px var(--accent-soft)}
+.hand-list{display:flex; flex-direction:column; gap:.25rem}
+.hand-list button{appearance:none; border:1px solid var(--line); background:var(--panel); text-align:left; font:inherit; font-size:.75rem; padding:.375rem .5rem; border-radius:3px; cursor:pointer; display:grid; grid-template-columns:auto 1fr; gap:.125rem .5rem; align-items:baseline; transition:border-color .12s ease}
+.hand-list button:hover{border-color:var(--flag)}
+.hand-list b{font-family:var(--mono); font-size:.5625rem; color:var(--flag); font-weight:600}
+.hand-list .arr{color:var(--flag)}
+.hand-list .nm{grid-column:2; color:var(--ink-2); font-size:.6875rem; line-height:1.3}
+.toast{position:absolute; left:50%; bottom:1rem; transform:translateX(-50%); background:var(--side); color:var(--side-ink); padding:.5rem .875rem; border-radius:4px; font-size:.75rem; display:flex; align-items:center; gap:.875rem; box-shadow:0 8px 24px rgba(20,32,27,.25); z-index:5; white-space:nowrap}
+.toast-undo{appearance:none; border:0; background:none; color:var(--side-accent); font:inherit; font-size:.75rem; text-decoration:underline; cursor:pointer; padding:0}
+.lane.is-over{background:var(--accent-soft) !important}
+.lg-key{width:.625rem; height:.625rem; border:1px solid var(--line-strong); border-radius:2px; background:var(--bg)}
+@media (max-width:1023px){.flow-body{grid-template-columns:1fr} .flow-side{border-left:0; border-top:1px solid var(--line)}}
+
 /* the board */
 .l-gbs{--lane:var(--gbs)} .l-local{--lane:var(--local)} .l-coe{--lane:var(--coe)} .l-auto{--lane:var(--auto)} .l-unassigned{--lane:var(--ink-2)}
 .board{position:relative; display:grid; grid-template-columns:8.75rem 1fr; min-width:max-content; width:max-content; max-width:none; border:1px solid var(--line); border-radius:4px; background:var(--panel); box-shadow:0 1px 3px rgba(20,32,27,.05); overflow:hidden}
@@ -618,15 +653,19 @@ body.dropping::after{content:'Drop to load'; position:fixed; inset:0; z-index:9;
               <button class="linkish" id="flow-browse" title="Open this process in the browse columns">open in browse</button>
             </div>
           </header>
-          <div class="flow-canvas" id="flow-canvas"><p class="empty">Select a process.</p></div>
+          <div class="flow-body">
+            <div class="flow-canvas" id="flow-canvas"><p class="empty">Select a process.</p></div>
+            <aside class="flow-side" id="flow-side" aria-label="Selected step"></aside>
+            <div class="toast" id="flow-toast" hidden><span id="flow-toast-msg"></span><button class="toast-undo" id="flow-toast-undo" type="button">Undo</button></div>
+          </div>
           <footer class="flow-foot">
             <div class="flow-legend">
               <span><i class="lg-line"></i>sequence</span>
               <span><i class="lg-hand"></i>handoff</span>
               <span><i class="lg-inf"></i>placed by rule, not in the sheet</span>
-              <span><i class="lg-drag"></i>drag a step to reorder it or to change its lane</span>
+              <span><i class="lg-drag"></i>drag a step along its lane or into another</span>
+              <span><i class="lg-key"></i>arrows select &middot; shift + arrows move &middot; Enter renames &middot; N adds &middot; Delete removes</span>
             </div>
-            <div class="flow-sel" id="flow-sel"></div>
           </footer>
         </div>
       </section>
@@ -3309,9 +3348,8 @@ function renderFlow() {
 
   const canvas = $('flow-canvas');
   const steps = flowSteps(nodes);
-  const selBox = $('flow-sel');
-  if (flowL3 === null || entry().reference) { canvas.innerHTML = '<p class="empty">Select a process with steps.</p>'; $('flow-stat').innerHTML = ''; selBox.innerHTML = ''; return; }
-  if (!steps.length) { canvas.innerHTML = '<p class="empty">No steps under this process.</p>'; $('flow-stat').innerHTML = ''; selBox.innerHTML = ''; return; }
+  if (flowL3 === null || entry().reference) { canvas.innerHTML = '<p class="empty">Select a process with steps.</p>'; $('flow-stat').innerHTML = ''; $('flow-side').innerHTML = ''; return; }
+  if (!steps.length) { canvas.innerHTML = '<p class="empty">No steps under this process yet. Add the first one in the panel on the right, or drop a sheet.</p>'; $('flow-stat').innerHTML = ''; flowSel = null; renderInspector(nodes, [], () => 'unassigned', []); return; }
 
   const lanes = [...LANES];
   if (steps.some((k) => !nodes[k].place || nodes[k].place === 'unassigned' || nodes[k].place === 'split')) lanes.push(['unassigned', 'Unassigned', 'dash']);
@@ -3343,14 +3381,117 @@ function renderFlow() {
   const fig = (n, label, cls = '') => `<div class="fig${cls}"><b>${n}</b><span>${label}</span></div>`;
   $('flow-stat').innerHTML = fig(steps.length, 'steps') + fig(handoffs, 'handoffs', handoffs ? ' warn' : '') + fig(used, 'lanes');
 
-  if (flowSel !== null && steps.includes(flowSel)) {
-    const k = flowSel;
-    const cur = laneOf(k);
-    selBox.innerHTML = `<span class="who">Step ${pad2(steps.indexOf(k) + 1)}</span><span class="nm">${escape(nodes[k].name)}</span><span class="who">move to</span>` +
-      LANES.map(([d, l]) => `<button type="button" class="lane-btn l-${d}" data-move="${d}"${d === cur ? ' disabled' : ''}>${l}</button>`).join('');
-  } else {
-    selBox.innerHTML = '<span class="who">Select a step to move it without dragging</span>';
+  const hand = [];
+  steps.forEach((k, i) => { if (i && laneOf(k) !== laneOf(steps[i - 1])) hand.push({ i: i + 1, from: laneOf(steps[i - 1]), toLane: laneOf(k), to: k }); });
+  renderInspector(nodes, steps, laneOf, hand);
+}
+
+/* The panel beside the board: the selected step, or the process when
+   nothing is selected. Everything the board can do by dragging, this can do
+   by clicking, and it can also rename, add and remove. */
+const LANE_LABEL = Object.fromEntries(LANES.map(([d, l]) => [d, l]).concat([['unassigned', 'Unassigned']]));
+function renderInspector(nodes, steps, laneOf, hand) {
+  const side = $('flow-side');
+  const k = flowSel !== null && steps.includes(flowSel) ? flowSel : null;
+  const p = nodes[flowL3];
+  if (k === null) {
+    const s = suggest(nodes, flowL3, tools);
+    const where = placesUnder(nodes, flowL3);
+    const agreed = s && where.size === 1 && where.top === s.dest;
+    const perLane = LANES.map(([d, l]) => [l, steps.filter((x) => laneOf(x) === d).length]).filter(([, n]) => n);
+    side.innerHTML = `<div class="insp">
+      <span class="eyebrow">Process</span>
+      <div class="insp-name" id="insp-name">${escape(p.name)}</div>
+      <div class="insp-meta">${escape(p.id)} &middot; ${steps.length} step${steps.length === 1 ? '' : 's'}${perLane.length ? ' &middot; ' + perLane.map(([l, n]) => `${n} ${escape(l)}`).join(' &middot; ') : ''}</div>
+      ${s ? `<div class="insp-sugg"><span class="dest d-${s.dest}">${SHORT[s.dest]}</span><span class="why">${escape(s.why)}</span>${agreed ? '' : `<button type="button" class="apply" data-act="apply-suggestion" data-dest="${s.dest}">Apply</button>`}</div>` : ''}
+      <span class="eyebrow">Handoffs</span>
+      ${hand.length ? `<div class="hand-list">` + hand.map((x) => `<button type="button" data-select="${x.to}"><b>${pad2(x.i)}</b><span>${escape(LANE_LABEL[x.from])} <span class="arr">&rarr;</span> ${escape(LANE_LABEL[x.toLane])}</span><span class="nm">${escape(nodes[x.to].name)}</span></button>`).join('') + `</div>` : '<p class="insp-empty">None. Every step stays in one lane.</p>'}
+      <span class="eyebrow">Edit</span>
+      <div class="insp-acts"><button type="button" class="act-btn" data-act="add-step">+ Add step</button><button type="button" class="act-btn" data-act="rename-process">Rename process</button><button type="button" class="act-btn" data-act="add-process">+ Add process after</button></div>
+      <p class="insp-hint">Click a step on the board to move, rename or remove it. Undo covers every change.</p>
+    </div>`;
+    return;
   }
+  const n = nodes[k];
+  const pos = steps.indexOf(k);
+  const cur = laneOf(k);
+  side.innerHTML = `<div class="insp">
+    <span class="eyebrow">Step ${pad2(pos + 1)} of ${steps.length}</span>
+    <div class="insp-name" id="insp-name">${escape(n.name)}</div>
+    <div class="insp-meta">${escape(n.kind || 'core')} &middot; ${SHORT[n.place || 'unassigned']}${n.inferred ? ' &middot; placed by rule' : ''}${n.added ? ' &middot; added here' : ''}</div>
+    ${n.inferredWhy ? `<p class="insp-why">${escape(n.inferredWhy)}</p>` : ''}
+    <span class="eyebrow">Delivered by</span>
+    <div class="seg insp-seg">${LANES.map(([d, l]) => `<button type="button" class="chip" data-move="${d}" aria-pressed="${d === cur}" title="Deliver this step: ${escape(l)}">${escape(l)}</button>`).join('')}</div>
+    <span class="eyebrow">Position</span>
+    <div class="insp-row"><button type="button" class="act-btn" data-act="left"${pos === 0 ? ' disabled' : ''}>&larr; Earlier</button><button type="button" class="act-btn" data-act="right"${pos === steps.length - 1 ? ' disabled' : ''}>Later &rarr;</button></div>
+    <span class="eyebrow">Edit</span>
+    <div class="insp-acts"><button type="button" class="act-btn" data-act="rename-step">Rename</button><button type="button" class="act-btn" data-act="add-step-after">+ Add step after</button><button type="button" class="act-btn danger" data-act="delete-step">Remove</button></div>
+    <button type="button" class="linkish" data-act="deselect">Back to the process</button>
+  </div>`;
+}
+
+let toastTimer = null;
+function toast(message) {
+  $('flow-toast-msg').textContent = message;
+  $('flow-toast').hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { $('flow-toast').hidden = true; }, 4500);
+}
+
+function inspectorRename(i) {
+  const nodes = entry().nodes;
+  const box = $('insp-name');
+  if (!box || !nodes[i]) return;
+  const original = nodes[i].name;
+  box.innerHTML = `<input class="insp-input" id="insp-edit" value="${escape(original)}" aria-label="Name">`;
+  const input = $('insp-edit');
+  input.focus(); input.select();
+  let done = false;
+  const finish = (commit) => {
+    if (done) return; done = true;
+    const name = input.value.replace(/\s+/g, ' ').trim();
+    if (commit && name && name !== original) { apply(nodes.map((n, k) => (k === i ? { ...n, name, renamed: true } : n)), { structural: false }); toast('Renamed'); }
+    else renderFlow();
+  };
+  input.addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Enter') { e.preventDefault(); finish(true); } if (e.key === 'Escape') { e.preventDefault(); finish(false); } });
+  input.addEventListener('blur', () => finish(true));
+}
+
+function addStepAfter(k) {
+  const nodes = entry().nodes;
+  if (flowL3 === null) return;
+  const at = k === null ? subtree(nodes, flowL3) : subtree(nodes, k);
+  const place = k === null ? (flowSteps(nodes).length ? nodes[flowSteps(nodes).at(-1)].place : 'gbs') : nodes[k].place;
+  const fresh = { level: 4, id: '', name: 'New step', place: place || 'gbs', basePlace: place || 'gbs', kind: 'core', added: true };
+  apply([...nodes.slice(0, at), fresh, ...nodes.slice(at)]);
+  flowSel = at;
+  renderFlow();
+  toast('Step added');
+  inspectorRename(at);
+}
+
+function removeStep(k) {
+  const nodes = entry().nodes;
+  if (!nodes[k] || nodes[k].level !== 4) return;
+  const name = nodes[k].name;
+  apply(removeAt(nodes, k));
+  flowSel = null;
+  renderFlow();
+  toast(`Removed \u201c${name}\u201d`);
+}
+
+function addProcessAfter() {
+  const nodes = entry().nodes;
+  if (flowL3 === null) return;
+  const at = subtree(nodes, flowL3);
+  const l3 = { level: 3, id: '', name: 'New process', added: true };
+  const step = { level: 4, id: '', name: 'New step', place: 'gbs', basePlace: 'gbs', kind: 'core', added: true };
+  apply([...nodes.slice(0, at), l3, step, ...nodes.slice(at)]);
+  flowL3 = at; flowSel = null;
+  sel = { l1: parentOfIndex(entry().nodes, at, 1), l2: parentOfIndex(entry().nodes, at, 2), l3: at, step: null };
+  renderFlow();
+  toast('Process added');
+  inspectorRename(at);
 }
 
 /* The line through the steps in order: straight within a lane, an elbow
@@ -3424,9 +3565,14 @@ function moveStep(k, dest, pos) {
     insertAt = k; // dropped onto its own slot: only the lane may have changed
   }
   const next = [...rest.slice(0, insertAt), ...moving, ...rest.slice(insertAt)];
+  const laneChanged = nodes[k].place !== dest;
+  const orderChanged = insertAt !== k;
   flowSel = insertAt;
   flowL3 = flowL3 > k && flowL3 >= end ? flowL3 : flowL3;
   apply(next);
+  if (laneChanged && orderChanged) toast(`Moved to ${LANE_LABEL[dest] || dest} and reordered`);
+  else if (laneChanged) toast(`Moved to ${LANE_LABEL[dest] || dest}`);
+  else if (orderChanged) toast('Reordered');
 }
 
 /* ---- split map ------------------------------------------------------------ */
@@ -3812,12 +3958,13 @@ $('flow-canvas').addEventListener('dragstart', (e) => {
   card.classList.add('is-dragging'); document.body.classList.add('is-dragging');
   e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', String(dragging));
 });
-$('flow-canvas').addEventListener('dragend', () => { dragging = null; document.body.classList.remove('is-dragging'); for (const s of document.querySelectorAll('.slot.is-over')) s.classList.remove('is-over'); });
+$('flow-canvas').addEventListener('dragend', () => { dragging = null; document.body.classList.remove('is-dragging'); for (const s of document.querySelectorAll('.slot.is-over, .lane.is-over')) s.classList.remove('is-over'); });
 $('flow-canvas').addEventListener('dragover', (e) => {
   const slot = e.target.closest('.slot'); if (!slot || dragging === null) return;
   e.preventDefault(); e.dataTransfer.dropEffect = 'move';
-  for (const s of document.querySelectorAll('.slot.is-over')) s.classList.remove('is-over');
+  for (const s of document.querySelectorAll('.slot.is-over, .lane.is-over')) s.classList.remove('is-over');
   slot.classList.add('is-over');
+  slot.closest('.lane')?.classList.add('is-over');
 });
 $('flow-canvas').addEventListener('drop', (e) => {
   const slot = e.target.closest('.slot'); if (!slot) return;
@@ -3831,12 +3978,30 @@ $('flow-canvas').addEventListener('keydown', (e) => {
   const card = e.target.closest('.fcard'); if (!card) return;
   if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); flowSel = Number(card.dataset.step); renderFlow(); }
 });
-$('flow-sel').addEventListener('click', (e) => {
-  const b = e.target.closest('[data-move]'); if (!b || flowSel === null) return;
-  const visible = flowSteps(entry().nodes);
-  const from = visible.indexOf(flowSel); if (from < 0) return;
-  moveStep(flowSel, b.dataset.move, from);
+$('flow-side').addEventListener('click', (e) => {
+  const nodes = entry().nodes;
+  const visible = flowSteps(nodes);
+  const mv = e.target.closest('[data-move]');
+  if (mv && flowSel !== null) { const from = visible.indexOf(flowSel); if (from >= 0) moveStep(flowSel, mv.dataset.move, from); return; }
+  const pick = e.target.closest('[data-select]');
+  if (pick) { flowSel = Number(pick.dataset.select); renderFlow(); document.querySelector(`.fcard[data-step="${flowSel}"]`)?.scrollIntoView({ block: 'nearest', inline: 'center' }); return; }
+  const act = e.target.closest('[data-act]'); if (!act) return;
+  const pos = flowSel === null ? -1 : visible.indexOf(flowSel);
+  switch (act.dataset.act) {
+    case 'left': if (pos > 0) moveStep(flowSel, nodes[flowSel].place, pos - 1); break;
+    case 'right': if (pos >= 0 && pos < visible.length - 1) moveStep(flowSel, nodes[flowSel].place, pos + 2); break;
+    case 'rename-step': if (flowSel !== null) inspectorRename(flowSel); break;
+    case 'add-step-after': addStepAfter(flowSel); break;
+    case 'add-step': addStepAfter(null); break;
+    case 'delete-step': if (flowSel !== null) removeStep(flowSel); break;
+    case 'deselect': flowSel = null; renderFlow(); break;
+    case 'rename-process': if (flowL3 !== null) inspectorRename(flowL3); break;
+    case 'add-process': addProcessAfter(); break;
+    case 'apply-suggestion': if (flowL3 !== null) { apply(place(nodes, flowL3, act.dataset.dest), { structural: false }); toast(`Process sent to ${LANE_LABEL[act.dataset.dest] || act.dataset.dest}`); } break;
+    default: break;
+  }
 });
+$('flow-toast-undo').addEventListener('click', () => { $('flow-toast').hidden = true; $('undo').click(); });
 $('flow-prev').addEventListener('click', () => stepFlow(-1));
 $('flow-next').addEventListener('click', () => stepFlow(1));
 
@@ -3910,6 +4075,33 @@ document.addEventListener('keydown', (e) => {
   if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA' || e.target.isContentEditable) return;
   if (e.key === '?') { showView('help'); return; }
   if (e.key === '/') { e.preventDefault(); showView('browse'); $('q').focus(); return; }
+  if (view === 'flow') {
+    const nodes = entry().nodes;
+    const steps = flowSteps(nodes);
+    if (!steps.length && e.key.toLowerCase() !== 'n') return;
+    const pos = flowSel === null ? -1 : steps.indexOf(flowSel);
+    const lane = (k) => nodes[k].place || 'unassigned';
+    if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+      e.preventDefault();
+      const right = e.key === 'ArrowRight';
+      if (e.shiftKey && pos >= 0) { if (right && pos < steps.length - 1) moveStep(flowSel, lane(flowSel), pos + 2); else if (!right && pos > 0) moveStep(flowSel, lane(flowSel), pos - 1); }
+      else { const n = pos < 0 ? 0 : Math.max(0, Math.min(steps.length - 1, pos + (right ? 1 : -1))); flowSel = steps[n]; renderFlow(); document.querySelector(`.fcard[data-step="${flowSel}"]`)?.scrollIntoView({ block: 'nearest', inline: 'nearest' }); }
+      return;
+    }
+    if ((e.key === 'ArrowUp' || e.key === 'ArrowDown') && pos >= 0) {
+      e.preventDefault();
+      const order = LANES.map(([d]) => d);
+      const at = order.indexOf(lane(flowSel));
+      const to = at + (e.key === 'ArrowDown' ? 1 : -1);
+      if (to >= 0 && to < order.length) moveStep(flowSel, order[to], pos);
+      return;
+    }
+    if (e.key === 'Enter' && pos >= 0) { e.preventDefault(); inspectorRename(flowSel); return; }
+    if ((e.key === 'Delete' || e.key === 'Backspace') && pos >= 0) { e.preventDefault(); removeStep(flowSel); return; }
+    if (e.key.toLowerCase() === 'n') { e.preventDefault(); addStepAfter(pos >= 0 ? flowSel : null); return; }
+    if (e.key === 'Escape') { flowSel = null; renderFlow(); return; }
+    return;
+  }
   if (view !== 'browse') return;
   const nodes = entry().nodes;
   const move = e.shiftKey;
