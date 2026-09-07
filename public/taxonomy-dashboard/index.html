@@ -3466,6 +3466,93 @@ const REFERENCE = [
   ] },
 ];
 
+/* ---- the design around the core -------------------------------------------- */
+
+/* A process in a delivery design is more than its core steps. Something
+   starts it - a request, a calendar, a system event, an inbound document -
+   a check sits in it, and something closes it: evidence attached, the
+   requester told, the calendar updated. The core steps above are written per
+   process; the design around them is written once per way of starting, and
+   names the system the block runs on. */
+const TRIGGER = {
+  request: () => [
+    ['Receive request through the request channel with reference and attachments', G],
+    ['Check request for completeness and authorisation', G],
+    ['Return incomplete request to the requester', G],
+  ],
+  calendar: () => [['Confirm the task is due per the calendar and prerequisites are complete', G]],
+  event: (sys) => [[`Receive trigger from ${sys}`, A]],
+  inbound: (sys) => [[`Receive the document or file in ${sys}`, G]],
+  none: () => [],
+};
+const CLOSE = {
+  request: (sys) => [[`Record completion and attach evidence in ${sys}`, G], ['Notify the requester and close the request', G]],
+  calendar: (sys) => [[`Attach evidence in ${sys}`, G], ['Report completion in the calendar', G]],
+  event: () => [['Log the run and its exceptions', A], ['Report exceptions to the process owner', G]],
+  inbound: (sys) => [[`File the document in ${sys}`, A], ['Confirm processing to the sender', G]],
+  none: () => [],
+};
+const CONTROL = /^(approve|check|validate|verify|review|confirm|perform four-eye|reconcile|certify)/i;
+const OWN_SHAPE = new Set(['create', 'change', 'deactivate', 'inquiry', 'audit', 'close', 'report']);
+
+/* How each block starts, and the system it runs on. */
+const BLOCK = {
+  'Planning master data and models': ['request', 'the planning tool'],
+  'Budgeting': ['calendar', 'the planning tool'],
+  'Forecasting': ['calendar', 'the planning tool'],
+  'Cost accounting': ['request', 'the ERP'],
+  'Cost management and profitability': ['request', 'the reporting layer'],
+  'Performance reporting': ['calendar', 'the reporting layer'],
+  'Capital planning': ['calendar', 'the planning tool'],
+  'Treasury master data and policy': ['request', 'the treasury system'],
+  'Cash management': ['calendar', 'the treasury system'],
+  'Bank account management': ['request', 'the treasury system'],
+  'Payments and bank connectivity': ['calendar', 'the treasury system'],
+  'Debt and investment': ['request', 'the treasury system'],
+  'Financial risk and hedging': ['calendar', 'the treasury system'],
+  'Guarantees and fraud': ['request', 'the treasury system'],
+  'Treasury close and reporting': ['calendar', 'the ERP'],
+  'Employee master data': ['request', 'the HR system'],
+  'Onboarding and offboarding': ['inbound', 'the HR system'],
+  'Time and absence': ['event', 'the time system'],
+  'Payroll processing': ['calendar', 'the payroll system'],
+  'Payroll payments and postings': ['calendar', 'the payroll system'],
+  'Benefits and deductions': ['request', 'the payroll system'],
+  'Payroll taxes and statutory reporting': ['calendar', 'the payroll system'],
+  'Payroll queries and reporting': ['request', 'the payroll system'],
+};
+/* Processes that start differently from their block. */
+const PROCESS = {
+  'Record and approve working time': 'none',
+  'Process absences and leave': 'none',
+  'Manage petty cash': 'none',
+  'Handle payment fraud cases': 'event',
+  'Handle payment rejections': 'event',
+  'Process the treasury bank statement': 'event',
+  'Prepare the daily cash position': 'event',
+  'Execute cash pooling and sweeps': 'event',
+  'Manage short-term investments': 'calendar',
+  'Execute hedges': 'calendar',
+  'Onboard new hire': 'inbound',
+  'Offboard leaver': 'inbound',
+  'Process organisational changes': 'request',
+  'Run the rolling forecast cycle': 'calendar',
+  'Collect budget submissions': 'inbound',
+};
+
+function design(core, block, name, shape) {
+  const [blockTrigger, system] = BLOCK[block] || ['request', 'the system'];
+  const trigger = PROCESS[name] || blockTrigger;
+  if (OWN_SHAPE.has(shape)) return core;
+  // A core that opens with the requester's own step keeps it in front of
+  // the handling: the request is raised before it is received.
+  let lead = [];
+  if (core.length && core[0][1] === L && /^(request|submit|raise|collect|hold)/i.test(core[0][0])) { lead = [core[0]]; core = core.slice(1); }
+  let out = lead.concat(TRIGGER[trigger](system), core);
+  if (!core.some(([n]) => CONTROL.test(n))) out.push(['Perform four-eye check of the result', G]);
+  return out.concat(CLOSE[trigger](system));
+}
+
 /* ---- expansion ----------------------------------------------------------- */
 
 /** Rows in the shape the pipeline reads: level, id, name, place. */
@@ -3481,7 +3568,8 @@ function referenceRows(member) {
       processes.forEach(([l3name, shape, subject, source], k) => {
         const id3 = `${id2}.${k + 1}`;
         rows.push({ level: 3, id: id3, name: l3name, authored: true, source });
-        const steps = Array.isArray(shape) ? shape : SHAPES[shape](subject);
+        const core = Array.isArray(shape) ? shape : SHAPES[shape](subject);
+        const steps = design(core, l2name, l3name, Array.isArray(shape) ? null : shape);
         steps.forEach(([name, place], s) => {
           rows.push({ level: 4, id: `${id3}.${s + 1}`, name, authored: true, place, basePlace: place, source });
         });
