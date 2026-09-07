@@ -282,6 +282,35 @@ select.pick.small{font-size:.75rem; padding:.125rem .25rem}
 .lg-key{width:.625rem; height:.625rem; border:1px solid var(--line-strong); border-radius:2px; background:var(--bg)}
 @media (max-width:1023px){.flow-body{grid-template-columns:1fr} .flow-side{border-left:0; border-top:1px solid var(--line)}}
 
+/* gaps, handoffs, print */
+.hand-n{color:var(--flag); font-weight:600}
+.gaps{display:grid; grid-template-columns:repeat(auto-fit,minmax(20rem,1fr)); gap:1.25rem; margin-top:.75rem}
+.gap-head{font-family:var(--mono); font-size:.5625rem; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-2); padding-bottom:.375rem; border-bottom:1px solid var(--line-strong); margin-bottom:.25rem}
+.gap-row{display:grid; grid-template-columns:1fr auto auto; gap:.75rem; align-items:baseline; padding:.3125rem 0; border-bottom:1px solid var(--line); font-size:.8125rem}
+.gap-note{font-family:var(--mono); font-size:.5625rem; color:var(--ink-2); white-space:nowrap}
+.h2row .linkish + .linkish{margin-left:1rem}
+@page{size:landscape; margin:12mm}
+@media print{
+  body{overflow:visible; background:#fff}
+  .shell{display:block; height:auto}
+  .side,.top,.mix,.filters,.flow-controls,.flow-foot,.flow-side,.toast,.h2row .pickwrap,.h2row .linkish,.legend,.notes{display:none !important}
+  .main{display:block}
+  .work{overflow:visible; position:static}
+  .view{display:none; position:static; overflow:visible}
+  .view.is-on{display:block}
+  .flow{display:block; height:auto}
+  .flow-head{border:0; padding:0 0 .75rem}
+  .flow-body{display:block}
+  .flow-canvas{overflow:visible; padding:0}
+  .board{box-shadow:none; transform-origin:0 0}
+  .flow-canvas .board{transform:scale(var(--print-scale, 1))}
+  .fcard{box-shadow:none; break-inside:avoid}
+  .map-cols{grid-template-columns:repeat(3,1fr)}
+  .mcol,.card{break-inside:avoid}
+  .card-acts,.mcol-tools,.card-sugg .apply{display:none !important}
+  .page{padding:0; max-width:none}
+}
+
 /* the board */
 .l-gbs{--lane:var(--gbs)} .l-local{--lane:var(--local)} .l-coe{--lane:var(--coe)} .l-auto{--lane:var(--auto)} .l-unassigned{--lane:var(--ink-2)}
 .board{position:relative; display:grid; grid-template-columns:8.75rem 1fr; min-width:max-content; width:max-content; max-width:none; border:1px solid var(--line); border-radius:4px; background:var(--panel); box-shadow:0 1px 3px rgba(20,32,27,.05); overflow:hidden}
@@ -657,6 +686,7 @@ body.dropping::after{content:'Drop to load'; position:fixed; inset:0; z-index:9;
               <label class="pickwrap">Process <select class="pick" id="flow-l3"></select></label>
               <label class="check"><input type="checkbox" id="flow-handling"> handling steps</label>
               <button class="linkish" id="flow-browse" title="Open this process in the browse columns">open in browse</button>
+              <button class="linkish" id="flow-print" title="Print this flow, or save it as PDF">print</button>
             </div>
           </header>
           <div class="flow-body">
@@ -678,7 +708,7 @@ body.dropping::after{content:'Drop to load'; position:fixed; inset:0; z-index:9;
 
       <section class="view" data-view="split">
         <div class="page">
-          <div class="h2row"><h2>Activity split</h2><label class="pickwrap">Show <select class="pick" id="map-filter"><option value="all">All processes</option><option value="disagree">Where the rules disagree with the baseline</option><option value="norule">Where no rule fires</option><option value="moved">Moved from baseline</option><option value="gbs">Suggested GBS</option><option value="local">Suggested Local</option><option value="coe">Suggested CoE</option><option value="auto">Suggested Automate</option></select></label><button class="linkish" id="apply-all">Apply all suggestions</button></div>
+          <div class="h2row"><h2>Activity split</h2><label class="pickwrap">Show <select class="pick" id="map-filter"><option value="all">All processes</option><option value="disagree">Where the rules disagree with the baseline</option><option value="norule">Where no rule fires</option><option value="moved">Moved from baseline</option><option value="handoffs">Three or more handoffs</option><option value="gbs">Suggested GBS</option><option value="local">Suggested Local</option><option value="coe">Suggested CoE</option><option value="auto">Suggested Automate</option></select></label><button class="linkish" id="apply-all">Apply all suggestions</button><button class="linkish" id="map-print" title="Print this view, or save it as PDF">Print</button></div>
           <p class="lead">Blocks across, processes beneath. Click a destination on a process to send it and every step under it; click one on a block to send the whole block. The rule that fires is shown, and undo covers everything.</p>
           <div class="legend"><span class="mk"><i class="s-gbs"></i>GBS</span><span class="mk"><i class="s-local"></i>Local</span><span class="mk"><i class="s-coe"></i>CoE</span><span class="mk"><i class="s-auto"></i>Automated</span></div>
           <div id="map"></div>
@@ -701,6 +731,7 @@ body.dropping::after{content:'Drop to load'; position:fixed; inset:0; z-index:9;
           </div>
           <p class="status" id="cmp-hint" hidden></p>
           <figure class="exhibit" id="cmp-blocks-exhibit"><div class="exhibit-head"><span class="tag">Exhibit 3</span><span class="ttl">Level-2 blocks, yours beside the reference</span><span class="note">paired by name where a pair exists</span></div><div class="exhibit-body"><div id="cmp-blocks"></div></div></figure>
+          <figure class="exhibit" id="cmp-gaps-exhibit" hidden><div class="exhibit-head"><span class="tag">Exhibit 3b</span><span class="ttl">Processes the reference has and yours does not, and the other way round</span><span class="note">paired on the words of the name; a pair needs a third of them in common</span></div><div class="exhibit-body"><div class="model-top" id="cmp-gap-stats"></div><div class="gaps" id="cmp-gaps"></div></div></figure>
           <figure class="exhibit" id="cov-exhibit">
             <div class="exhibit-head"><span class="tag">Exhibit 4</span><span class="ttl">Coverage of APQC's 46 finance processes</span>
               <span class="note">
@@ -4600,6 +4631,15 @@ function moveStep(k, dest, pos) {
 
 /* ---- split map ------------------------------------------------------------ */
 
+/* Handoffs of a process: lane changes along its core steps, the same count
+   the flow shows with handling steps hidden. */
+function handoffsOf(nodes, i) {
+  const steps = children(nodes, i, 4).filter((k) => nodes[k].kind !== 'handling');
+  let n = 0;
+  for (let s = 1; s < steps.length; s++) if ((nodes[steps[s]].place || 'unassigned') !== (nodes[steps[s - 1]].place || 'unassigned')) n++;
+  return n;
+}
+
 function renderMap() {
   const nodes = entry().nodes;
   variants = variantSet(nodes);
@@ -4610,29 +4650,32 @@ function renderMap() {
     for (const j of children(nodes, i, 2)) {
       const block = placesUnder(nodes, j);
       const cards = [];
+      let blockHandoffs = 0;
       for (const k of children(nodes, j, 3)) {
         const where = placesUnder(nodes, k);
         if (!where.total) continue;
         const s = suggestions.get(k);
         const agreed = s && where.size === 1 && where.top === s.dest;
+        const hand = handoffsOf(nodes, k);
+        blockHandoffs += hand;
         if (mapFilter !== 'all') {
           let moved = false;
           for (let x = k + 1, stop = subtree(nodes, k); x < stop; x++) if (nodes[x].place && nodes[x].basePlace && nodes[x].place !== nodes[x].basePlace) { moved = true; break; }
           const keep = (mapFilter === 'disagree' && s && !agreed) || (['gbs', 'local', 'coe', 'auto'].includes(mapFilter) && s && s.dest === mapFilter) ||
-            (mapFilter === 'added' && nodes[k].added) || (mapFilter === 'moved' && moved) || (mapFilter === 'norule' && !s);
+            (mapFilter === 'added' && nodes[k].added) || (mapFilter === 'moved' && moved) || (mapFilter === 'norule' && !s) || (mapFilter === 'handoffs' && hand >= 3);
           if (!keep) continue;
         }
         const sugg = s
           ? `<div class="card-sugg" title="${escape(s.why)}"><span class="sd d-${s.dest}">${SHORT[s.dest]}</span><span class="sw">${escape(s.why)}</span>` +
             (agreed ? '' : `<button class="apply" data-apply="${k}" data-dest="${s.dest}">apply</button>`) + `</div>`
           : `<div class="card-sugg"><span class="sw">no rule fires; baseline split shown</span></div>`;
-        cards.push(`<div class="card${agreed ? ' is-agreed' : ''}" data-i="${k}"><div class="card-top"><span class="card-name">${escape(nodes[k].name)}${variants.has(k) ? '<span class="tag-var" title="Tool-dependent variant of one process">variant</span>' : ''}</span><button class="linkish tiny" data-flow="${k}" title="Open in process flow">flow</button><span class="card-n">${where.total}</span></div>` +
+        cards.push(`<div class="card${agreed ? ' is-agreed' : ''}" data-i="${k}"><div class="card-top"><span class="card-name">${escape(nodes[k].name)}${variants.has(k) ? '<span class="tag-var" title="Tool-dependent variant of one process">variant</span>' : ''}</span><button class="linkish tiny" data-flow="${k}" title="Open in process flow">flow</button><span class="card-n">${where.total}${hand ? ` &middot; <b class="hand-n" title="handoffs between lanes along the core steps">${hand}&nbsp;handoff${hand > 1 ? 's' : ''}</b>` : ''}</span></div>` +
           bar(where, 'card-bar') + sugg + `<div class="card-acts"><div class="seg">` +
           DESTS.map(([d, l]) => `<button class="chip" data-send="${d}" data-at="${k}" aria-pressed="${where.size === 1 && where.top === d}" title="Send this process and every step to ${l}">${icon(DEST_ICON[d])}${SHORT[d]}</button>`).join('') +
           `</div></div></div>`);
       }
       if (!cards.length) continue;
-      cols.push(`<div class="mcol"><div class="mcol-head" data-i="${j}"><span class="mcol-name">${escape(nodes[j].name)}</span><span class="mcol-n">${block.total} &middot; ${Math.round(((block.counts.get('gbs') || 0) + (block.counts.get('split') || 0)) / (block.total || 1) * 100)}% GBS</span></div>${bar(block, 'mcol-bar')}` +
+      cols.push(`<div class="mcol"><div class="mcol-head" data-i="${j}"><span class="mcol-name">${escape(nodes[j].name)}</span><span class="mcol-n">${block.total} &middot; ${Math.round(((block.counts.get('gbs') || 0) + (block.counts.get('split') || 0)) / (block.total || 1) * 100)}% GBS${blockHandoffs ? ` &middot; <b class="hand-n">${blockHandoffs} handoffs</b>` : ''}</span></div>${bar(block, 'mcol-bar')}` +
         `<div class="mcol-tools"><span class="lbl">Whole block</span><div class="seg mini">` + DESTS.map(([d, l]) => `<button class="chip" data-send="${d}" data-at="${j}" aria-pressed="${block.size === 1 && block.top === d}" title="Send every process in this block to ${l}">${SHORT[d]}</button>`).join('') + `</div><button class="linkish" data-revert="${j}">revert</button></div>` +
         `<div class="cards">${cards.join('')}</div></div>`);
     }
@@ -4720,6 +4763,31 @@ function renderCompare() {
   const theirs = reference ? l2bags(reference.nodes) : [];
   const taken = new Set();
   const gbs = (w) => Math.round(((w.counts.get('gbs') || 0) + (w.counts.get('split') || 0)) / (w.total || 1) * 100);
+  // Process by process: every reference process beside the closest of
+  // yours, and yours that the reference does not have. Matched on the
+  // words of the name, the same way blocks are paired.
+  const procs = (nodes) => children(nodes, null, 1).flatMap((i) => children(nodes, i, 2)).flatMap((b) => children(nodes, b, 3)).map((k) => ({ index: k, name: nodes[k].name, words: new Set(tokens(nodes[k].name)), where: placesUnder(nodes, k) }));
+  if (reference) {
+    const yours = procs(subject.nodes);
+    const refs = procs(reference.nodes);
+    const used = new Set();
+    const pairs = refs.map((r) => {
+      let best = null, score = 0;
+      for (const y of yours) { if (used.has(y.index)) continue; const v = jaccard(r.words, y.words); if (v > score) { score = v; best = y; } }
+      if (best && score >= 0.34) { used.add(best.index); return { r, y: best, score }; }
+      return { r, y: null, score: 0 };
+    });
+    const missing = pairs.filter((p) => !p.y);
+    const extra = yours.filter((y) => !used.has(y.index));
+    $('cmp-gap-stats').innerHTML = [['paired', pairs.length - missing.length, 'reference processes with a match in yours'], ['not in yours', missing.length, 'reference processes without a match'], ['only in yours', extra.length, 'your processes the reference does not have']]
+      .map(([k, n, d]) => `<div class="stat"><span class="n">${n}</span><span class="k">${k}</span><span class="sub">${d}</span></div>`).join('');
+    const row = (name, note, i, cls = '') => `<div class="gap-row ${cls}"><span class="gap-name">${escape(name)}</span><span class="gap-note">${note}</span>${i !== null ? `<button type="button" class="linkish tiny" data-gap="${i}">open</button>` : '<span></span>'}</div>`;
+    $('cmp-gaps').innerHTML =
+      (missing.length ? `<div class="gap-col"><div class="gap-head">In the reference, not in yours</div>${missing.map((p) => row(p.r.name, `${p.r.where.total} steps &middot; ${SHORT[p.r.where.top] || ''}`, null)).join('')}</div>` : '') +
+      (extra.length ? `<div class="gap-col"><div class="gap-head">In yours, not in the reference</div>${extra.map((y) => row(y.name, `${y.where.total} steps &middot; ${SHORT[y.where.top] || ''}`, y.index)).join('')}</div>` : '') +
+      (!missing.length && !extra.length ? '<p class="empty">Every process pairs up.</p>' : '');
+  } else { $('cmp-gap-stats').innerHTML = ''; $('cmp-gaps').innerHTML = ''; }
+  $('cmp-gaps-exhibit').hidden = !reference;
   $('cmp-blocks').innerHTML = !reference ? '' : mine.map((b) => {
     let best = null, score = 0;
     for (const t of theirs) { if (taken.has(t.index)) continue; const v = jaccard(b.words, t.words); if (v > score) { score = v; best = t; } }
@@ -5080,6 +5148,13 @@ $('reset').addEventListener('click', () => {
   library.set(active, measure(build(entry().label, active, member.nodes))); histories.delete(active); sel = { l1: null, l2: null, l3: null, step: null }; render(); save();
 });
 $('cmp-subject').addEventListener('change', (e) => { cmpSubject = e.target.value; renderCompare(); });
+$('cmp-gaps').addEventListener('click', (e) => { const b = e.target.closest('[data-gap]'); if (!b) return; if (library.has(cmpSubject)) { active = cmpSubject; } const i = Number(b.dataset.gap), nodes = entry().nodes; sel = { l1: parentOfIndex(nodes, i, 1), l2: parentOfIndex(nodes, i, 2), l3: i, step: null }; render(); showView('browse'); });
+$('flow-print').addEventListener('click', () => window.print());
+// The board is scaled to the printable width, and the wire is drawn on the
+// unscaled layout, so the lines stay on the cards.
+window.addEventListener('beforeprint', () => { const b = $('lanes'); if (b) b.style.setProperty('--print-scale', String(Math.min(1, 1040 / b.scrollWidth))); });
+window.addEventListener('afterprint', () => { const b = $('lanes'); if (b) b.style.removeProperty('--print-scale'); });
+$('map-print').addEventListener('click', () => window.print());
 $('cmp-fn').addEventListener('change', (e) => { const m = library.get(cmpSubject); if (m) { m.fn = e.target.value; renderCompare(); renderCoverage(); } });
 $('cmp-with').addEventListener('change', (e) => { cmpWith = e.target.value; renderCompare(); });
 $('cov-show').addEventListener('change', renderCoverage);
