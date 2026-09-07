@@ -28,7 +28,7 @@
   --ink:#14201b; --ink-2:#4f5953;
   --accent:#146b54; --accent-2:#0d4c3b; --accent-soft:rgba(20,107,84,.12);
   --flag:#8a3324; --flag-soft:rgba(138,51,36,.10);
-  --gbs:#146b54; --local:#2f3a35; --split:#8fb3a4; --none:#d5dad2; --coe:#b7791f; --auto:#4a7fa5;
+  --gbs:#146b54; --local:#2f3a35; --split:#8fb3a4; --none:#d5dad2; --coe:#9a6414; --auto:#3d6f95;
   --ui:'Archivo','Helvetica Neue',Arial,sans-serif;
   --serif:'Source Serif 4',Georgia,'Times New Roman',serif;
   --mono:'IBM Plex Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
@@ -200,6 +200,8 @@ a{color:var(--accent)}
 /* filters and ordering */
 .filters{display:flex; flex-wrap:wrap; align-items:center; gap:.5rem 1rem; padding:.5rem 1.25rem; background:var(--panel); border-bottom:1px solid var(--line)}
 .filters .lbl{font-family:var(--mono); font-size:.625rem; letter-spacing:.12em; text-transform:uppercase; color:var(--ink-2)}
+.filter-else{font-size:.75rem; color:var(--ink-2); display:flex; flex-wrap:wrap; gap:.25rem .5rem; align-items:center}
+.filter-else .linkish{font-size:.75rem}
 .filter-n{font-family:var(--mono); font-size:.625rem; letter-spacing:.06em; color:var(--accent)}
 select.pick.small{font-size:.75rem; padding:.125rem .25rem}
 .side-label-row{display:flex; justify-content:space-between; align-items:center; padding-right:1.125rem}
@@ -329,7 +331,7 @@ select.pick.small{font-size:.75rem; padding:.125rem .25rem}
 .gap-row .linkish{text-decoration:none; color:var(--ink)} .gap-row .linkish:hover{text-decoration:underline}
 
 /* consulting edition: a quieter palette */
-html[data-edition="consulting"]{--side:#141a20; --side-2:#1b232b; --side-accent:#9dbbd6; --accent:#1f4e79; --accent-2:#163a5b; --accent-soft:rgba(31,78,121,.12); --gbs:#1f4e79; --split:#8fa9c2; --auto:#3d8f8f; --flag:#a63d2f}
+html[data-edition="consulting"]{--side:#141a20; --side-2:#1b232b; --side-accent:#9dbbd6; --accent:#1f4e79; --accent-2:#163a5b; --accent-soft:rgba(31,78,121,.12); --gbs:#1f4e79; --split:#8fa9c2; --auto:#2f7a7a; --flag:#a63d2f}
 html[data-edition="consulting"] .brand b{letter-spacing:-.01em}
 
 /* one look for every secondary action */
@@ -594,22 +596,45 @@ select.pick{font:inherit; font-family:var(--ui); font-size:.8125rem; text-transf
 
 body.dropping::after{content:'Drop to load'; position:fixed; inset:0; z-index:9; display:flex; align-items:center; justify-content:center; background:rgba(20,107,84,.10); border:2px dashed var(--accent); font-family:var(--mono); font-size:.875rem; letter-spacing:.08em; text-transform:uppercase; color:var(--accent); pointer-events:none}
 
-@media (max-width:64rem){
+/* Tablets in landscape and small laptops: a narrower sidebar, no strips. */
+@media (max-width:80rem) and (min-width:48rem){
+  .shell{grid-template-columns:13rem 1fr}
+  .tx svg{display:none}
+  .tx{padding-top:.5rem; padding-bottom:.5rem}
+  .brand span{display:none}
+  .notes{grid-template-columns:1fr 1fr}
+  .cols{grid-template-columns:1fr 1.2fr 1.4fr 1.8fr}
+}
+/* Tablets in portrait and phones: the sidebar becomes a compact band above the content. */
+@media (max-width:47.99rem){
   body{overflow:auto}
   .shell{grid-template-columns:1fr; grid-template-rows:auto; height:auto}
-  .side{flex-direction:row; flex-wrap:wrap; align-items:flex-start; overflow:visible}
-  .brand{flex:1 1 100%}
-  .side-section{flex:1 1 14rem}
-  .side-foot{flex:1 1 100%; margin-top:0}
+  .side{display:block; overflow:visible}
+  .brand{padding:.75rem 1rem .5rem}
+  .brand span{display:none}
+  .side-section{padding:.5rem 0 .25rem}
+  .side-list{display:flex; gap:.375rem; overflow-x:auto; padding:0 .75rem .5rem; scrollbar-width:thin}
+  .side-list li{flex:0 0 auto}
+  .tx{display:flex; gap:.5rem; align-items:baseline; padding:.375rem .625rem; border:1px solid var(--side-line); border-radius:3px; width:auto}
+  .tx.is-on{box-shadow:none; border-color:var(--side-accent)}
+  .tx svg{display:none}
+  .tx-name{white-space:nowrap}
+  .views{display:flex; flex-wrap:wrap; gap:.25rem; padding:0 .75rem .5rem}
+  .view-btn{width:auto; padding:.375rem .625rem; border:1px solid var(--side-line); border-radius:3px}
+  .side-foot{display:flex; flex-wrap:wrap; gap:.25rem; padding:.5rem .75rem .75rem; margin-top:0}
+  .side-foot .view-btn{width:auto}
+  .side-label-row{padding-left:.75rem}
   .main{grid-template-rows:auto auto auto; min-height:70vh}
   .work{min-height:70vh; overflow:visible}
   .view{position:static}
-  .notes{grid-template-columns:1fr 1fr}
+  .top{flex-wrap:wrap; padding:.5rem 1rem}
+  .search{width:100%; order:9}
+  .notes{grid-template-columns:1fr}
   .cols{grid-template-columns:1fr; height:auto}
   .col{max-height:22rem}
-  .search{width:100%}
-  .top{flex-wrap:wrap; height:auto; padding:.5rem 1rem}
-  .mix{grid-template-columns:1fr}
+  .flow-body{grid-template-columns:1fr}
+  .flow-side{border-left:0; border-top:1px solid var(--line)}
+  .start-grid{grid-template-columns:1fr 1fr}
 }
 @media print{.side,.top,.mix{display:none !important} .view{position:static; display:block !important}}
 </style>
@@ -722,6 +747,7 @@ body.dropping::after{content:'Drop to load'; position:fixed; inset:0; z-index:9;
             <label class="pickwrap">Step kind <select class="pick small" id="f-kind"><option value="">Any</option><option value="core">Core</option><option value="control">Control</option><option value="system">System</option><option value="handling">Handling</option></select></label>
             <span class="filter-n" id="filter-n"></span>
             <button class="linkish" id="f-clear" hidden>clear</button>
+            <span class="filter-else" id="filter-else"></span>
           </div>
           <div class="cols">
             <div class="col"><div class="col-head"><span>Level 1</span></div><div class="col-body" id="col1"></div></div>
@@ -851,7 +877,7 @@ body.dropping::after{content:'Drop to load'; position:fixed; inset:0; z-index:9;
               <dt>Delete</dt><dd>Remove the selected row with its children</dd>
               <dt>/</dt><dd>Search activities</dd>
               <dt>?</dt><dd>Open this</dd></dl></div>
-            <div><h3>Where things go</h3><p class="sources">Nothing leaves this tab. Your work is kept in this browser and restored next time; <em>Save project</em> writes it to a file a colleague opens by dropping it on the page.</p></div>
+            <div><h3>Where things go</h3><p class="sources">Nothing leaves this tab. Your work is kept in this browser and restored next time; <em>Save project</em> writes it to a file a colleague opens by dropping it on the page.</p><p class="sources"><button type="button" class="linkish" id="forget-all">Clear my data in this browser</button> removes every taxonomy, answer and edit kept here and reloads the page as new. On a shared machine, do it before you leave.</p></div>
           </div>
           <h3 style="margin-top:1.5rem">Sources</h3>
           <div class="sources">
@@ -4377,6 +4403,16 @@ function renderColumns() {
     for (let i = 0; i < nodes.length; i++) if (nodes[i].level === 3 && matches(nodes, i)) l3s.push(i);
   } else if (sel.l2 !== null) l3s = children(nodes, sel.l2, 3);
   $('filter-n').textContent = filtering() ? `${l3s.length} ${l3s.length === 1 ? 'process matches' : 'processes match'}` : '';
+  // The same search in every other taxonomy, so a word is found wherever it lives.
+  if (query) {
+    const q = query.toLowerCase();
+    const elsewhere = [...library.values()].filter((m) => m.key !== active && !m.reference).map((m) => {
+      let n = 0;
+      for (let i = 0; i < m.nodes.length; i++) if (m.nodes[i].level === 3) { const end = subtree(m.nodes, i); for (let k = i; k < end; k++) if ((m.nodes[k].name + ' ' + m.nodes[k].id).toLowerCase().includes(q)) { n++; break; } }
+      return [m, n];
+    }).filter(([, n]) => n);
+    $('filter-else').innerHTML = elsewhere.length ? `<span>also in</span>` + elsewhere.map(([m, n]) => `<button type="button" class="linkish" data-search-in="${escape(m.key)}">${escape(m.label)} (${n})</button>`).join('') : '';
+  } else $('filter-else').innerHTML = '';
   $('f-clear').hidden = !filtering();
   const suggestions = entry().reference ? new Map() : suggestAll(nodes, tools);
   $('col3').innerHTML = l3s.map((i) => {
@@ -5299,6 +5335,8 @@ $('q').addEventListener('input', (e) => { query = e.target.value.trim(); renderC
 $('f-place').addEventListener('change', (e) => { fPlace = e.target.value; renderColumns(); });
 $('f-origin').addEventListener('change', (e) => { fOrigin = e.target.value; renderColumns(); });
 $('f-kind').addEventListener('change', (e) => { fKind = e.target.value; renderColumns(); });
+$('filter-else').addEventListener('click', (e) => { const b = e.target.closest('[data-search-in]'); if (!b) return; active = b.dataset.searchIn; sel = { l1: null, l2: null, l3: null, step: null }; render(); showView('browse'); save(); });
+$('forget-all').addEventListener('click', () => { if (!window.confirm('Remove every taxonomy, answer and edit kept in this browser and reload the page as new?')) return; forget(); location.reload(); });
 $('f-clear').addEventListener('click', () => { fPlace = fOrigin = fKind = ''; query = ''; $('q').value = ''; for (const id of ['f-place', 'f-origin', 'f-kind']) $(id).value = ''; renderColumns(); });
 $('tx-order').addEventListener('change', (e) => { order = e.target.value; renderSidebar(); save(); });
 $('map-filter').addEventListener('change', (e) => { mapFilter = e.target.value; renderMap(); });
