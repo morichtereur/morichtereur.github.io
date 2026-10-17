@@ -349,6 +349,7 @@ dialog .dlg-actions { display: flex; justify-content: flex-end; gap: .5rem; padd
 .missing.ok { color: var(--ok); background: var(--ok-soft); }
 .sessionbar { display: flex; align-items: center; gap: .5rem; justify-self: end; font-size: .8rem; white-space: nowrap; }
 .sessionbar .pace { color: var(--ink-2); }
-.kpi-strip { grid-template-columns: auto 1fr auto; min-height: 3.6rem; }
+.kpi-strip { grid-template-columns: auto minmax(0, 1fr) auto; min-height: 3.6rem; }
+.kpi-strip > div:nth-child(2) { min-width: 0; }
 .kpi-strip .legend { flex-wrap: nowrap; overflow: hidden; white-space: nowrap; font-size: .68rem; gap: .25rem .7rem; }
 :root[data-share="on"] .wtable { font-size: 1rem; } :root[data-share="on"] .pill { font-size: .82rem; } :root[data-share="on"] .yn.sm button { font-size: .82rem; padding: .2rem .55rem; }
