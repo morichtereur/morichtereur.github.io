@@ -123,7 +123,7 @@ function GapCard({ summary }) {
   const total = {}; for (const g of Object.values(summary.gapByStream)) for (const [k, v] of Object.entries(g)) total[k] = (total[k] || 0) + v;
   const segs = (g) => GAP_ORDER_import.map(k => ({ key: k, value: g[k] || 0, label: k === 'NOT_ASSESSED' ? 'Not assessed' : GAP_LABEL[k] }));
   const n = (g) => Object.values(g).reduce((a, b) => a + b, 0);
-  return html`<${Card} title="Ops pre-assessment · gap distribution" stats=${[['in scope', n(total)], ['out of scope', summary.outOfScope]]}>
+  return html`<${Card} title="Pre-assessment by GBS Operations · gap distribution" stats=${[['in scope', n(total)], ['out of scope', summary.outOfScope]]}>
     <${Stack} size="lg" segments=${segs(total)} />
     <div style="margin-top:.9rem">${summary.streams.map(s => html`<div class="inline-stack" key=${s}><b class="mono">${s}</b><${Stack} segments=${segs(summary.gapByStream[s] || {})} legend=${false} /><span class="num muted small" style="text-align:right">${n(summary.gapByStream[s] || {})}</span></div>`)}</div>
     <p class="sg-note">UNCLEAR = value present but not mappable ("?" or unknown text); Not assessed = empty GAP cell. Both are discussed in the workshop.</p>
@@ -159,7 +159,7 @@ function ImportView({ session, summary, updateSession, toast, onClearAll, onRepl
     </div>`;
   }
   return html`<div>
-    <${PageHead} eyebrow="3 · Run · Data & exports" title=${hasData ? `${summary.entities.length} entities · ${summary.streams.length} streams · ${summary.assessments} assessments` : 'Importing…'} lead="What the parser found in the capture sheets. Verify the entities × streams matrix and the warnings before the first session." />
+    <${PageHead} eyebrow="3 · Run · Data & exports" title=${hasData ? `${summary.entities.length} entities · ${summary.streams.length} streams · ${summary.assessments} assessments` : 'Importing…'} lead="What was read from the capture sheets. Check that every entity appears in every stream, then go to the workshop." />
     <${PendingEntities} session=${session} updateSession=${updateSession} />
     ${hasData && html`<div class="kpi-row"><${Kpi} value=${summary.entities.length} label="Entities" /><${Kpi} value=${Object.values(summary.activitiesByStream).reduce((a, b) => a + b, 0)} label="L4 activities" color="var(--gbs)" /><${Kpi} value=${summary.assessments} label="Entity × activity" color="var(--auto)" /><${Kpi} value=${summary.outOfScope} label="Out of scope" color="var(--g-oos)" /><${Kpi} value=${summary.warnings.filter(w => w.level !== 'info').length} label="Warnings" color=${summary.warnings.some(w => w.level === 'error') ? 'var(--flag)' : 'var(--g-harm)'} /></div>`}
     <div class="import-grid">
@@ -173,8 +173,8 @@ function ImportView({ session, summary, updateSession, toast, onClearAll, onRepl
         <${DropZone} onFiles=${onFiles} compact ...${dz} />
         ${q.jobs.length > 0 && html`<div class="filelist">${q.jobs.map(j => html`<${JobRow} key=${j.id} job=${j} onChoose=${q.choose} />`)}</div>`}
         ${hasData && html`<${FilesCard} session=${session} summary=${summary} />`}
-        ${hasData && html`<${Card} title="Parsing warnings" stats=${[['open', summary.warnings.filter(w => w.level !== 'info').length]]}><${WarningList} warnings=${summary.warnings} /></${Card}>`}
-        <${ProfilesCard} session=${session} updateSession=${updateSession} toast=${toast} />
+        ${hasData && summary.warnings.some(w => w.level !== 'info') && html`<${Card} title="Things to check in the files" stats=${[['open', summary.warnings.filter(w => w.level !== 'info').length]]}><${WarningList} warnings=${summary.warnings} /></${Card}>`}
+        <details class="disclosure"><summary>Advanced: template profiles, parser details <${Icon} name="chevron" size=${14} /></summary><div class="body" style="max-width:none;padding:0;border:0;background:none"><div style="display:grid;gap:1rem;margin-top:.6rem">${hasData && !summary.warnings.some(w => w.level !== 'info') && html`<${Card} title="Parser notes"><${WarningList} warnings=${summary.warnings} /></${Card}>`}<${ProfilesCard} session=${session} updateSession=${updateSession} toast=${toast} /></div></div></details>
         ${hasData && html`<div class="sg-row" style="justify-content:flex-end">${confirmClear ? html`<span class="small muted">Remove all imported data and workshop results from this browser?</span><${Button} variant="danger" size="sm" onClick=${() => { setConfirmClear(false); q.clear(); onClearAll(); }}>Yes, clear everything</${Button}><${Button} variant="text" size="sm" onClick=${() => setConfirmClear(false)}>Cancel</${Button}>` : html`<${Button} variant="text" size="sm" onClick=${() => setConfirmClear(true)}>Clear all data</${Button}>`}</div>`}
       </div>
     </div>

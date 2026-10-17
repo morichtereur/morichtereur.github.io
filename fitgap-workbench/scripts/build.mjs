@@ -26,9 +26,9 @@ const CSS = ['src/styles/tokens.css', 'src/styles/base.css', 'src/styles/compone
 // Dependency order matters: later modules may use names declared earlier.
 const MODULES = [
   'src/model/constants.js', 'src/model/normalize.js', 'src/parser/profiles.js', 'src/parser/capture.js', 'src/parser/flows.js',
-  'src/model/session.js', 'src/model/workshop.js', 'src/model/analysis.js', 'src/model/exports.js', 'src/model/writeback.js', 'src/parser/planning.js', 'src/model/storage.js',
+  'src/model/session.js', 'src/model/workshop.js', 'src/model/analysis.js', 'src/model/exports.js', 'src/model/writeback.js', 'src/parser/planning.js', 'src/model/demo.js', 'src/model/storage.js',
   'src/ui/icons.js', 'src/ui/components.js', 'src/ui/exports.js', 'src/ui/flows.js', 'src/ui/swimlane.js', 'src/ui/present.js', 'src/ui/styleguide.js',
-  'src/ui/profiles.js', 'src/ui/import.js', 'src/ui/plan.js', 'src/ui/workshop.js', 'src/ui/evaluate.js', 'src/ui/qg2.js', 'src/ui/prepare.js', 'src/ui/handover.js', 'src/ui/app.js',
+  'src/ui/profiles.js', 'src/ui/import.js', 'src/ui/plan.js', 'src/ui/workshop.js', 'src/ui/evaluate.js', 'src/ui/qg2.js', 'src/ui/prepare.js', 'src/ui/handover.js', 'src/ui/home.js', 'src/ui/app.js',
 ];
 
 const FONT_LICENCES = `/* Fonts embedded under the SIL Open Font License 1.1: Instrument Sans (Rodrigo Fuenzalida, Jordan Egstad), Source Serif 4 (Adobe), IBM Plex Mono (IBM). */`;

@@ -37,7 +37,7 @@ const waitSaved = (page) => page.waitForFunction(() => /Saved/.test(document.que
 
 // 1 Import with network blocked
 let { ctx, page } = await open(profile);
-await page.click('.side-nav-item:nth-child(3)'); await page.click('.tab:nth-child(2)');
+await page.click('.side-nav > .side-nav-item:has-text("Run")'); await page.click('.tab:nth-child(2)');
 await page.setInputFiles('.dropzone input[type=file]', demoFiles);
 await page.waitForFunction(n => document.querySelectorAll('.filerow .st.ok, .filerow .st.warn, .filerow .st.err').length === n, demoFiles.length, { timeout: 90000 });
 const failed = await page.$$eval('.filerow .st.err', e => e.length);
@@ -45,7 +45,7 @@ const kpis = await page.$$eval('.kpi .value', e => e.map(x => x.textContent.trim
 step('Import 6 capture workbooks with network disabled', failed === 0 && kpis[0] === '3' && kpis[2] === '540', `entities=${kpis[0]} activities=${kpis[1]} assessments=${kpis[2]} outOfScope=${kpis[3]} failed=${failed}`);
 
 // 2 PLAN-lite
-await page.click('.side-nav-item:nth-child(1)'); await page.waitForSelector('.page-head');
+await page.click('.side-nav > .side-nav-item:has-text("Plan")'); await page.waitForSelector('.page-head');
 for (const [ph, v] of [['e.g. Demo Group', 'Demo Group'], ['e.g. France', 'France'], ['MR', 'MR']]) { await page.fill(`input[placeholder="${ph}"]`, v); await page.press(`input[placeholder="${ph}"]`, 'Enter'); }
 await page.fill('input[placeholder="Full name"]', 'M. Dupont'); await page.press('input[placeholder="Full name"]', 'Enter');
 await page.fill('input[type=date]', '2026-10-19'); await page.fill('input[type=time] >> nth=0', '14:00'); await page.fill('input[type=time] >> nth=1', '15:30');
@@ -53,13 +53,13 @@ await page.click('button.btn-outline:has-text("Add") >> nth=1'); await page.clic
 step('PLAN-lite: client, country, initials, participant, session', (await page.$$eval('.sessions tr, table.matrix tbody tr', r => r.length)) > 0);
 
 // 3 Simulated R2R session
-await page.click('.side-nav-item:nth-child(3)'); await page.click('.tab:nth-child(1)'); await page.waitForSelector('.ws');
+await page.click('.side-nav > .side-nav-item:has-text("Run")'); await page.click('.tab:nth-child(1)'); await page.waitForSelector('.ws');
 await page.click('.sessionbar .btn-primary');
 await page.click('.l3head .btn-primary'); await page.waitForSelector('.toast:has-text("confirmed")');
 const bulkText = (await page.textContent('.toast:has-text("confirmed")')).trim();
 let devDone = 0;
 for (let i = 0; i < 3 && devDone < 3; i++) {
-  await page.click('.yn button:has-text("Walk all")');
+  await page.click('.yn button:has-text("All rows")');
   const pills = page.locator('.wtable tr.act td.ent .pill-HARMONIZATION, .wtable tr.act td.ent .pill-BOTH');
   if (await pills.count() <= i) break;
   await pills.nth(i).scrollIntoViewIfNeeded(); await page.evaluate(() => window.scrollBy(0, -260)); await pills.nth(i).click();
@@ -93,7 +93,7 @@ const jsonPath = resolve(dl, download.suggestedFilename()); await download.saveA
 const json = JSON.parse(readFileSync(jsonPath, 'utf8'));
 const profile2 = mkdtempSync(resolve(tmpdir(), 'fg-acc-profile2-'));
 const b2 = await open(profile2);
-await b2.page.click('.side-nav-item:nth-child(3)'); await b2.page.click('.tab:nth-child(2)');
+await b2.page.click('.side-nav > .side-nav-item:has-text("Run")'); await b2.page.click('.tab:nth-child(2)');
 await b2.page.setInputFiles('input[type=file][accept=".json"]', jsonPath);
 await b2.page.click('button:has-text("Replace")');
 await b2.page.waitForFunction(() => /Saved/.test(document.querySelector('.saved')?.textContent || ''), null, { timeout: 15000 });
