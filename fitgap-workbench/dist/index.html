@@ -416,6 +416,54 @@ dialog .dlg-actions { display: flex; justify-content: flex-end; gap: .5rem; padd
 @media (max-width: 70rem) { .sg-two { grid-template-columns: 1fr; } }
 @media (max-width: 60rem) { .app { grid-template-columns: var(--sidebar-rail) 1fr; } .search { width: 12rem; } .main { padding: 1rem; } }
 
+/* ---------- Tabs ---------- */
+.tabs { display: flex; gap: .25rem; border-bottom: 1px solid var(--line); margin-bottom: 1.25rem; }
+.tab { background: none; border: 0; border-bottom: 2px solid transparent; padding: .5rem .8rem; font-size: .88rem; color: var(--ink-2); margin-bottom: -1px; transition: color var(--t-fast), border-color var(--t-fast); }
+.tab:hover { color: var(--ink); }
+.tab[aria-selected="true"] { color: var(--accent); border-bottom-color: var(--accent); font-weight: 500; }
+.tab .cnt { font-family: var(--font-mono); font-size: .7rem; color: var(--ink-3); margin-left: .3rem; }
+
+/* ---------- Import ---------- */
+.import-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; align-items: start; }
+@media (max-width: 80rem) { .import-grid { grid-template-columns: 1fr; } }
+.dropzone input { display: none; }
+.dropzone .ico { width: 44px; height: 44px; margin: 0 auto .75rem; border-radius: 12px; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; }
+.dropzone h3 { margin-bottom: .25rem; }
+.dropzone p { color: var(--ink-2); font-size: .86rem; max-width: 30rem; margin: 0 auto .9rem; }
+.filelist { display: flex; flex-direction: column; gap: .5rem; }
+.filerow { display: grid; grid-template-columns: auto 1fr auto; gap: .6rem; align-items: center; padding: .55rem .75rem; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); font-size: .84rem; }
+.filerow .bar { grid-column: 1 / -1; height: 3px; background: var(--none); border-radius: 2px; overflow: hidden; }
+.filerow .bar i { display: block; height: 100%; background: var(--accent); transition: width var(--t-base); }
+.filerow .st { font-family: var(--font-mono); font-size: .72rem; color: var(--ink-3); white-space: nowrap; }
+.filerow .st.ok { color: var(--ok); } .filerow .st.err { color: var(--flag); } .filerow .st.warn { color: var(--g-harm); }
+.filerow .sub { grid-column: 2 / -1; font-size: .78rem; color: var(--ink-2); }
+.filerow .choice { grid-column: 1 / -1; display: flex; gap: .5rem; align-items: center; font-size: .82rem; }
+.matrix { width: 100%; border-collapse: collapse; font-size: .84rem; }
+.matrix th, .matrix td { padding: .45rem .6rem; border-bottom: 1px solid var(--line); text-align: right; }
+.matrix th:first-child, .matrix td:first-child { text-align: left; white-space: nowrap; }
+.matrix thead th { font-size: .68rem; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-2); font-weight: 600; }
+.matrix tbody tr:last-child td { border-bottom: 0; }
+.matrix td.num, .matrix th.num { font-family: var(--font-mono); }
+.matrix td.zero { color: var(--ink-3); }
+.matrix td.miss { color: var(--flag); font-family: var(--font-mono); }
+.matrix .ecode { font-family: var(--font-mono); font-size: .72rem; color: var(--ink-3); margin-left: .4rem; }
+.wlist { display: flex; flex-direction: column; gap: .35rem; }
+.witem { display: grid; grid-template-columns: auto 1fr; gap: .6rem; align-items: start; padding: .5rem .7rem; border: 1px solid var(--line); border-radius: var(--radius); font-size: .82rem; background: var(--panel); }
+.witem .lvl { font-family: var(--font-mono); font-size: .66rem; text-transform: uppercase; letter-spacing: .06em; padding: .1rem .35rem; border-radius: 3px; margin-top: .15rem; }
+.witem .lvl.info { background: var(--accent-soft); color: var(--accent); } .witem .lvl.warn { background: var(--g-harm-soft); color: var(--g-harm); } .witem .lvl.error { background: var(--flag-soft); color: var(--flag); }
+.witem .f { font-family: var(--font-mono); font-size: .7rem; color: var(--ink-3); }
+.witem details { margin-top: .25rem; } .witem summary { cursor: pointer; color: var(--accent); font-size: .78rem; }
+.witem pre { margin: .3rem 0 0; font-size: .7rem; white-space: pre-wrap; color: var(--ink-2); }
+.layout-table { width: 100%; border-collapse: collapse; font-size: .78rem; }
+.layout-table th, .layout-table td { text-align: left; padding: .3rem .5rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+.layout-table th { font-size: .66rem; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-2); }
+.layout-table .mono { font-size: .72rem; }
+.inline-stack { display: grid; grid-template-columns: 4rem 1fr 4rem; gap: .6rem; align-items: center; font-size: .82rem; margin: .35rem 0; }
+.inline-stack .stack { height: 10px; }
+.actionbar { display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; margin: 0 0 1rem; }
+.actionbar .spacer { flex: 1; }
+.entity-choice { display: grid; grid-template-columns: 1fr auto; gap: .6rem; align-items: center; padding: .6rem .8rem; border: 1px solid var(--g-harm); background: var(--g-harm-soft); border-radius: var(--radius); font-size: .84rem; }
+
 </style>
 </head>
 <body>
@@ -461,7 +509,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 </script>
 <script id="app">
 'use strict';
-const BUILD = { version: '0.1.0', builtAt: '2026-10-17T10:25:44.973Z' };
+const BUILD = { version: '0.1.0', builtAt: '2026-10-17T10:41:26.528Z' };
 
 /* ---- src/model/constants.js ---- */
 // Domain constants. Pure data – no client-specific values anywhere in here.
@@ -1353,11 +1401,37 @@ function mergeParsedWorkbook(session, parsed, opts = {}) {
 
   session.files = session.files.filter(f => f.name !== parsed.fileName);
   session.files.push({ name: parsed.fileName, sheet: parsed.sheetName, profileId: parsed.profileId, importedAt: now, entities: parsed.entities.map(e => codeMap[e.code] || e.code), streams: Object.keys(parsed.summary.streams), activities: parsed.summary.activities, flowSheets: parsed.flowSheets, layout: { headerRow: parsed.layout.headerRow + 1, blocks: parsed.layout.blocks.map(b => ({ kind: b.kind, entity: b.entity?.name || null, cols: `${colLetterLocal(b.col)}–${colLetterLocal(b.colEnd)}`, fields: Object.fromEntries(Object.entries(b.headers).map(([f, h]) => [f, h.cell])) })) }, warnings: parsed.warnings });
+  session.audit.push({ ts: now, key: `file:${parsed.fileName}`, field: 'import', old: null, new: `${parsed.sheetName}: +${report.assessments.added} / ${report.assessments.merged} merged, ${report.assessments.changedOps} Ops values changed`, sessionId: session.activeSessionId, editor: session.settings.editorInitials });
   session.updatedAt = now;
   return report;
 }
 
 function colLetterLocal(c) { let s = ''; c = c + 1; while (c > 0) { const m = (c - 1) % 26; s = String.fromCharCode(65 + m) + s; c = Math.floor((c - 1) / 26); } return s; }
+
+/** Resolve a pending entity match: merge the imported (code-less) entity into the candidate, or keep it separate. */
+function resolvePendingEntity(session, pendingId, merge) {
+  const idx = session.pendingEntityMatches.findIndex(p => p.id === pendingId);
+  if (idx < 0) return;
+  const p = session.pendingEntityMatches[idx];
+  session.pendingEntityMatches.splice(idx, 1);
+  if (!merge) return;
+  const from = p.imported.code, to = p.candidate;
+  const target = session.entities[to];
+  const source = session.entities[from];
+  if (!target || !source || from === to) return;
+  for (const f of source.sources) if (!target.sources.includes(f)) target.sources.push(f);
+  delete session.entities[from];
+  for (const [key, a] of Object.entries(session.assessments)) {
+    if (a.entityCode !== from) continue;
+    const newKey = assessmentKey(to, a.processId);
+    const ex = session.assessments[newKey];
+    if (ex) { for (const s of a.sources) if (!ex.sources.some(x => x.file === s.file)) ex.sources.push(s); }
+    else session.assessments[newKey] = { ...a, entityCode: to, key: newKey };
+    delete session.assessments[key];
+  }
+  for (const f of session.files) f.entities = f.entities.map(c => c === from ? to : c);
+  session.audit.push({ ts: new Date().toISOString(), key: `entity:${from}`, field: 'merge', old: from, new: to, sessionId: session.activeSessionId, editor: session.settings.editorInitials });
+}
 
 /** Import summary across the whole session: entities × streams matrix, counts, gap distribution. */
 function importSummary(session) {
@@ -1383,6 +1457,54 @@ function deserializeSession(text) {
   const s = JSON.parse(text);
   if (typeof s.version !== 'number' || s.version > SESSION_FILE_VERSION) throw new Error(`Unsupported session file version ${s.version}`);
   return { ...createSession(), ...s };
+}
+
+
+/* ---- src/model/storage.js ---- */
+// IndexedDB autosave (browser only). Every call is wrapped so a locked-down
+// browser, private window or file:// quirk degrades to "autosave unavailable"
+// instead of breaking the app.
+const DB_NAME = 'gbs-fitgap-workbench', STORE = 'sessions', KEY = 'current';
+
+function openDb() {
+  return new Promise((resolve, reject) => {
+    try {
+      const req = indexedDB.open(DB_NAME, 1);
+      req.onupgradeneeded = () => { req.result.createObjectStore(STORE); };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+      req.onblocked = () => reject(new Error('IndexedDB blocked'));
+    } catch (e) { reject(e); }
+  });
+}
+
+async function storageSave(session) {
+  const db = await openDb();
+  await new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE, 'readwrite');
+    tx.objectStore(STORE).put(JSON.parse(JSON.stringify(session)), KEY);
+    tx.oncomplete = resolve; tx.onerror = () => reject(tx.error); tx.onabort = () => reject(tx.error);
+  });
+  db.close();
+}
+
+async function storageLoad() {
+  const db = await openDb();
+  const value = await new Promise((resolve, reject) => {
+    const req = db.transaction(STORE, 'readonly').objectStore(STORE).get(KEY);
+    req.onsuccess = () => resolve(req.result || null); req.onerror = () => reject(req.error);
+  });
+  db.close();
+  return value;
+}
+
+async function storageClear() {
+  const db = await openDb();
+  await new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE, 'readwrite'); tx.objectStore(STORE).delete(KEY);
+    tx.oncomplete = resolve; tx.onerror = () => reject(tx.error);
+  });
+  db.close();
 }
 
 
@@ -1647,6 +1769,181 @@ function StyleGuide() {
 }
 
 
+/* ---- src/ui/import.js ---- */
+// Import & data view: drag & drop of capture workbooks, per-file progress, sheet
+// choice, entity confirmation, import summary cards and per-file layout detail.
+
+function readWorkbook(buffer) { return XLSX.read(buffer, { type: 'array', cellStyles: false, cellNF: false, cellHTML: false }); }
+const tick = () => new Promise(r => setTimeout(r, 0));
+
+function useImportQueue(updateSession, onBatchDone) {
+  const [jobs, setJobs] = useState([]);
+  const wbRef = useRef({});
+  const patch = (id, p) => setJobs(js => js.map(j => j.id === id ? { ...j, ...p } : j));
+  const finish = (id, parsed) => {
+    let report;
+    updateSession(s => { report = mergeParsedWorkbook(s, parsed); });
+    patch(id, { status: 'done', progress: 100, message: `${parsed.sheetName} · ${parsed.entities.length} entities · ${parsed.summary.activities} activities · +${report.assessments.added} / ${report.assessments.merged} merged${report.assessments.changedOps ? ` · ${report.assessments.changedOps} Ops values changed` : ''}`, warn: parsed.warnings.filter(w => w.level !== 'info').length, report });
+    delete wbRef.current[id];
+    return report;
+  };
+  const run = async (files) => {
+    const list = Array.from(files).filter(f => /\.xlsx?$|\.xlsm$/i.test(f.name));
+    const newJobs = list.map(f => ({ id: newId('job'), name: f.name, size: f.size, status: 'queued', progress: 0, message: '' }));
+    setJobs(js => [...js.filter(j => !list.some(f => f.name === j.name)), ...newJobs]);
+    const results = [];
+    for (let i = 0; i < list.length; i++) {
+      const job = newJobs[i], file = list[i];
+      try {
+        patch(job.id, { status: 'reading', progress: 15, message: 'Reading file…' }); await tick();
+        const buf = await file.arrayBuffer();
+        patch(job.id, { status: 'parsing', progress: 45, message: 'Parsing workbook…' }); await tick();
+        const wb = readWorkbook(buf);
+        patch(job.id, { progress: 75, message: 'Detecting layout…' }); await tick();
+        const parsed = parseCaptureWorkbook(wb, { XLSX, fileName: file.name });
+        if (parsed.needsSheetChoice) { wbRef.current[job.id] = wb; patch(job.id, { status: 'choice', progress: 80, message: 'Several candidate sheets – pick one', candidates: parsed.sheets.candidates }); continue; }
+        if (!parsed.ok) { patch(job.id, { status: 'error', progress: 100, message: parsed.warnings.map(w => w.message).join(' ') }); continue; }
+        results.push(finish(job.id, parsed));
+      } catch (e) { patch(job.id, { status: 'error', progress: 100, message: `Could not read this file: ${e.message}` }); results.push({ error: e }); }
+      await tick();
+    }
+    onBatchDone && onBatchDone(results, list.length);
+  };
+  const choose = (id, sheetName) => {
+    const wb = wbRef.current[id]; const job = jobs.find(j => j.id === id); if (!wb || !job) return;
+    const parsed = parseCaptureWorkbook(wb, { XLSX, fileName: job.name, sheetName });
+    if (!parsed.ok) { patch(id, { status: 'error', progress: 100, message: parsed.warnings.map(w => w.message).join(' ') }); return; }
+    onBatchDone && onBatchDone([finish(id, parsed)], 1);
+  };
+  return { jobs, run, choose, clear: () => setJobs([]) };
+}
+
+function DropZone({ onFiles, compact }) {
+  const [over, setOver] = useState(false); const inp = useRef();
+  const onDrop = (e) => { e.preventDefault(); setOver(false); onFiles(e.dataTransfer.files); };
+  return html`<div class=${`dropzone${over ? ' over' : ''}`} style=${compact ? 'padding:1.1rem' : ''} onDragOver=${e => { e.preventDefault(); setOver(true); }} onDragLeave=${() => setOver(false)} onDrop=${onDrop}>
+    <input ref=${inp} type="file" multiple accept=".xlsx,.xlsm" onChange=${e => { onFiles(e.target.files); e.target.value = ''; }} />
+    ${!compact && html`<div class="ico"><${Icon} name="upload" size=${22} /></div><h3>Drop the stream capture sheets here</h3><p>All files at once: R2R, A2R, I2P, I2C, ICO and I2C_CMD. Versions re-sent later are merged by Process ID and entity – never duplicated, workshop results are never overwritten.</p>`}
+    <${Button} variant=${compact ? 'outline' : 'primary'} icon="upload" onClick=${() => inp.current.click()}>${compact ? 'Add or re-import files' : 'Choose files'}</${Button}>
+    ${compact && html`<span class="muted small" style="margin-left:.6rem">or drop them here</span>`}
+  </div>`;
+}
+
+function JobRow({ job, onChoose }) {
+  const cls = job.status === 'done' ? (job.warn ? 'warn' : 'ok') : job.status === 'error' ? 'err' : job.status === 'choice' ? 'warn' : '';
+  const label = { queued: 'queued', reading: 'reading', parsing: 'parsing', choice: 'pick sheet', done: job.warn ? `${job.warn} warning${job.warn > 1 ? 's' : ''}` : 'imported', error: 'failed' }[job.status];
+  return html`<div class="filerow"><${Icon} name="file" /><span><b>${job.name}</b> <span class="muted small">${(job.size / 1024).toFixed(0)} KB</span></span><span class=${`st ${cls}`}>${label}</span>
+    ${job.status !== 'done' && job.status !== 'error' && html`<div class="bar"><i style=${`width:${job.progress}%`}></i></div>`}
+    ${job.message && html`<span class="sub">${job.message}</span>`}
+    ${job.status === 'choice' && html`<div class="choice"><select class="select sm" style="width:auto" id=${`sel-${job.id}`}>${job.candidates.map(c => html`<option value=${c}>${c}</option>`)}</select><${Button} variant="primary" size="sm" onClick=${() => onChoose(job.id, document.getElementById(`sel-${job.id}`).value)}>Use this sheet</${Button}></div>`}
+  </div>`;
+}
+
+function PendingEntities({ session, updateSession }) {
+  const list = session.pendingEntityMatches;
+  if (!list.length) return null;
+  return html`<div class="card" style="margin-bottom:1rem;border-color:var(--g-harm)"><div class="card-head"><h3>Confirm entity matches</h3><span class="muted small">${list.length} to decide</span></div><div class="card-body" style="display:grid;gap:.5rem">
+    ${list.map(p => html`<div class="entity-choice" key=${p.id}><span>"<b>${p.imported.name}</b>" (no entity code, from ${p.file}) looks like <b>${session.entities[p.candidate]?.name}</b> <span class="mono small muted">${p.candidate} · ${(p.score * 100).toFixed(0)} %</span></span>
+      <span class="sg-row" style="margin:0"><${Button} variant="primary" size="sm" onClick=${() => updateSession(s => resolvePendingEntity(s, p.id, true))}>Same entity – merge</${Button}><${Button} variant="outline" size="sm" onClick=${() => updateSession(s => resolvePendingEntity(s, p.id, false))}>Keep separate</${Button}></span></div>`)}
+  </div></div>`;
+}
+
+const LEVEL_ORDER = { error: 0, warn: 1, info: 2 };
+function WarningList({ warnings }) {
+  const [showInfo, setShowInfo] = useState(false);
+  const list = warnings.filter(w => showInfo || w.level !== 'info').sort((a, b) => LEVEL_ORDER[a.level] - LEVEL_ORDER[b.level]);
+  const infos = warnings.filter(w => w.level === 'info').length;
+  return html`<div>
+    ${!list.length && html`<p class="muted small">No warnings${infos && !showInfo ? ` (${infos} informational)` : ''}.</p>`}
+    <div class="wlist">${list.map((w, i) => html`<div class="witem" key=${i}><span class=${`lvl ${w.level}`}>${w.level}</span><div><div>${w.message}</div><div class="f">${w.file}${w.code ? ` · ${w.code}` : ''}</div>${w.examples?.length ? html`<details><summary>${w.examples.length} example${w.examples.length > 1 ? 's' : ''}</summary><pre>${w.examples.map(e => JSON.stringify(e)).join('\n')}</pre></details>` : null}</div></div>`)}</div>
+    ${infos > 0 && html`<${Button} variant="text" size="sm" onClick=${() => setShowInfo(!showInfo)}>${showInfo ? 'Hide' : 'Show'} ${infos} informational</${Button}>`}
+  </div>`;
+}
+
+function FileLayout({ file }) {
+  return html`<table class="layout-table"><thead><tr><th>Block</th><th>Entity</th><th>Columns</th><th>Fields → column</th></tr></thead><tbody>
+    ${file.layout.blocks.map((b, i) => html`<tr key=${i}><td><b>${b.kind}</b></td><td>${b.entity || html`<span class="muted">shared</span>`}</td><td class="mono">${b.cols}</td><td class="mono">${Object.entries(b.fields).map(([f, c]) => `${f}=${c}`).join('  ') || html`<span class="muted">–</span>`}</td></tr>`)}
+  </tbody></table>`;
+}
+
+function FilesCard({ session, summary }) {
+  const [open, setOpen] = useState(null);
+  return html`<${Card} title="Imported files" stats=${[['files', session.files.length]]}>
+    <table class="matrix"><thead><tr><th>File</th><th>Main sheet</th><th class="num">Header row</th><th class="num">Entities</th><th class="num">Activities</th><th class="num">Flow sheets</th><th class="num">Warnings</th><th></th></tr></thead><tbody>
+      ${session.files.map(f => { const warn = f.warnings.filter(w => w.level !== 'info').length; return html`<tr key=${f.name}><td><b>${f.name}</b><div class="muted small">${f.streams.join(', ')} · ${new Date(f.importedAt).toLocaleString()}</div></td><td>${f.sheet}</td><td class="num">${f.layout.headerRow}</td><td class="num">${f.entities.length}</td><td class="num">${f.activities}</td><td class="num">${f.flowSheets.length}</td><td class=${`num${warn ? ' miss' : ''}`}>${warn}</td><td style="text-align:right"><${Button} variant="text" size="sm" onClick=${() => setOpen(open === f.name ? null : f.name)}>${open === f.name ? 'Hide layout' : 'Layout'}</${Button}></td></tr>${open === f.name && html`<tr><td colspan="8" style="background:var(--bg)"><${FileLayout} file=${f} /></td></tr>`}`; })}
+    </tbody></table>
+  </${Card}>`;
+}
+
+function MatrixCard({ summary }) {
+  const streams = summary.streams;
+  return html`<${Card} title="Entities × streams" stats=${[['entities', summary.entities.length], ['streams', streams.length]]}>
+    <table class="matrix"><thead><tr><th>Entity</th>${streams.map(s => html`<th class="num" key=${s}>${s}</th>`)}<th class="num">Total</th></tr></thead><tbody>
+      ${summary.entities.map(e => { const row = summary.matrix[e.code] || {}; const tot = streams.reduce((a, s) => a + (row[s] || 0), 0); return html`<tr key=${e.code}><td>${e.displayName || e.name}${e.hasCode ? html`<span class="ecode">${e.code}</span>` : html`<span class="ecode" title="No entity code in the label">no code</span>`}</td>${streams.map(s => html`<td class=${`num${row[s] ? '' : ' miss'}`} key=${s}>${row[s] || '—'}</td>`)}<td class="num"><b>${tot}</b></td></tr>`; })}
+      <tr><td class="muted">Activities in taxonomy</td>${streams.map(s => html`<td class="num muted" key=${s}>${summary.activitiesByStream[s] || 0}</td>`)}<td class="num muted">${Object.values(summary.activitiesByStream).reduce((a, b) => a + b, 0)}</td></tr>
+    </tbody></table>
+    <p class="sg-note">A dash means the entity has no block in that stream's file – check the entity labels in the band above the header row.</p>
+  </${Card}>`;
+}
+
+const GAP_ORDER = ['NO_GAP', 'HARMONIZATION', 'STANDARDIZATION', 'BOTH', 'NA', 'UNCLEAR', 'NOT_ASSESSED'];
+function GapCard({ summary }) {
+  const total = {}; for (const g of Object.values(summary.gapByStream)) for (const [k, v] of Object.entries(g)) total[k] = (total[k] || 0) + v;
+  const segs = (g) => GAP_ORDER.map(k => ({ key: k, value: g[k] || 0, label: k === 'NOT_ASSESSED' ? 'Not assessed' : GAP_LABEL[k] }));
+  const n = (g) => Object.values(g).reduce((a, b) => a + b, 0);
+  return html`<${Card} title="Ops pre-assessment · gap distribution" stats=${[['in scope', n(total)], ['out of scope', summary.outOfScope]]}>
+    <${Stack} size="lg" segments=${segs(total)} />
+    <div style="margin-top:.9rem">${summary.streams.map(s => html`<div class="inline-stack" key=${s}><b class="mono">${s}</b><${Stack} segments=${segs(summary.gapByStream[s] || {})} legend=${false} /><span class="num muted small" style="text-align:right">${n(summary.gapByStream[s] || {})}</span></div>`)}</div>
+    <p class="sg-note">UNCLEAR = value present but not mappable ("?" or unknown text); Not assessed = empty GAP cell. Both are discussed in the workshop.</p>
+  </${Card}>`;
+}
+
+function DiffsCard({ session }) {
+  const d = session.importDiffs; if (!d.length) return null;
+  return html`<${Card} title="Ops values changed by re-import" stats=${[['changes', d.length]]}>
+    <table class="matrix"><thead><tr><th>Entity</th><th>Process</th><th>Field</th><th>Old</th><th>New</th><th>File</th></tr></thead><tbody>
+      ${d.slice(0, 50).map(x => html`<tr key=${x.id}><td>${session.entities[x.entityCode]?.name || x.entityCode}</td><td class="mono">${x.processId}</td><td class="mono">${x.field}</td><td style="text-align:left">${String(x.old ?? '—')}</td><td style="text-align:left"><b>${String(x.new ?? '—')}</b></td><td class="muted small" style="text-align:left">${x.file}</td></tr>`)}
+    </tbody></table>${d.length > 50 && html`<p class="sg-note">Showing the first 50 of ${d.length}.</p>`}
+  </${Card}>`;
+}
+
+function ImportView({ session, summary, updateSession, toast, onClearAll }) {
+  const q = useImportQueue(updateSession, (results, n) => {
+    const ok = results.filter(r => r && !r.error); const added = ok.reduce((a, r) => a + r.assessments.added, 0), merged = ok.reduce((a, r) => a + r.assessments.merged, 0), changed = ok.reduce((a, r) => a + r.assessments.changedOps, 0);
+    const pending = results.length - ok.length;
+    toast(`${ok.length} of ${n} file${n > 1 ? 's' : ''} imported · ${added} assessments added${merged ? `, ${merged} merged` : ''}${changed ? `, ${changed} Ops values changed` : ''}${pending ? ` · ${pending} need attention` : ''}`);
+  });
+  const [confirmClear, setConfirmClear] = useState(false);
+  const hasData = session.files.length > 0;
+  const onFiles = (files) => q.run(files);
+  if (!hasData && !q.jobs.length) {
+    return html`<div>
+      <${PageHead} eyebrow="3 · Run · Import & data" title="Import the capture sheets" lead="Start with the pre-filled workbooks from GBS Operations. The tool reads the main Fit-Gap sheet of each file, detects entities and blocks by their titles, and shows you exactly what it found before anything is assessed." how=${html`<ol><li>Drop all stream workbooks at once (or add them one by one).</li><li>Check the import summary: entities × streams, activity counts, gap distribution and warnings.</li><li>If a label without entity code looks like a known entity, confirm or reject the match.</li><li>Re-import a newer version at any time – Ops values are refreshed and listed, workshop results stay.</li></ol>`} />
+      <${DropZone} onFiles=${onFiles} />
+    </div>`;
+  }
+  return html`<div>
+    <${PageHead} eyebrow="3 · Run · Import & data" title=${hasData ? `${summary.entities.length} entities · ${summary.streams.length} streams · ${summary.assessments} assessments` : 'Importing…'} lead="What the parser found in the capture sheets. Verify the entities × streams matrix and the warnings before the first session." />
+    <${PendingEntities} session=${session} updateSession=${updateSession} />
+    ${hasData && html`<div class="kpi-row"><${Kpi} value=${summary.entities.length} label="Entities" /><${Kpi} value=${Object.values(summary.activitiesByStream).reduce((a, b) => a + b, 0)} label="L4 activities" color="var(--gbs)" /><${Kpi} value=${summary.assessments} label="Entity × activity" color="var(--auto)" /><${Kpi} value=${summary.outOfScope} label="Out of scope" color="var(--g-oos)" /><${Kpi} value=${summary.warnings.filter(w => w.level !== 'info').length} label="Warnings" color=${summary.warnings.some(w => w.level === 'error') ? 'var(--flag)' : 'var(--g-harm)'} /></div>`}
+    <div class="import-grid">
+      <div style="display:grid;gap:1rem">
+        ${hasData && html`<${MatrixCard} summary=${summary} />`}
+        ${hasData && html`<${GapCard} summary=${summary} />`}
+        <${DiffsCard} session=${session} />
+      </div>
+      <div style="display:grid;gap:1rem">
+        <${DropZone} onFiles=${onFiles} compact />
+        ${q.jobs.length > 0 && html`<div class="filelist">${q.jobs.map(j => html`<${JobRow} key=${j.id} job=${j} onChoose=${q.choose} />`)}</div>`}
+        ${hasData && html`<${FilesCard} session=${session} summary=${summary} />`}
+        ${hasData && html`<${Card} title="Parsing warnings" stats=${[['open', summary.warnings.filter(w => w.level !== 'info').length]]}><${WarningList} warnings=${summary.warnings} /></${Card}>`}
+        ${hasData && html`<div class="sg-row" style="justify-content:flex-end">${confirmClear ? html`<span class="small muted">Remove all imported data and workshop results from this browser?</span><${Button} variant="danger" size="sm" onClick=${() => { setConfirmClear(false); q.clear(); onClearAll(); }}>Yes, clear everything</${Button}><${Button} variant="text" size="sm" onClick=${() => setConfirmClear(false)}>Cancel</${Button}>` : html`<${Button} variant="text" size="sm" onClick=${() => setConfirmClear(true)}>Clear all data</${Button}>`}</div>`}
+      </div>
+    </div>
+  </div>`;
+}
+
+
 /* ---- src/ui/app.js ---- */
 // App shell: sidebar (streams + six lifecycle phases), top bar, KPI strip, pages.
 const PHASES = [
@@ -1681,12 +1978,20 @@ function Sidebar({ phase, setPhase, summary, rail, setRail, session, page, setPa
   </aside>`;
 }
 
-function TopBar({ crumbs, theme, setTheme, share, setShare, onPalette, onFeedback }) {
+function SavedIndicator({ save }) {
+  if (save.status === 'unavailable') return html`<span class="saved" title=${save.error || ''} style="color:var(--flag)"><span class="dot" style="background:var(--flag)"></span>Autosave unavailable</span>`;
+  if (save.status === 'saving') return html`<span class="saved"><span class="dot" style="background:var(--line-strong)"></span>Saving…</span>`;
+  if (save.status === 'saved') return html`<span class="saved"><span class="dot"></span>Saved ${save.at}</span>`;
+  if (save.status === 'loaded') return html`<span class="saved" title="Restored from this browser's storage"><span class="dot"></span>Restored ${save.at}</span>`;
+  return html`<span class="saved"><span class="dot" style="background:var(--line-strong)"></span>Not saved yet</span>`;
+}
+
+function TopBar({ crumbs, theme, setTheme, share, setShare, onPalette, onFeedback, save }) {
   return html`<header class="topbar">
     <div class="crumb">${crumbs.map((c, i) => html`${i > 0 && html`<span class="sep">›</span>`}${i === crumbs.length - 1 ? html`<b>${c}</b>` : html`<span>${c}</span>`}`)}</div>
     <div class="search" role="button" tabindex="0" onClick=${onPalette} onKeyDown=${e => e.key === 'Enter' && onPalette()}><${Icon} name="search" size=${14} />Jump to entity, stream, process ID or activity<kbd>Ctrl K</kbd></div>
     <div class="actions">
-      <span class="saved"><span class="dot"></span>Saved</span>
+      <${SavedIndicator} save=${save} />
       <${IconButton} icon="feedback" label="Feedback" onClick=${onFeedback} />
       <${IconButton} icon="share" label=${share ? 'Screen-share mode on' : 'Screen-share mode'} onClick=${() => setShare(!share)} style=${share ? 'color:var(--accent)' : ''} />
       <${IconButton} icon="undo" label="Undo" disabled />
@@ -1709,6 +2014,17 @@ function ComingNext({ p }) {
   return html`<div class="coming">
     <${PageHead} eyebrow=${`${p.n} · ${p.label} · coming next (increment ${p.increment})`} title=${p.title} lead="This phase is part of the lifecycle shell from day one. It is not built yet – here is what it will contain." how=${html`<p>Phases are built in the order of the pilot plan: RUN first (import, workshop mode, audit trail), then save/load and exports, then present mode, QG2, EVALUATE and the full PLAN / PREPARE / HAND-OVER.</p>`} />
     <div class="card"><div class="card-body"><div class="eyebrow" style="margin-bottom:.5rem">Planned content</div><ul>${p.what.map(w => html`<li>${w}</li>`)}</ul></div></div>
+  </div>`;
+}
+
+function RunPage({ session, summary, updateSession, toast, onClearAll, tab, setTab }) {
+  const hasData = session.files.length > 0;
+  return html`<div>
+    <div class="tabs" role="tablist">
+      <button class="tab" role="tab" aria-selected=${tab === 'workshop'} onClick=${() => setTab('workshop')}>Workshop</button>
+      <button class="tab" role="tab" aria-selected=${tab === 'import'} onClick=${() => setTab('import')}>Import & data${hasData && html`<span class="cnt">${session.files.length}</span>`}</button>
+    </div>
+    ${tab === 'import' ? html`<${ImportView} session=${session} summary=${summary} updateSession=${updateSession} toast=${toast} onClearAll=${onClearAll} />` : hasData ? html`<${ComingNext} p=${PHASES[2]} />` : html`<${EmptyState} icon="upload" title="No capture sheets yet" text="Import the stream workbooks first – the workshop view is built from them." action=${html`<${Button} variant="primary" icon="upload" onClick=${() => setTab('import')}>Go to import</${Button}>`} />`}
   </div>`;
 }
 
@@ -1736,7 +2052,18 @@ function FeedbackPanel({ open, onClose, onSave, view }) {
 }
 
 function App() {
-  const [session, setSession] = useState(() => createSession());
+  const [session, setSession] = useState(null);
+  const [save, setSave] = useState({ status: 'idle' });
+  const [runTab, setRunTab] = useState(null);
+  const dirty = useRef(false);
+  const updateSession = useCallback((fn) => { setSession(s => { const n = { ...s }; fn(n); n.updatedAt = new Date().toISOString(); dirty.current = true; return n; }); }, []);
+  useEffect(() => { (async () => { let loaded = null; try { loaded = await storageLoad(); } catch (e) { setSave({ status: 'unavailable', error: String(e) }); } if (loaded) setSave({ status: 'loaded', at: loaded.updatedAt ? new Date(loaded.updatedAt).toLocaleString([], { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '' }); setSession(loaded ? { ...createSession(), ...loaded } : createSession()); })(); }, []);
+  useEffect(() => {
+    if (!session || !dirty.current) return;
+    setSave(v => v.status === 'unavailable' ? v : { ...v, status: 'saving' });
+    const t = setTimeout(async () => { try { await storageSave(session); dirty.current = false; setSave({ status: 'saved', at: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }); } catch (e) { setSave({ status: 'unavailable', error: String(e) }); } }, 700);
+    return () => clearTimeout(t);
+  }, [session]);
   const [page, setPage] = useState(() => store.get('fg.page', 'phase'));
   const [phase, setPhase] = useState(() => store.get('fg.phase', 'run'));
   const [theme, setThemeState] = useState(() => store.get('fg.theme', null));
@@ -1746,7 +2073,7 @@ function App() {
   const [feedback, setFeedback] = useState(false);
   const [welcome, setWelcome] = useState(() => !store.get('fg.welcomed', false));
   const [toasts, setToasts] = useState([]);
-  const summary = useMemo(() => importSummary(session), [session]);
+  const summary = useMemo(() => session ? importSummary(session) : importSummary(createSession()), [session]);
   const setTheme = (t) => { setThemeState(t); store.set('fg.theme', t); applyTheme(t); };
   const setShare = (v) => { setShareState(v); document.documentElement.setAttribute('data-share', v ? 'on' : 'off'); };
   useEffect(() => { applyTheme(theme); }, []);
@@ -1757,16 +2084,19 @@ function App() {
   }, []);
   const toast = (text, opts = {}) => { const id = newId('t'); setToasts(t => [...t, { id, text, ...opts }]); setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), opts.ttl || 4000); };
   const current = PHASES.find(p => p.key === phase) || PHASES[2];
+  const tab = runTab || (session && session.files.length ? 'workshop' : 'import');
   const viewName = page === 'styleguide' ? 'Style sheet' : `${current.n} ${current.label}`;
-  const crumbs = page === 'styleguide' ? ['Design system', 'Style sheet'] : [`${current.n} ${current.label}`, current.title];
-  const paletteItems = [...PHASES.map(p => ({ label: `${p.n} ${p.label} – ${p.title}`, kind: 'phase', icon: p.icon, go: () => { setPage('phase'); setPhase(p.key); } })), { label: 'Style sheet', kind: 'design', icon: 'palette', go: () => setPage('styleguide') }, { label: theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme', kind: 'theme', icon: 'sun', go: () => setTheme(theme === 'dark' ? 'light' : 'dark') }];
-  const logFeedback = (note) => { setSession(s => ({ ...s, feedback: [...s.feedback, { ts: new Date().toISOString(), view: viewName, note, sessionId: s.activeSessionId }] })); toast('Feedback logged'); };
+  const crumbs = page === 'styleguide' ? ['Design system', 'Style sheet'] : [`${current.n} ${current.label}`, phase === 'run' && tab === 'import' ? 'Import & data' : current.title];
+  if (!session) return html`<div class="app"><aside class="sidebar"></aside><div class="content"><div class="main" style="display:grid;gap:.6rem;max-width:30rem"><div class="skeleton" style="width:40%"></div><div class="skeleton" style="width:80%"></div><div class="skeleton" style="width:60%"></div></div></div></div>`;
+  const paletteItems = [...Object.values(session.entities).map(e => ({ label: `${e.displayName || e.name} · ${e.code}`, kind: 'entity', icon: 'file', go: () => { setPage('phase'); setPhase('run'); setRunTab('import'); } })), ...PHASES.map(p => ({ label: `${p.n} ${p.label} – ${p.title}`, kind: 'phase', icon: p.icon, go: () => { setPage('phase'); setPhase(p.key); } })), { label: 'Style sheet', kind: 'design', icon: 'palette', go: () => setPage('styleguide') }, { label: theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme', kind: 'theme', icon: 'sun', go: () => setTheme(theme === 'dark' ? 'light' : 'dark') }];
+  const logFeedback = (note) => { updateSession(s => { s.feedback = [...s.feedback, { ts: new Date().toISOString(), view: viewName, note, sessionId: s.activeSessionId }]; }); toast('Feedback logged'); };
+  const clearAll = async () => { try { await storageClear(); } catch { /* ignore */ } setSession(createSession()); dirty.current = true; setRunTab('import'); toast('All data cleared'); };
   return html`<div class="app" data-rail=${rail ? '1' : '0'}>
     <${Sidebar} phase=${phase} setPhase=${setPhase} summary=${summary} rail=${rail} setRail=${setRail} session=${session} page=${page} setPage=${setPage} />
     <div class="content">
-      <${TopBar} crumbs=${crumbs} theme=${theme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')} setTheme=${setTheme} share=${share} setShare=${setShare} onPalette=${() => setPalette(true)} onFeedback=${() => setFeedback(f => !f)} />
+      <${TopBar} crumbs=${crumbs} theme=${theme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')} setTheme=${setTheme} share=${share} setShare=${setShare} onPalette=${() => setPalette(true)} onFeedback=${() => setFeedback(f => !f)} save=${save} />
       <${KpiStrip} summary=${summary} session=${session} />
-      <main class="main">${page === 'styleguide' ? html`<${StyleGuide} />` : html`<${ComingNext} p=${current} />`}</main>
+      <main class="main">${page === 'styleguide' ? html`<${StyleGuide} />` : phase === 'run' ? html`<${RunPage} session=${session} summary=${summary} updateSession=${updateSession} toast=${toast} onClearAll=${clearAll} tab=${tab} setTab=${setRunTab} />` : html`<${ComingNext} p=${current} />`}</main>
     </div>
     <${Palette} open=${palette} onClose=${() => setPalette(false)} items=${paletteItems} onPick=${i => { setPalette(false); i.go(); }} />
     <${Welcome} open=${welcome} onClose=${() => { setWelcome(false); store.set('fg.welcomed', true); }} onPrimary=${() => { setWelcome(false); store.set('fg.welcomed', true); setPage('styleguide'); }} />

@@ -113,11 +113,37 @@ export function mergeParsedWorkbook(session, parsed, opts = {}) {
 
   session.files = session.files.filter(f => f.name !== parsed.fileName);
   session.files.push({ name: parsed.fileName, sheet: parsed.sheetName, profileId: parsed.profileId, importedAt: now, entities: parsed.entities.map(e => codeMap[e.code] || e.code), streams: Object.keys(parsed.summary.streams), activities: parsed.summary.activities, flowSheets: parsed.flowSheets, layout: { headerRow: parsed.layout.headerRow + 1, blocks: parsed.layout.blocks.map(b => ({ kind: b.kind, entity: b.entity?.name || null, cols: `${colLetterLocal(b.col)}–${colLetterLocal(b.colEnd)}`, fields: Object.fromEntries(Object.entries(b.headers).map(([f, h]) => [f, h.cell])) })) }, warnings: parsed.warnings });
+  session.audit.push({ ts: now, key: `file:${parsed.fileName}`, field: 'import', old: null, new: `${parsed.sheetName}: +${report.assessments.added} / ${report.assessments.merged} merged, ${report.assessments.changedOps} Ops values changed`, sessionId: session.activeSessionId, editor: session.settings.editorInitials });
   session.updatedAt = now;
   return report;
 }
 
 function colLetterLocal(c) { let s = ''; c = c + 1; while (c > 0) { const m = (c - 1) % 26; s = String.fromCharCode(65 + m) + s; c = Math.floor((c - 1) / 26); } return s; }
+
+/** Resolve a pending entity match: merge the imported (code-less) entity into the candidate, or keep it separate. */
+export function resolvePendingEntity(session, pendingId, merge) {
+  const idx = session.pendingEntityMatches.findIndex(p => p.id === pendingId);
+  if (idx < 0) return;
+  const p = session.pendingEntityMatches[idx];
+  session.pendingEntityMatches.splice(idx, 1);
+  if (!merge) return;
+  const from = p.imported.code, to = p.candidate;
+  const target = session.entities[to];
+  const source = session.entities[from];
+  if (!target || !source || from === to) return;
+  for (const f of source.sources) if (!target.sources.includes(f)) target.sources.push(f);
+  delete session.entities[from];
+  for (const [key, a] of Object.entries(session.assessments)) {
+    if (a.entityCode !== from) continue;
+    const newKey = assessmentKey(to, a.processId);
+    const ex = session.assessments[newKey];
+    if (ex) { for (const s of a.sources) if (!ex.sources.some(x => x.file === s.file)) ex.sources.push(s); }
+    else session.assessments[newKey] = { ...a, entityCode: to, key: newKey };
+    delete session.assessments[key];
+  }
+  for (const f of session.files) f.entities = f.entities.map(c => c === from ? to : c);
+  session.audit.push({ ts: new Date().toISOString(), key: `entity:${from}`, field: 'merge', old: from, new: to, sessionId: session.activeSessionId, editor: session.settings.editorInitials });
+}
 
 /** Import summary across the whole session: entities × streams matrix, counts, gap distribution. */
 export function importSummary(session) {

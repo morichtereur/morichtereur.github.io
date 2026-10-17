@@ -31,12 +31,20 @@ function Sidebar({ phase, setPhase, summary, rail, setRail, session, page, setPa
   </aside>`;
 }
 
-function TopBar({ crumbs, theme, setTheme, share, setShare, onPalette, onFeedback }) {
+function SavedIndicator({ save }) {
+  if (save.status === 'unavailable') return html`<span class="saved" title=${save.error || ''} style="color:var(--flag)"><span class="dot" style="background:var(--flag)"></span>Autosave unavailable</span>`;
+  if (save.status === 'saving') return html`<span class="saved"><span class="dot" style="background:var(--line-strong)"></span>Saving…</span>`;
+  if (save.status === 'saved') return html`<span class="saved"><span class="dot"></span>Saved ${save.at}</span>`;
+  if (save.status === 'loaded') return html`<span class="saved" title="Restored from this browser's storage"><span class="dot"></span>Restored ${save.at}</span>`;
+  return html`<span class="saved"><span class="dot" style="background:var(--line-strong)"></span>Not saved yet</span>`;
+}
+
+function TopBar({ crumbs, theme, setTheme, share, setShare, onPalette, onFeedback, save }) {
   return html`<header class="topbar">
     <div class="crumb">${crumbs.map((c, i) => html`${i > 0 && html`<span class="sep">›</span>`}${i === crumbs.length - 1 ? html`<b>${c}</b>` : html`<span>${c}</span>`}`)}</div>
     <div class="search" role="button" tabindex="0" onClick=${onPalette} onKeyDown=${e => e.key === 'Enter' && onPalette()}><${Icon} name="search" size=${14} />Jump to entity, stream, process ID or activity<kbd>Ctrl K</kbd></div>
     <div class="actions">
-      <span class="saved"><span class="dot"></span>Saved</span>
+      <${SavedIndicator} save=${save} />
       <${IconButton} icon="feedback" label="Feedback" onClick=${onFeedback} />
       <${IconButton} icon="share" label=${share ? 'Screen-share mode on' : 'Screen-share mode'} onClick=${() => setShare(!share)} style=${share ? 'color:var(--accent)' : ''} />
       <${IconButton} icon="undo" label="Undo" disabled />
@@ -59,6 +67,17 @@ function ComingNext({ p }) {
   return html`<div class="coming">
     <${PageHead} eyebrow=${`${p.n} · ${p.label} · coming next (increment ${p.increment})`} title=${p.title} lead="This phase is part of the lifecycle shell from day one. It is not built yet – here is what it will contain." how=${html`<p>Phases are built in the order of the pilot plan: RUN first (import, workshop mode, audit trail), then save/load and exports, then present mode, QG2, EVALUATE and the full PLAN / PREPARE / HAND-OVER.</p>`} />
     <div class="card"><div class="card-body"><div class="eyebrow" style="margin-bottom:.5rem">Planned content</div><ul>${p.what.map(w => html`<li>${w}</li>`)}</ul></div></div>
+  </div>`;
+}
+
+function RunPage({ session, summary, updateSession, toast, onClearAll, tab, setTab }) {
+  const hasData = session.files.length > 0;
+  return html`<div>
+    <div class="tabs" role="tablist">
+      <button class="tab" role="tab" aria-selected=${tab === 'workshop'} onClick=${() => setTab('workshop')}>Workshop</button>
+      <button class="tab" role="tab" aria-selected=${tab === 'import'} onClick=${() => setTab('import')}>Import & data${hasData && html`<span class="cnt">${session.files.length}</span>`}</button>
+    </div>
+    ${tab === 'import' ? html`<${ImportView} session=${session} summary=${summary} updateSession=${updateSession} toast=${toast} onClearAll=${onClearAll} />` : hasData ? html`<${ComingNext} p=${PHASES[2]} />` : html`<${EmptyState} icon="upload" title="No capture sheets yet" text="Import the stream workbooks first – the workshop view is built from them." action=${html`<${Button} variant="primary" icon="upload" onClick=${() => setTab('import')}>Go to import</${Button}>`} />`}
   </div>`;
 }
 
@@ -86,7 +105,18 @@ function FeedbackPanel({ open, onClose, onSave, view }) {
 }
 
 function App() {
-  const [session, setSession] = useState(() => createSession());
+  const [session, setSession] = useState(null);
+  const [save, setSave] = useState({ status: 'idle' });
+  const [runTab, setRunTab] = useState(null);
+  const dirty = useRef(false);
+  const updateSession = useCallback((fn) => { setSession(s => { const n = { ...s }; fn(n); n.updatedAt = new Date().toISOString(); dirty.current = true; return n; }); }, []);
+  useEffect(() => { (async () => { let loaded = null; try { loaded = await storageLoad(); } catch (e) { setSave({ status: 'unavailable', error: String(e) }); } if (loaded) setSave({ status: 'loaded', at: loaded.updatedAt ? new Date(loaded.updatedAt).toLocaleString([], { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '' }); setSession(loaded ? { ...createSession(), ...loaded } : createSession()); })(); }, []);
+  useEffect(() => {
+    if (!session || !dirty.current) return;
+    setSave(v => v.status === 'unavailable' ? v : { ...v, status: 'saving' });
+    const t = setTimeout(async () => { try { await storageSave(session); dirty.current = false; setSave({ status: 'saved', at: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }); } catch (e) { setSave({ status: 'unavailable', error: String(e) }); } }, 700);
+    return () => clearTimeout(t);
+  }, [session]);
   const [page, setPage] = useState(() => store.get('fg.page', 'phase'));
   const [phase, setPhase] = useState(() => store.get('fg.phase', 'run'));
   const [theme, setThemeState] = useState(() => store.get('fg.theme', null));
@@ -96,7 +126,7 @@ function App() {
   const [feedback, setFeedback] = useState(false);
   const [welcome, setWelcome] = useState(() => !store.get('fg.welcomed', false));
   const [toasts, setToasts] = useState([]);
-  const summary = useMemo(() => importSummary(session), [session]);
+  const summary = useMemo(() => session ? importSummary(session) : importSummary(createSession()), [session]);
   const setTheme = (t) => { setThemeState(t); store.set('fg.theme', t); applyTheme(t); };
   const setShare = (v) => { setShareState(v); document.documentElement.setAttribute('data-share', v ? 'on' : 'off'); };
   useEffect(() => { applyTheme(theme); }, []);
@@ -107,16 +137,19 @@ function App() {
   }, []);
   const toast = (text, opts = {}) => { const id = newId('t'); setToasts(t => [...t, { id, text, ...opts }]); setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), opts.ttl || 4000); };
   const current = PHASES.find(p => p.key === phase) || PHASES[2];
+  const tab = runTab || (session && session.files.length ? 'workshop' : 'import');
   const viewName = page === 'styleguide' ? 'Style sheet' : `${current.n} ${current.label}`;
-  const crumbs = page === 'styleguide' ? ['Design system', 'Style sheet'] : [`${current.n} ${current.label}`, current.title];
-  const paletteItems = [...PHASES.map(p => ({ label: `${p.n} ${p.label} – ${p.title}`, kind: 'phase', icon: p.icon, go: () => { setPage('phase'); setPhase(p.key); } })), { label: 'Style sheet', kind: 'design', icon: 'palette', go: () => setPage('styleguide') }, { label: theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme', kind: 'theme', icon: 'sun', go: () => setTheme(theme === 'dark' ? 'light' : 'dark') }];
-  const logFeedback = (note) => { setSession(s => ({ ...s, feedback: [...s.feedback, { ts: new Date().toISOString(), view: viewName, note, sessionId: s.activeSessionId }] })); toast('Feedback logged'); };
+  const crumbs = page === 'styleguide' ? ['Design system', 'Style sheet'] : [`${current.n} ${current.label}`, phase === 'run' && tab === 'import' ? 'Import & data' : current.title];
+  if (!session) return html`<div class="app"><aside class="sidebar"></aside><div class="content"><div class="main" style="display:grid;gap:.6rem;max-width:30rem"><div class="skeleton" style="width:40%"></div><div class="skeleton" style="width:80%"></div><div class="skeleton" style="width:60%"></div></div></div></div>`;
+  const paletteItems = [...Object.values(session.entities).map(e => ({ label: `${e.displayName || e.name} · ${e.code}`, kind: 'entity', icon: 'file', go: () => { setPage('phase'); setPhase('run'); setRunTab('import'); } })), ...PHASES.map(p => ({ label: `${p.n} ${p.label} – ${p.title}`, kind: 'phase', icon: p.icon, go: () => { setPage('phase'); setPhase(p.key); } })), { label: 'Style sheet', kind: 'design', icon: 'palette', go: () => setPage('styleguide') }, { label: theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme', kind: 'theme', icon: 'sun', go: () => setTheme(theme === 'dark' ? 'light' : 'dark') }];
+  const logFeedback = (note) => { updateSession(s => { s.feedback = [...s.feedback, { ts: new Date().toISOString(), view: viewName, note, sessionId: s.activeSessionId }]; }); toast('Feedback logged'); };
+  const clearAll = async () => { try { await storageClear(); } catch { /* ignore */ } setSession(createSession()); dirty.current = true; setRunTab('import'); toast('All data cleared'); };
   return html`<div class="app" data-rail=${rail ? '1' : '0'}>
     <${Sidebar} phase=${phase} setPhase=${setPhase} summary=${summary} rail=${rail} setRail=${setRail} session=${session} page=${page} setPage=${setPage} />
     <div class="content">
-      <${TopBar} crumbs=${crumbs} theme=${theme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')} setTheme=${setTheme} share=${share} setShare=${setShare} onPalette=${() => setPalette(true)} onFeedback=${() => setFeedback(f => !f)} />
+      <${TopBar} crumbs=${crumbs} theme=${theme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')} setTheme=${setTheme} share=${share} setShare=${setShare} onPalette=${() => setPalette(true)} onFeedback=${() => setFeedback(f => !f)} save=${save} />
       <${KpiStrip} summary=${summary} session=${session} />
-      <main class="main">${page === 'styleguide' ? html`<${StyleGuide} />` : html`<${ComingNext} p=${current} />`}</main>
+      <main class="main">${page === 'styleguide' ? html`<${StyleGuide} />` : phase === 'run' ? html`<${RunPage} session=${session} summary=${summary} updateSession=${updateSession} toast=${toast} onClearAll=${clearAll} tab=${tab} setTab=${setRunTab} />` : html`<${ComingNext} p=${current} />`}</main>
     </div>
     <${Palette} open=${palette} onClose=${() => setPalette(false)} items=${paletteItems} onPick=${i => { setPalette(false); i.go(); }} />
     <${Welcome} open=${welcome} onClose=${() => { setWelcome(false); store.set('fg.welcomed', true); }} onPrimary=${() => { setWelcome(false); store.set('fg.welcomed', true); setPage('styleguide'); }} />
