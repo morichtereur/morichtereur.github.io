@@ -1,0 +1,22 @@
+*, *::before, *::after { box-sizing: border-box; }
+html { font-size: 15px; -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font-ui); font-size: 0.9333rem; line-height: 1.45; font-feature-settings: 'ss01', 'cv11'; }
+h1, h2, h3, h4 { margin: 0; font-weight: 600; letter-spacing: -0.005em; }
+h1 { font-family: var(--font-serif); font-weight: 500; font-size: 1.8rem; line-height: 1.2; }
+h2 { font-size: 1.1rem; }
+h3 { font-size: 0.95rem; }
+p { margin: 0 0 0.75rem; }
+a { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
+a:hover { color: var(--accent-2); }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+code, .mono { font-family: var(--font-mono); font-size: 0.86em; }
+:focus-visible { outline: none; box-shadow: var(--focus); border-radius: var(--radius); }
+::selection { background: var(--accent-soft); }
+.eyebrow { font-size: 0.68rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-2); }
+.muted { color: var(--ink-2); }
+.small { font-size: 0.8rem; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+hr { border: 0; border-top: 1px solid var(--line); margin: 1rem 0; }
+@media print { .sidebar, .topbar, .kpi-strip, .no-print { display: none !important; } .main { padding: 0 !important; } body { background: #fff; } }

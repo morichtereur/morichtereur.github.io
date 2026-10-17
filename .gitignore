@@ -32,3 +32,9 @@ pnpm-debug.log*
 # Local tooling config, not part of the site.
 .claude/
 CLAUDE.md
+
+# GBS Fit-Gap Workbench: never commit capture sheets; the built single-file app is committed.
+fitgap-workbench/samples/*
+!fitgap-workbench/samples/README.md
+!fitgap-workbench/dist/
+fitgap-workbench/dist/smoke/
