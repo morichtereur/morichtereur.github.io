@@ -3,7 +3,9 @@
 Internal, reusable consulting asset for the fit-gap phase of GBS transitions:
 plan · prepare · run · evaluate · QG2 sign-off · hand-over, per country, for any client.
 One self-contained `dist/index.html` – opens from `file://` in Edge/Chrome, makes zero
-network requests (libraries and fonts are inlined), no backend.
+network requests (libraries and fonts are inlined), no backend. The only exception is the optional
+AI support panel: when the user enters a Claude API key (kept in the browser's local storage, never in
+the session file) it calls `api.anthropic.com` on request; without a key it offers "Copy prompt".
 
 Nothing client-specific lives in this code. Client names, entities, taxonomy, participants and
 schedule come only from imported files or settings. `samples/` is git-ignored: never commit capture sheets.

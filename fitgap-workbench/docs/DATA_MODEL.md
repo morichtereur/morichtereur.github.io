@@ -90,6 +90,11 @@ Y/N cells are `true | false | null`; unrecognised text is kept as `{ text }`. GA
 - QG2-ready per stream = all in-scope activities assessed AND every deviation has owner, resolution approach, decided approval (aligned / approved / rejected) and, for separate variants, a justification.
 - Write-back writes only assessments touched in the workshop (switchable); cells come from `sources[].cells`, values are inline strings, styles are kept, calcChain is dropped.
 
+## 4c AI support (src/ui/ai.js)
+Raw HTTP call to `POST https://api.anthropic.com/v1/messages` (no SDK in the single-file build), model `claude-opus-5-5` by default,
+`output_config.effort` configurable, `fallbacks: "default"`. The step context (process path, To-Be, Ops as-is, workshop values) is
+sent in the first user message; answers can be appended to the activity comment. The API key is stored in `localStorage` only.
+
 ## 5 Open decisions
 - Ops values on re-import: currently "newest file wins, diff for review". Alternative: hold the new values until the user accepts each diff.
 - Pre-filled Fit-Gap/Detailed values in a capture sheet are imported as workshop input; confirm that this is wanted (vs. treating them as Ops noise).

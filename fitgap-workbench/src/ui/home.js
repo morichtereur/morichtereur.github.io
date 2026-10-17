@@ -9,8 +9,6 @@ async function loadDemoData(updateSession, toast, onDone) {
     const parsed = parseCaptureWorkbook(wb, { XLSX, fileName: f.name });
     if (!parsed.ok) continue;
     updateSession(s => { mergeParsedWorkbook(s, parsed); procs = s.processes; });
-    const flows = await extractFlowsForImport(f.data.buffer, wb, parsed, procs);
-    if (flows.length) updateSession(s => { s.flows = s.flows.filter(x => x.file !== f.name).concat(flows); });
   }
   const monday = (() => { const d = new Date(); d.setDate(d.getDate() + ((8 - d.getDay()) % 7 || 7)); return d; })();
   const iso = (d, plus = 0) => { const x = new Date(d); x.setDate(x.getDate() + plus); return x.toISOString().slice(0, 10); };
@@ -51,7 +49,7 @@ function HomePage({ session, summary, updateSession, toast, go, onReplaceSession
           <div class="eyebrow" style="margin-bottom:.4rem">Quick start</div>
           ${!hasData && html`<p class="small muted">No client data at hand? Load a fictional "Demo Group" with three entities and all five streams.</p><${Button} variant="primary" icon="run" disabled=${busy} onClick=${async () => { setBusy(true); try { await loadDemoData(updateSession, toast, () => go('run', 'workshop')); } finally { setBusy(false); } }}>${busy ? 'Loading demo…' : 'Try with demo data'}</${Button}><hr />`}
           <p class="small muted">Everything you do is saved in this browser automatically. Download the session file at the end of each day and to continue on another laptop.</p>
-          <div class="sg-row"><${Button} variant="outline" size="sm" icon="save" disabled=${!hasData} onClick=${() => { downloadSessionJson(session); toast('Session file downloaded'); }}>Save session file</${Button}><${Button} variant="outline" size="sm" icon="upload" onClick=${() => inp.current.click()}>Load session file…</${Button}><input ref=${inp} type="file" accept=".json" style="display:none" onChange=${onLoad} /></div>
+          <div class="sg-row"><${Button} variant="outline" size="sm" icon="file" onClick=${() => downloadTemplates(session, toast)}>Excel templates</${Button}><${Button} variant="outline" size="sm" icon="save" disabled=${!hasData} onClick=${() => { downloadSessionJson(session); toast('Session file downloaded'); }}>Save session file</${Button}><${Button} variant="outline" size="sm" icon="upload" onClick=${() => inp.current.click()}>Load session file…</${Button}><input ref=${inp} type="file" accept=".json" style="display:none" onChange=${onLoad} /></div>
         </div></div>
         <div class="card"><div class="card-body"><div class="eyebrow" style="margin-bottom:.4rem">Good to know</div><ul class="small muted" style="margin:0;padding-left:1.1rem;display:grid;gap:.3rem"><li>Works offline – no network, no server.</li><li><span class="mono">Ctrl K</span> jumps to any entity, stream or activity.</li><li>In the workshop: <span class="mono">↑ ↓</span> rows, <span class="mono">C</span> confirm as fit, <span class="mono">1–5</span> status, <span class="mono">Enter</span> comment.</li><li>Versions of a workbook re-sent later are merged, never duplicated. Workshop results are never overwritten.</li><li>The <b>Feedback</b> button (top bar) logs improvement notes into the session file.</li></ul></div></div>
       </div>

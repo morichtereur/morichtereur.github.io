@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="referrer" content="no-referrer">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; font-src data:; connect-src 'none'; form-action 'none'; base-uri 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; font-src data:; connect-src https://api.anthropic.com; form-action 'none'; base-uri 'none'">
 <title>GBS Fit-Gap Workbench</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%231f4e79'/%3E%3Cpath d='M8 22V10h4v8h4v-8h4v8h4V10' fill='none' stroke='%23fff' stroke-width='2.4'/%3E%3C/svg%3E">
 <style id="fonts">
@@ -607,6 +607,28 @@ dialog.agenda { max-width: 48rem; }
 .ws-toolbar { display: flex; align-items: center; gap: .5rem; margin-bottom: .75rem; padding: .4rem .6rem; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius-lg); }
 .tree-node.root { font-weight: 600; }
 
+/* ---------- Plan steps, sessions, AI panel ---------- */
+.plan-grid { display: grid; gap: 1rem; max-width: 70rem; }
+.pstep-head { display: flex; align-items: center; gap: .7rem; margin-bottom: .8rem; }
+.pstep-head .step-n { width: 2rem; height: 2rem; border-radius: 50%; display: grid; place-items: center; font-family: var(--font-mono); background: var(--accent); color: var(--accent-ink); flex: none; }
+.pstep-head .step-n.done { background: var(--ok-soft); color: var(--ok); border: 1px solid var(--ok); }
+.sessions { display: grid; gap: .5rem; }
+.sess { display: grid; grid-template-columns: 1fr auto; gap: .8rem; padding: .7rem .9rem; border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--panel); }
+.sess.active { border-color: var(--accent); background: var(--accent-soft); }
+.sess-actions { display: flex; flex-direction: column; gap: .35rem; align-items: flex-end; }
+.gapbtns { display: flex; flex-wrap: wrap; gap: .3rem; }
+.gapbtns .pill { cursor: pointer; opacity: .55; border: 1px solid transparent; } .gapbtns .pill.on, .gapbtns .pill:hover { opacity: 1; } .gapbtns .pill.on { outline: 2px solid currentColor; outline-offset: 1px; }
+.ai-panel { width: 26rem; max-height: calc(100vh - 2.5rem); display: flex; flex-direction: column; }
+.ai-panel .card-body { overflow: auto; }
+.ai-thread { display: grid; gap: .5rem; max-height: 40vh; overflow: auto; }
+.ai-msg { font-size: .84rem; padding: .5rem .65rem; border-radius: var(--radius); }
+.ai-user { background: var(--bg); } .ai-assistant { background: var(--accent-soft); }
+.ai-h { font-weight: 600; margin: .3rem 0 .1rem; } .ai-li { padding-left: .5rem; margin: .1rem 0; }
+.ai-cfg { background: var(--bg); border-radius: var(--radius); padding: .6rem .7rem; margin-bottom: .6rem; display: grid; gap: .5rem; }
+.present .board-wrap.with-detail { grid-template-columns: minmax(0, 1fr) 24cqw; }
+.present .board-detail { font-size: 1.05cqw; position: static; max-height: calc(100vh - 16rem); overflow: auto; } .present .board-detail .select, .present .board-detail .input, .present .board-detail .textarea { font-size: 1cqw; }
+.present .gapbtns .pill { font-size: .85cqw; }
+
 </style>
 </head>
 <body>
@@ -652,7 +674,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 </script>
 <script id="app">
 'use strict';
-const BUILD = { version: '0.1.0', builtAt: '2026-10-17T16:12:17.855Z' };
+const BUILD = { version: '0.1.0', builtAt: '2026-10-17T23:02:39.349Z' };
 
 /* ---- src/model/constants.js ---- */
 // Domain constants. Pure data – no client-specific values anywhere in here.
@@ -2037,7 +2059,6 @@ function prepareReadiness(session, ws, flowsByNode = {}) {
   const checks = [
     { key: 'file', label: 'Capture sheet received', ok: fileReceived, detail: fileReceived ? 'imported' : 'no file for this stream' },
     { key: 'ops', label: 'Ops pre-assessment complete', ok: list.length > 0 && withGap === list.length, warn: list.length > 0 && withGap / list.length >= 0.9, detail: list.length ? `${Math.round(100 * withGap / list.length)} % of ${list.length} As-Is GAP cells filled` : 'no activities' },
-    { key: 'flows', label: 'Process flows available', ok: leafIds.size > 0 && leavesWithFlow === leafIds.size, warn: leafIds.size > 0 && leavesWithFlow > 0, detail: leafIds.size ? `${leavesWithFlow} of ${leafIds.size} L3 with an image` : '–' },
     { key: 'participants', label: 'Participants nominated', ok: (ws.participantIds || []).length > 0, detail: `${(ws.participantIds || []).length} nominated` },
     { key: 'room', label: 'Room / link sent', ok: !!ws.roomSent, detail: ws.roomSent ? 'sent' : 'not yet' },
   ];
@@ -2441,7 +2462,7 @@ function buildRows(stream, opts = {}) {
   return rows;
 }
 
-function workbook(XLSX, stream, { headerRow, entities, asIsTitle, fitGapTitle, oosL2, rows, sheetName, oldCopy, flows }) {
+function workbook(XLSX, stream, { headerRow, entities, asIsTitle, fitGapTitle, oosL2, rows, sheetName, oldCopy, flows, empty }) {
   const H = headerRow - 1; // 0-based index of the header row
   const aoa = []; const merges = [];
   const put = (r, c, v) => { aoa[r] = aoa[r] || []; aoa[r][c] = v; };
@@ -2484,7 +2505,7 @@ function workbook(XLSX, stream, { headerRow, entities, asIsTitle, fitGapTitle, o
   let r = H + 1;
   for (const row of rows) {
     put(r, 1, row.level); put(r, 2, row.id); put(r, 3, row.name); if (row.description) put(r, 4, row.description);
-    if (row.level === 4) {
+    if (row.level === 4 && !empty) {
       seedFor(row.id);
       const toGbs = rnd() < 0.7;
       put(r, cols.tobe.le, toGbs ? 'N' : 'Y'); put(r, cols.tobe.gbs, toGbs ? 'Y' : 'N'); put(r, cols.tobe.system, pick(SYSTEMS));
@@ -2572,6 +2593,29 @@ async function generateDemoWorkbooks(XLSX, JSZip) {
   const cmdRows = buildRows('I2C', { filterL2: 'I2C 1' });
   const wbCmd = workbook(XLSX, 'I2C', { headerRow: 8, entities: ENTITIES, asIsTitle: 'PRE-FILLED AS-IS PROCESS SPECIFICATION', fitGapTitle: 'FIT-GAP ASSESSMENT', sheetName: 'Fit-Gap Template_I2C_CMD', rows: cmdRows });
   out.push({ name: 'Fit-Gap_Template_I2C_CMD_DemoGroup.xlsx', data: new Uint8Array(XLSX.write(wbCmd, { type: 'array', bookType: 'xlsx' })) });
+  return out;
+}
+
+/** Empty capture-sheet templates (one per stream) and the planning workbook template. */
+function generateTemplateWorkbooks(XLSX, { entities = [], streams = ['R2R', 'A2R', 'I2P', 'I2C', 'ICO'] } = {}) {
+  const ents = entities.length ? entities : [{ code: '100001', name: 'Entity A (replace)' }, { code: '100002', name: 'Entity B (replace)' }, { code: '100003', name: 'Entity C (replace)' }];
+  const out = [];
+  for (const stream of streams) {
+    const L = { R2R: 'Record to Report', A2R: 'Acquire to Retire', I2P: 'Invoice to Pay', I2C: 'Invoice to Cash', ICO: 'Intercompany' }[stream] || stream;
+    const rows = [
+      { level: 0, id: stream, name: `${stream} ${L}` }, { level: 1, id: `${stream} 1`, name: 'Level-1 process (e.g. General Ledger Accounting)' }, { level: 2, id: `${stream} 1.1`, name: 'Level-2 process (e.g. Journal Entries)' }, { level: 3, id: `${stream} 1.1.1`, name: 'Level-3 process variant (e.g. Journal Entries – standard)' },
+      { level: 4, id: `${stream} 1.1.1.1`, name: 'Level-4 activity (one row per activity)', description: 'What is done in this activity – one sentence.' }, { level: 4, id: `${stream} 1.1.1.2`, name: 'Next activity', description: '' },
+    ];
+    const wb = workbook(XLSX, stream, { headerRow: 8, entities: ents, asIsTitle: 'PRE-FILLED AS-IS PROCESS SPECIFICATION', fitGapTitle: 'FIT-GAP ASSESSMENT', rows, sheetName: `Fit-Gap Template_${stream}`, empty: true });
+    const ws = wb.Sheets[`Fit-Gap Template_${stream}`];
+    ws['B2'] = { t: 's', v: 'How to fill: keep the header row (row 8) and the block titles above it. One row per activity (Process Level 4). GBS Operations pre-fill the AS-IS block per entity (LE/Country/Other, GBS, Used Systems, GAP = NO GAP | HARMONIZATION GAP | STANDARDIZATION GAP | BOTH GAPS, Additional Information). Leave FIT-GAP and DETAILED GAP empty – they are completed in the workshop. Write "Out of scope" into the Fit-Gap cell of an entity to exclude an activity.' };
+    out.push({ name: `Fit-Gap_Template_${stream}.xlsx`, data: new Uint8Array(XLSX.write(wb, { type: 'array', bookType: 'xlsx' })) });
+  }
+  const plan = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(plan, XLSX.utils.aoa_to_sheet([['Fit Gap Workshops'], [], ['Country', 'PROCESS', 'Responsible', 'Comment', 'Workshop Date', 'Meeting time', 'Overall Duration', 'Status'], ['France', 'Record-to-Report', 'J. Keller', '', '19.10.2026 and 20.10.2026', 'Monday from 10:00-12:00 and 13:00-16:00', '5h', 'confirmed with PE and RO'], ['', 'Invoice-to-Pay', 'A. Weber', 'tbc', '21.10.2026', '9:00-11:00 CET', '2h', 'invite sent'], ['UK&I', 'Order-to-Cash', 'C. Smith', '', 'tbd', 'tbd', '', '']]), 'New');
+  XLSX.utils.book_append_sheet(plan, XLSX.utils.aoa_to_sheet([['Old']]), 'Old');
+  out.push({ name: 'Fit_Gap_Workshops_planning_template.xlsx', data: new Uint8Array(XLSX.write(plan, { type: 'array', bookType: 'xlsx' })) });
+  out.push({ name: 'README.txt', data: new TextEncoder().encode(`GBS Fit-Gap Workbench – Excel templates\n\nFit-Gap_Template_<STREAM>.xlsx\n  One workbook per stream (R2R, A2R, I2P, I2C, ICO). Main sheet "Fit-Gap Template_<STREAM>":\n  - row 8 = header row (Process Level | Process ID | Process | Activity description), rows 5-7 carry the block titles and entity labels\n  - TO BE block: LE, GBS, System, Planned initiative (per activity)\n  - per entity: PRE-FILLED AS-IS (LE/Country/Other, GBS, Used Systems, GAP, Additional Information) – filled by GBS Operations before the workshop\n  - per entity: FIT-GAP ASSESSMENT (Local Accounting, Other, GBS, FTE) and DETAILED GAP ASSESSMENT (7 fields) – completed in the workshop\n  - entity label above each block = "<6-digit code> <legal entity name>"\n  - data rows: Process Level 0-5 and Process ID starting with the stream code; levels 0-3 are hierarchy, level 4 = activities\n  - "Out of scope" in a Fit-Gap cell excludes the activity for that entity\n  You may add rows, entities (copy the three blocks and change the label) and extra columns – the parser maps fields by header text, not by column letter.\n\nFit_Gap_Workshops_planning_template.xlsx\n  Planning workbook ("New" sheet): Country | PROCESS | Responsible | Comment | Workshop Date | Meeting time | Overall Duration | Status. Free-text dates and times are parsed best-effort.\n`) });
   return out;
 }
 
@@ -2664,6 +2708,7 @@ const ICON_PATHS = {
   save: 'M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2zM17 21v-8H7v8M7 3v5h8',
   keyboard: 'M2 6h20v12H2zM6 10h.01M10 10h.01M14 10h.01M18 10h.01M8 14h8',
   home: 'M3 11 12 3l9 8M5 10v10h5v-6h4v6h5V10',
+  spark: 'M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3zM19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8L19 16z',
   globe: 'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM2 12h20M12 2a15 15 0 0 1 0 20M12 2a15 15 0 0 0 0 20',
   users: 'M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM23 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8',
 };
@@ -2912,7 +2957,7 @@ const BOARD_LANES = [['LOCAL', 'Local Accounting', 'local', 'home'], ['OTHER', '
 const CONTROL_RX = /approv|review|validat|reconcil|check|monitor|verif|control|confirm|audit/i;
 const stepTag = (p) => CONTROL_RX.test(p.name || '') ? '◆ CONTROL' : '● CORE';
 
-function FlowBoard({ session, entityCode, node, activities, updateSession, toast, readOnly, onOpenRow, large }) {
+function FlowBoard({ session, entityCode, node, activities, updateSession, toast, readOnly, onOpenRow, large, onAsk }) {
   const { steps, handoffs } = useMemo(() => swimlaneModel(session, entityCode, activities), [session.assessments, entityCode, activities]);
   const [sel, setSel] = useState(null);
   const selected = steps.find(s => s.p.id === sel) || null;
@@ -2939,7 +2984,7 @@ function FlowBoard({ session, entityCode, node, activities, updateSession, toast
     </button>`;
   };
   const a = selected?.a; const set = (path, v) => updateSession(s => applyChange(s, a.key, path, v));
-  return html`<div class=${`board-wrap${selected && !readOnly ? ' with-detail' : ''}`} tabindex="0">
+  return html`<div class=${`board-wrap${selected && !readOnly ? ' with-detail' : ''}${large ? ' large' : ''}`} tabindex="0">
     <div>
       <div class="sg-row" style="justify-content:space-between;margin:0 0 .4rem"><span class="eyebrow">Process flow · ${ent?.displayName || entityCode} · ${node.id} ${node.name}</span><span class="sg-row" style="margin:0;gap:.6rem"><span class="muted small">${steps.length} steps · ${handoffs} hand-off${handoffs === 1 ? '' : 's'}</span>${!readOnly && html`<${Button} variant="text" size="sm" onClick=${exportPng}>PNG</${Button}>`}</span></div>
       <div class="board">
@@ -2962,11 +3007,13 @@ function FlowBoard({ session, entityCode, node, activities, updateSession, toast
       <dl class="kv"><dt>To-Be</dt><dd>${selected.toBe.map(l => html`<${Tag} kind=${l} key=${l} />`)}${!selected.toBe.length && '–'} ${selected.p.toBe?.system && html`<span class="muted small">· ${selected.p.toBe.system}</span>`}</dd><dt>Ops as-is</dt><dd>${selected.ops.map(l => html`<${Tag} kind=${l} key=${l} />`)}${!selected.ops.length && '–'}</dd><dt>Workshop</dt><dd>${selected.source === 'workshop' ? selected.lanes.map(l => html`<${Tag} kind=${l} key=${l} />`) : html`<span class="muted">not yet assessed</span>`}</dd></dl>
       <div class="fgrid" style="grid-template-columns:1fr;margin-top:.6rem">
         <${Field} label="Who performs it today?"><div class="sg-row" style="margin:0;gap:.5rem"><span class="small">Local</span><${YN} size="sm" value=${a.fitGap.local} onChange=${v => set('fitGap.local', v)} name="Local" /><span class="small">GBS</span><${YN} size="sm" value=${a.fitGap.gbs} onChange=${v => set('fitGap.gbs', v)} name="GBS" /><span class="small">Other</span><${YN} size="sm" value=${a.fitGap.other} onChange=${v => set('fitGap.other', v)} name="Other" /></div></${Field}>
-        <${Field} label="Gap type"><select class="select sm" value=${a.workshop.gapType || ''} onChange=${e => set('workshop.gapType', e.target.value || null)}><option value="">${a.asIs.gap ? `(Ops: ${GAP_LABEL[a.asIs.gap]})` : '– choose –'}</option>${['NO_GAP', 'HARMONIZATION', 'STANDARDIZATION', 'BOTH', 'NA'].map(g => html`<option value=${g}>${GAP_LABEL[g]}</option>`)}</select></${Field}>
-        <${Field} label="Why?"><${TextInput} class="sm" value=${a.workshop.rationale} onCommit=${v => set('workshop.rationale', v)} placeholder="Short reason" /></${Field}>
+        <${Field} label="Is there a gap vs. the global standard?"><div class="gapbtns">${['NO_GAP', 'HARMONIZATION', 'STANDARDIZATION', 'BOTH'].map(g => html`<button key=${g} class=${`pill pill-${g}${(a.workshop.gapType || '') === g ? ' on' : ''}`} title=${session.settings.gapDefinitions[g]} onClick=${() => { set('workshop.gapType', g); if (a.workshop.status === WORKSHOP_STATUS.NOT_ASSESSED) set('workshop.status', g === 'NO_GAP' ? WORKSHOP_STATUS.CONFIRMED_FIT : WORKSHOP_STATUS.GAP_CONFIRMED); }}>${GAP_LABEL[g]}</button>`)}</div>${!a.workshop.gapType && a.asIs.gap && html`<span class="hint">Ops pre-assessed: ${GAP_LABEL[a.asIs.gap]}</span>`}</${Field}>
+        <${Field} label="What is different vs. the global standard?" required=${GAP_TYPES_WITH_DEVIATION.has(effectiveGap(a))}><${TextInput} textarea class="sm" style="min-height:3rem" value=${a.workshop.rationale} onCommit=${v => set('workshop.rationale', v)} placeholder="Who does it differently, which system, which rule…" /></${Field}>
+        ${GAP_TYPES_WITH_DEVIATION.has(effectiveGap(a)) && html`<${Field} label="Dimension"><div class="chips">${Object.keys(DIMENSION).map(d => html`<${Chip} key=${d} active=${(a.deviation?.dimensions || []).includes(d)} onClick=${() => updateSession(s => { const cur = s.assessments[a.key].deviation || { dimensions: [], resolution: '', justification: '', ownerId: '', targetDate: '', escalation: 'L1', approval: 'PROPOSED' }; const dims = cur.dimensions.includes(d) ? cur.dimensions.filter(x => x !== d) : [...cur.dimensions, d]; applyChange(s, a.key, 'deviation', { ...cur, dimensions: dims }); })}>${DIMENSION_LABEL[d]}</${Chip}>`)}</div></${Field}>
+        <${Field} label="Resolution approach"><select class="select sm" value=${a.deviation?.resolution || ''} onChange=${e => updateSession(s => { const cur = s.assessments[a.key].deviation || { dimensions: [], resolution: '', justification: '', ownerId: '', targetDate: '', escalation: 'L1', approval: 'PROPOSED' }; applyChange(s, a.key, 'deviation', { ...cur, resolution: e.target.value }); })}><option value="">– choose –</option>${Object.keys(RESOLUTION).map(r => html`<option value=${r}>${RESOLUTION_LABEL[r]}</option>`)}</select></${Field}>`}
         <${Field} label="Status"><select class="select sm" value=${a.workshop.status} onChange=${e => set('workshop.status', e.target.value)}><option value="NOT_ASSESSED">Not assessed</option>${Object.keys(WORKSHOP_STATUS_LABEL).filter(k => k !== 'NOT_ASSESSED').map(k => html`<option value=${k}>${WORKSHOP_STATUS_LABEL[k]}</option>`)}</select></${Field}>
       </div>
-      <div class="sg-row" style="margin-top:.6rem">${a.workshop.status !== WORKSHOP_STATUS.CONFIRMED_FIT && html`<${Button} variant="primary" size="sm" onClick=${() => { updateSession(s => confirmFit(s, a.key, selected.p)); toast('Confirmed as fit'); }}>✓ Fit</${Button}>`}<${Button} variant="outline" size="sm" onClick=${() => onOpenRow && onOpenRow(a.processId)}>Open full form</${Button}><${IconButton} icon="x" label="Close" onClick=${() => setSel(null)} /></div>
+      <div class="sg-row" style="margin-top:.6rem">${a.workshop.status !== WORKSHOP_STATUS.CONFIRMED_FIT && html`<${Button} variant="primary" size="sm" onClick=${() => { updateSession(s => confirmFit(s, a.key, selected.p)); toast('Confirmed as fit'); }}>✓ Fit</${Button}>`}${onOpenRow && html`<${Button} variant="outline" size="sm" onClick=${() => onOpenRow(a.processId)}>Full form</${Button}>`}${onAsk && html`<${Button} variant="outline" size="sm" icon="spark" onClick=${() => onAsk(a.key)}>Ask AI</${Button}>`}<${IconButton} icon="x" label="Close" onClick=${() => setSel(null)} /></div>
       ${!completeness(a).complete && !a.scope.outOfScope && html`<div class="missing" style="margin-top:.6rem"><b>Missing:</b> ${completeness(a).missing.join(' · ')}</div>`}
     </aside>`}
   </div>`;
@@ -2986,7 +3033,7 @@ function buildSlides(session, stream, entityFilter) {
   return { slides, entities, leaves };
 }
 
-function PresentMode({ session, updateSession, stream: initialStream, entityFilter, onClose, l3 }) {
+function PresentMode({ session, updateSession, stream: initialStream, entityFilter, onClose, l3, toast, onAsk }) {
   const [stream, setStream] = useState(initialStream);
   const { slides, entities, leaves } = useMemo(() => buildSlides(session, stream, entityFilter), [session, stream, entityFilter]);
   const [i, setI] = useState(() => { const idx = l3 ? slides.findIndex(s => s.node?.id === l3) : 0; return idx > 0 ? idx : 0; });
@@ -3002,7 +3049,7 @@ function PresentMode({ session, updateSession, stream: initialStream, entityFilt
       case 'cover': return html`<div class="slide-center">${st.logoDataUrl && html`<img src=${st.logoDataUrl} style="max-height:12cqw;margin-bottom:2cqw" alt="logo" />`}<div class="eyebrow">Fit-gap workshop · ${stream}</div><h2 style="font-size:5cqw">${st.clientName || 'Client'} · ${st.country || 'Country'}</h2><p style="font-size:1.6cqw;color:var(--ink-2)">${entities.map(e => e.displayName || e.name).join(' · ')}</p><p style="font-size:1.3cqw;color:var(--ink-3)">${(st.workshopDates || []).join(', ') || session.sessions.filter(x => x.stream.startsWith(stream)).map(x => x.date).join(', ') || new Date().toLocaleDateString()}${st.facilitators?.length ? ' · ' + st.facilitators.join(', ') : ''}</p></div>`;
       case 'scope': return html`${title('Scope', 'Streams and activities in scope')}<div class="slide-grid">${STREAMS.filter(x => Object.values(session.processes).some(p => p.stream === x)).map(x => { const n = Object.values(session.processes).filter(p => p.stream === x && p.level >= 4).length; const oos = Object.values(session.assessments).filter(a => a.stream === x && a.scope.outOfScope).length; return html`<div class="slide-kpi" key=${x}><div class="big" style="font-size:4cqw">${n}</div><div class="eyebrow">${x} · L4 activities${oos ? ` · ${oos} entity-rows out of scope` : ''}</div></div>`; })}</div>`;
       case 'legend': return html`${title('Gap types', 'How we classify every activity')}<div class="slide-legend">${['NO_GAP', 'HARMONIZATION', 'STANDARDIZATION', 'BOTH'].map(g => html`<div key=${g}><${GapPill} value=${g} size="lg" /><p>${st.gapDefinitions[g]}</p></div>`)}<div><span class="eyebrow">Resolution approaches</span><p><b>Separate variant</b> – cannot be closed; separate process variant for substantiated legal, tax or regulatory reasons.<br /><b>Close before go-live</b> – close the gap in the current as-is process before transition go-live.<br /><b>Lift & shift</b> – adopt the global standard after transition; deviation closed after migration.</p></div></div>`;
-      case 'l3flow': { const flow = flowForNode(session, s.node.id); return html`${title(`${stream} · ${s.node.id}`, s.node.name)}<div class="slide-two">${flow ? html`<div class="flow-stage" style="height:100%"><img src=${flow.dataUrl} alt="flow" style="max-height:100%;max-width:100%;transform:none" /></div>` : html`<div class="empty" style="padding:2cqw"><p>No flow image for this L3</p></div>`}<div><div class="sg-row" style="margin:0 0 .4cqw">${entities.map(e => html`<${Chip} key=${e.code} active=${swimEntity === e.code} onClick=${() => setSwimEntity(e.code)}>${e.displayName || e.name}</${Chip}>`)}</div>${swimEntity && html`<${FlowBoard} session=${session} entityCode=${swimEntity} node=${s.node} activities=${s.node.activities} readOnly large />`}</div></div>`; }
+      case 'l3flow': return html`${title(`${stream} · ${s.node.id}`, s.node.name)}<div class="sg-row" style="margin:0 0 .6cqw">${entities.map(e => html`<${Chip} key=${e.code} active=${swimEntity === e.code} onClick=${() => setSwimEntity(e.code)}>${e.displayName || e.name}</${Chip}>`)}<span class="muted small">click a step to capture who performs it and what is different</span></div>${swimEntity && html`<${FlowBoard} session=${session} entityCode=${swimEntity} node=${s.node} activities=${s.node.activities} updateSession=${updateSession} toast=${toast} large onAsk=${onAsk} />`}`;
       case 'l3table': return html`${title(`${stream} · ${s.node.id}`, `${s.node.name} · ${s.node.activities.length} activities`)}<table class="slide-table"><thead><tr><th>Activity</th>${entities.map(e => html`<th key=${e.code}>${e.displayName || e.name}</th>`)}</tr></thead><tbody>${s.node.activities.map(p => html`<tr key=${p.id}><td><span class="mono muted">${p.id}</span> ${p.name}</td>${entities.map(e => { const a = session.assessments[assessmentKey(e.code, p.id)]; if (!a) return html`<td key=${e.code}>—</td>`; if (a.scope.outOfScope) return html`<td key=${e.code}><${GapPill} value="OUT_OF_SCOPE" size="sm" /></td>`; const l = lanesOf(a, p); const findings = ['legalRegulatory', 'languageRequirements', 'externalParty', 'internalControls'].filter(f => a.detailedGap[f] && a.detailedGap[f] !== NA).map(f => DETAILED_GAP_LABEL[f].split(' ')[0]); return html`<td key=${e.code}><div class="sg-row" style="margin:0;gap:.3cqw"><select class="select sm present-select" value=${a.workshop.gapType || ''} onChange=${ev => updateSession(x => applyChange(x, a.key, 'workshop.gapType', ev.target.value || null))}><option value="">${a.asIs.gap ? 'Ops: ' + GAP_LABEL[a.asIs.gap] : '–'}</option>${['NO_GAP', 'HARMONIZATION', 'STANDARDIZATION', 'BOTH', 'NA'].map(g => html`<option value=${g}>${GAP_LABEL[g]}</option>`)}</select><${GapPill} value=${effectiveGap(a) || 'NOT_ASSESSED'} size="sm" />${gapDiffersFromOps(a) && html`<span class="diff-note">Ops: ${GAP_LABEL[a.asIs.gap] || '–'}</span>`}</div><div class="muted small">${l.workshop ? html`<${Tag} kind=${l.workshop} />` : 'split: –'} ${findings.length ? '· ' + findings.join(', ') : ''}</div></td>`; })}</tr>`)}</tbody></table>`;
       case 'stream': return html`${title(stream, 'Stream summary')}<div class="slide-two"><div><div class="eyebrow">Activity split (workshop vs. plan)</div>${SPLIT_CLASS_KEYS.map(k => html`<div class="bar-row" key=${k}><span>${SPLIT_CLASS[k]}</span><span class="bar"><i style=${`width:${100 * (streamStats.cls[k] || 0) / Math.max(1, Object.values(streamStats.cls).reduce((a, b) => a + b, 0))}%;background:var(--${k === 'NOT_ASSESSED' ? 'none' : k.includes('GBS') && !k.startsWith('PLANNED_GBS') ? 'gbs' : k === 'OTHER_PARTY' ? 'coe' : k === 'STAYS_LOCAL' ? 'local' : 'flag'})`}></i></span><b class="num">${streamStats.cls[k] || 0}</b></div>`)}</div><div><div class="eyebrow">Gap distribution · Ops pre-assessment vs. workshop</div><${OpsVsWorkshopChart} dist=${streamStats.g.dist} /></div></div>`;
       case 'cross': { const g = gapAnalysis(session, { entityCode: entityFilter }); return html`${title(st.country || 'Country', 'Cross-entity view')}<div class="slide-two"><div><div class="eyebrow">Gap in all entities (likely global-standard issue) · ${g.cross.all.length}</div><ul class="slide-list">${g.cross.all.slice(0, 12).map(b => html`<li key=${b.processId}><span class="mono muted">${b.processId}</span> ${b.name}</li>`)}</ul></div><div><div class="eyebrow">Gap in one entity only (entity-specific) · ${g.cross.one.length}</div><ul class="slide-list">${g.cross.one.slice(0, 12).map(b => html`<li key=${b.processId}><span class="mono muted">${b.processId}</span> ${b.name} <span class="muted">· ${session.entities[b.gaps[0]]?.displayName || b.gaps[0]}</span></li>`)}</ul></div></div>`; }
@@ -3265,7 +3312,6 @@ function useImportQueue(updateSession, onBatchDone, profileRef) {
         if (parsed.needsSheetChoice) { wbRef.current[job.id] = { wb, buf }; patch(job.id, { status: 'choice', progress: 80, message: 'Several candidate sheets – pick one', candidates: parsed.sheets.candidates }); continue; }
         if (!parsed.ok) { patch(job.id, { status: 'error', progress: 100, message: parsed.warnings.map(w => w.message).join(' ') }); continue; }
         results.push(finish(job.id, parsed));
-        const nf = await finishFlows(buf, wb, parsed); if (nf) patch(job.id, { message: `${nf} flow image${nf > 1 ? 's' : ''} extracted` });
       } catch (e) { patch(job.id, { status: 'error', progress: 100, message: `Could not read this file: ${e.message}` }); results.push({ error: e }); }
       await tick();
     }
@@ -3276,7 +3322,6 @@ function useImportQueue(updateSession, onBatchDone, profileRef) {
     const parsed = parseCaptureWorkbook(entry.wb, { XLSX, fileName: job.name, sheetName, profile: profileRef?.current || undefined });
     if (!parsed.ok) { patch(id, { status: 'error', progress: 100, message: parsed.warnings.map(w => w.message).join(' ') }); return; }
     onBatchDone && onBatchDone([finish(id, parsed)], 1);
-    finishFlows(entry.buf, entry.wb, parsed);
   };
   return { jobs, run, choose, clear: () => setJobs([]) };
 }
@@ -3371,6 +3416,19 @@ function DiffsCard({ session }) {
   </${Card}>`;
 }
 
+async function downloadTemplates(session, toast, only) {
+  const files = generateTemplateWorkbooks(XLSX, { entities: Object.values(session.entities).filter(e => e.hasCode).map(e => ({ code: e.code, name: e.displayName || e.name })) });
+  if (only) { const f = files.find(x => x.name === only); if (f) downloadBlob(f.name, new Blob([f.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })); return; }
+  const zip = new JSZip(); for (const f of files) zip.file(f.name, f.data);
+  downloadBlob('GBS_FitGap_Excel_templates.zip', await zip.generateAsync({ type: 'blob', compression: 'DEFLATE' })); toast('Excel templates downloaded');
+}
+function TemplatesCard({ session, toast }) {
+  return html`<${Card} title="Excel templates">
+    <p class="muted small">Blank capture sheets per stream (with the block layout GBS Operations fills in) and the planning workbook. ${Object.keys(session.entities).length ? 'Entity labels are taken from the imported files.' : 'Entity labels are placeholders – rename them in the files.'}</p>
+    <div class="sg-row"><${Button} variant="primary" size="sm" icon="file" onClick=${() => downloadTemplates(session, toast)}>All templates (.zip)</${Button}>${['R2R', 'A2R', 'I2P', 'I2C', 'ICO'].map(s => html`<${Button} key=${s} variant="outline" size="sm" onClick=${() => downloadTemplates(session, toast, `Fit-Gap_Template_${s}.xlsx`)}>${s}</${Button}>`)}<${Button} variant="outline" size="sm" onClick=${() => downloadTemplates(session, toast, 'Fit_Gap_Workshops_planning_template.xlsx')}>Planning</${Button}></div>
+  </${Card}>`;
+}
+
 function ImportView({ session, summary, updateSession, toast, onClearAll, onReplaceSession }) {
   const profiles = allProfiles(session); const [profileId, setProfileId] = useState(DEFAULT_PROFILE_ID); const profileRef = useRef(null);
   profileRef.current = profiles.find(p => p.id === profileId) || null;
@@ -3387,7 +3445,7 @@ function ImportView({ session, summary, updateSession, toast, onClearAll, onRepl
     return html`<div>
       <${PageHead} eyebrow="2 · Workshop · files & exports" title="Import the capture sheets" lead="Start with the pre-filled workbooks from GBS Operations. The tool reads the main Fit-Gap sheet of each file, detects entities and blocks by their titles, and shows you exactly what it found before anything is assessed." how=${html`<ol><li>Drop all stream workbooks at once (or add them one by one).</li><li>Check the import summary: entities × streams, activity counts, gap distribution and warnings.</li><li>If a label without entity code looks like a known entity, confirm or reject the match.</li><li>Re-import a newer version at any time – Ops values are refreshed and listed, workshop results stay.</li></ol>`} />
       <${DropZone} onFiles=${onFiles} ...${dz} />
-      <div style="margin-top:1rem;max-width:46rem"><${ExportsCard} session=${session} summary=${summary} updateSession=${updateSession} toast=${toast} onReplaceSession=${onReplaceSession} /></div>
+      <div style="margin-top:1rem;max-width:46rem;display:grid;gap:1rem"><${TemplatesCard} session=${session} toast=${toast} /><${ExportsCard} session=${session} summary=${summary} updateSession=${updateSession} toast=${toast} onReplaceSession=${onReplaceSession} /></div>
     </div>`;
   }
   return html`<div>
@@ -3403,6 +3461,7 @@ function ImportView({ session, summary, updateSession, toast, onClearAll, onRepl
       <div style="display:grid;gap:1rem">
         <${ExportsCard} session=${session} summary=${summary} updateSession=${updateSession} toast=${toast} onReplaceSession=${onReplaceSession} />
         <${DropZone} onFiles=${onFiles} compact ...${dz} />
+        <${TemplatesCard} session=${session} toast=${toast} />
         ${q.jobs.length > 0 && html`<div class="filelist">${q.jobs.map(j => html`<${JobRow} key=${j.id} job=${j} onChoose=${q.choose} />`)}</div>`}
         ${hasData && html`<${FilesCard} session=${session} summary=${summary} />`}
         ${hasData && summary.warnings.some(w => w.level !== 'info') && html`<${Card} title="Things to check in the files" stats=${[['open', summary.warnings.filter(w => w.level !== 'info').length]]}><${WarningList} warnings=${summary.warnings} /></${Card}>`}
@@ -3488,16 +3547,27 @@ function Milestones({ session, updateSession }) {
   </div>`;
 }
 
+function SessionReadiness({ session, ws, updateSession, toast }) {
+  const r = prepareReadiness(session, ws, {}); const [open, setOpen] = useState(false);
+  const lightColor = { green: 'var(--ok)', amber: 'var(--g-harm)', red: 'var(--flag)' };
+  return html`<div class="readiness"><button class="lnk" style="display:inline-flex;align-items:center;gap:.35rem" onClick=${() => setOpen(!open)}><span class="light" style=${`background:${lightColor[r.light]}`}></span>${r.checks.filter(c => c.ok).length}/${r.checks.length} ready</button>
+    ${open && html`<div class="checks" style="margin-top:.4rem">${r.checks.map(c => html`<div class=${`check ${c.ok ? 'ok' : c.warn ? 'warn' : 'bad'}`} key=${c.key}><${Icon} name=${c.ok ? 'check' : 'alert'} size=${14} /><span>${c.label}</span><span class="muted small">${c.detail}</span>${c.key === 'room' && html`<label class="toggle" style="margin-left:auto"><input type="checkbox" checked=${!!ws.roomSent} onChange=${e => updateSession(s => { s.sessions.find(x => x.id === ws.id).roomSent = e.target.checked; })} /><i></i>sent</label>`}</div>`)}
+      ${r.missing.length > 0 && html`<div class="small" style="margin-top:.3rem"><${Button} variant="text" size="sm" onClick=${() => { navigator.clipboard?.writeText(r.missing.map(m => `${m.processId}\t${m.name}\t${session.entities[m.entityCode]?.displayName || m.entityCode}`).join('\n')).then(() => toast('Chase list copied')); }}>Copy the ${r.missing.length} missing Ops pre-fills to chase</${Button}></div>`}</div>`}
+  </div>`;
+}
+
 function PlanView({ session, summary, updateSession, toast }) {
   const st = session.settings;
   const setS = (k, v) => updateSession(s => { s.settings[k] = v; });
   const [pName, setPName] = useState(''), [pRole, setPRole] = useState(''), [pOrg, setPOrg] = useState('Local'), [pEnt, setPEnt] = useState(''), [pMode, setPMode] = useState('onsite');
-  const [printAgenda, setPrintAgenda] = useState(null);
-  const [ws, setWs] = useState({ date: '', start: '', end: '', stream: 'R2R', participantIds: [], recording: '', note: '' });
+  const [printAgenda, setPrintAgenda] = useState(null); const [showCal, setShowCal] = useState(false);
+  const streamOptions = ['R2R', 'A2R-FAA', 'A2R-IA', 'A2R', 'I2P', 'I2C', 'ICO', 'MD'];
+  const nextStream = streamOptions.find(x => !session.sessions.some(w => w.stream === x) && (x === 'MD' || summary.activitiesByStream[x.replace(/-.*$/, '')])) || 'R2R';
+  const [ws, setWs] = useState({ date: new Date().toISOString().slice(0, 10), start: '09:00', end: '10:30', stream: nextStream, participantIds: [], recording: '', note: '' });
   const [plan, setPlan] = useState(null); const [planCountry, setPlanCountry] = useState('');
   const entities = Object.values(session.entities);
-  const addParticipant = () => { if (!pName.trim()) return; updateSession(s => { s.participants.push({ id: newId('p'), name: pName.trim(), role: pRole.trim(), organisation: pOrg, entityCode: pEnt || null, mode: pMode }); }); setPName(''); setPRole(''); };
-  const addSession = () => { if (!ws.date) { toast('Session needs a date'); return; } updateSession(s => { s.sessions.push({ id: newId('ws'), ...ws, startedAt: null, endedAt: null }); s.sessions.sort((a, b) => (a.date + a.start).localeCompare(b.date + b.start)); }); setWs({ ...ws, participantIds: [], recording: '', note: '' }); };
+  const addParticipant = () => { if (!pName.trim()) return; updateSession(s => { s.participants.push({ id: newId('p'), name: pName.trim(), role: pRole.trim(), organisation: pOrg, entityCode: pEnt || null, mode: pMode }); }); setPName(''); setPRole(''); toast('Participant added'); };
+  const addSession = () => { if (!ws.date) { toast('Session needs a date'); return; } updateSession(s => { s.sessions.push({ id: newId('ws'), ...ws, participantIds: s.participants.map(p => p.id), startedAt: null, endedAt: null }); s.sessions.sort((a, b) => (a.date + a.start).localeCompare(b.date + b.start)); }); setWs(w => ({ ...w, stream: streamOptions[(streamOptions.indexOf(w.stream) + 1) % streamOptions.length] })); toast('Session added – all participants invited, adjust below'); };
   const onPlanFile = async (e) => {
     const f = e.target.files[0]; if (!f) return; e.target.value = '';
     try { const wb = XLSX.read(await f.arrayBuffer(), { type: 'array', cellDates: true }); const p = parsePlanningWorkbook(wb, { XLSX, fileName: f.name }); if (!p.ok) { toast(p.warnings[0].message); return; }
@@ -3509,76 +3579,74 @@ function PlanView({ session, summary, updateSession, toast }) {
   const planRows = plan ? plan.sessions.filter(s => !planCountry || s.country === planCountry) : [];
   const patchPlan = (id, patch) => setPlan(p => ({ ...p, sessions: p.sessions.map(s => s.id === id ? { ...s, ...patch, incomplete: false } : s) }));
   const addPlanned = () => { const rows = planRows.filter(s => s.include && s.date && s.stream); updateSession(s => { for (const r of rows) s.sessions.push({ id: newId('ws'), date: r.date, start: r.start, end: r.end, stream: r.stream, participantIds: [], recording: '', note: [r.process, r.responsible, r.comment, r.tz].filter(Boolean).join(' · '), startedAt: null, endedAt: null }); s.sessions.sort((a, b) => (a.date + a.start).localeCompare(b.date + b.start)); if (!s.settings.country && planCountry) s.settings.country = planCountry; }); toast(`${rows.length} sessions added`); setPlan(null); };
-  const streamOptions = ['R2R', 'A2R-FAA', 'A2R-IA', 'A2R', 'I2P', 'I2C', 'ICO', 'MD'];
-  const planDone = !!st.country && session.participants.length > 0 && session.sessions.length > 0;
+  const step1 = !!st.country && !!st.editorInitials, step2 = session.participants.length > 0, step3 = session.sessions.length > 0;
+  const StepHead = ({ n, done, title, hint }) => html`<div class="pstep-head"><span class=${`step-n${done ? ' done' : ''}`}>${done ? html`<${Icon} name="check" size=${14} />` : n}</span><div><h3>${title}</h3>${hint && html`<div class="muted small">${hint}</div>`}</div></div>`;
 
-  return html`<div>
-    <${PageHead} eyebrow="1 · Plan & prepare" title=${st.country ? `${st.clientName || 'Client'} · ${st.country}` : 'Set up the country fit-gap'} lead="Country, entities, streams in scope, the people in the room and the session slots. Every workshop change is tagged with the active session, so set the sessions up before the first one starts." how=${html`<ol><li>Enter client, country and your initials (used in the audit trail).</li><li>Check the entities from the import and give them short display names.</li><li>Add participants – deviation owners and next-step owners are picked from this list.</li><li>Add sessions by hand or import the programme's planning workbook ("Fit Gap Workshops") and review the parsed rows.</li></ol>`} />
-    ${planDone && html`<div class="sg-row" style="margin-bottom:1rem"><span class="status status-CONFIRMED_FIT">Plan complete – ${session.sessions.length} sessions, ${session.participants.length} participants</span></div>`}
-    <div class="import-grid">
-      <div style="display:grid;gap:1rem">
-        <${Card} title="Country set-up">
-          <div class="fgrid">
-            <${Field} label="Client name" hint="Shown in headlines and slides"><${TextInput} value=${st.clientName} onCommit=${v => setS('clientName', v)} placeholder="e.g. Demo Group" /></${Field}>
-            <${Field} label="Country" required><${TextInput} value=${st.country} onCommit=${v => setS('country', v)} placeholder="e.g. France" /></${Field}>
-            <${Field} label="Your initials" required hint="Editor tag on every audit entry"><${TextInput} value=${st.editorInitials} onCommit=${v => setS('editorInitials', v.toUpperCase())} placeholder="MR" style="width:6rem" /></${Field}>
-            <${Field} label="Facilitators" hint="Comma-separated"><${TextInput} value=${(st.facilitators || []).join(', ')} onCommit=${v => setS('facilitators', v.split(',').map(x => x.trim()).filter(Boolean))} /></${Field}>
-            <${Field} label="Minutes per NO GAP activity" hint="Effort estimate per session"><${TextInput} class="num" value=${String(st.minutesPerActivity.NO_GAP)} onCommit=${v => updateSession(s => { s.settings.minutesPerActivity.NO_GAP = Number(v.replace(',', '.')) || 1.5; })} style="width:6rem" /></${Field}>
-            <${Field} label="Minutes per gap activity"><${TextInput} class="num" value=${String(st.minutesPerActivity.GAP)} onCommit=${v => updateSession(s => { s.settings.minutesPerActivity.GAP = Number(v.replace(',', '.')) || 5; })} style="width:6rem" /></${Field}>
-          </div>
-        </${Card}>
-        <${Card} title="Entities" stats=${[['from import', entities.length]]}>
-          ${entities.length ? html`<table class="matrix"><thead><tr><th>Code</th><th style="text-align:left">Imported name</th><th style="text-align:left">Display name</th><th style="text-align:left">Country</th><th class="num">Files</th></tr></thead><tbody>
-            ${entities.map(e => html`<tr key=${e.code}><td class="mono" style="text-align:left">${e.hasCode ? e.code : html`<span class="muted">no code</span>`}</td><td style="text-align:left">${e.name}</td><td style="text-align:left"><${TextInput} class="sm" value=${e.displayName || e.name} onCommit=${v => updateSession(s => { s.entities[e.code].displayName = v || e.name; })} /></td><td style="text-align:left"><${TextInput} class="sm" value=${e.country || st.country} onCommit=${v => updateSession(s => { s.entities[e.code].country = v; })} style="width:8rem" /></td><td class="num">${e.sources.length}</td></tr>`)}
-          </tbody></table>` : html`<p class="muted small">Entities appear here after the capture sheets are imported (3 · Run → Import & data).</p>`}
-        </${Card}>
-        <${Card} title="Streams and sub-streams in scope">
-          <div class="sg-row" style="gap:1rem">${SUB_STREAMS.map(s => html`<${Switch} key=${s} checked=${st.streamsInScope[s] !== false} onChange=${v => updateSession(x => { x.settings.streamsInScope[s] = v; })}>${s}${s.startsWith('A2R') || s === 'MD' ? '' : html`<span class="muted small"> · ${summary.activitiesByStream[s] || 0}</span>`}</${Switch}>`)}</div>
-          <p class="sg-note">A2R is split into FAA (asset accounting) and IA (inventory accounting) by the L1/L2 names; MD is the cross-stream master-data session.</p>
-        </${Card}>
-        <${Card} title="Gap type definitions" stats=${[['shown as tooltip and legend slide', '']]}>
-          <div style="display:grid;gap:.5rem">${['NO_GAP', 'HARMONIZATION', 'STANDARDIZATION', 'BOTH'].map(g => html`<div class="fgrid" style="grid-template-columns:11rem 1fr;align-items:start" key=${g}><${GapPill} value=${g} /><${TextInput} textarea class="sm" style="min-height:2.4rem" value=${st.gapDefinitions[g]} onCommit=${v => updateSession(s => { s.settings.gapDefinitions[g] = v; })} /></div>`)}</div>
-        </${Card}>
-      </div>
-      <div style="display:grid;gap:1rem">
-        <${Card} title="Participants" stats=${[['people', session.participants.length]]}>
-          ${session.participants.length > 0 && html`<table class="matrix" style="margin-bottom:.75rem"><thead><tr><th style="text-align:left">Name</th><th style="text-align:left">Role</th><th style="text-align:left">Organisation</th><th style="text-align:left">Entity</th><th style="text-align:left">Mode</th><th></th></tr></thead><tbody>
-            ${session.participants.map(p => html`<tr key=${p.id}><td style="text-align:left"><b>${p.name}</b></td><td style="text-align:left">${p.role}</td><td style="text-align:left">${p.organisation}</td><td style="text-align:left" class="muted">${p.entityCode ? (session.entities[p.entityCode]?.displayName || p.entityCode) : ''}</td><td style="text-align:left"><select class="select sm" style="width:auto" value=${p.mode || 'onsite'} onChange=${e => updateSession(s => { s.participants.find(x => x.id === p.id).mode = e.target.value; })}><option value="onsite">on site</option><option value="online">online</option></select></td><td><${IconButton} icon="x" label="Remove" onClick=${() => updateSession(s => { s.participants = s.participants.filter(x => x.id !== p.id); })} /></td></tr>`)}
-          </tbody></table>`}
-          <div class="fgrid" style="grid-template-columns:1.3fr 1fr 1fr 1fr 1fr auto;align-items:end">
-            <${Field} label="Name"><input class="input sm" value=${pName} onInput=${e => setPName(e.target.value)} onKeyDown=${e => e.key === 'Enter' && addParticipant()} placeholder="Full name" /></${Field}>
-            <${Field} label="Role"><input class="input sm" value=${pRole} onInput=${e => setPRole(e.target.value)} placeholder="e.g. GL accountant" /></${Field}>
-            <${Field} label="Organisation"><select class="select sm" value=${pOrg} onChange=${e => setPOrg(e.target.value)}>${PARTICIPANT_ORG.map(o => html`<option value=${o}>${o}</option>`)}</select></${Field}>
-            <${Field} label="Entity"><select class="select sm" value=${pEnt} onChange=${e => setPEnt(e.target.value)}><option value="">–</option>${entities.map(e => html`<option value=${e.code}>${e.displayName || e.name}</option>`)}</select></${Field}>
-            <${Field} label="Mode"><select class="select sm" value=${pMode} onChange=${e => setPMode(e.target.value)}><option value="onsite">on site</option><option value="online">online</option></select></${Field}>
-            <${Button} variant="outline" size="sm" onClick=${addParticipant}>Add</${Button}>
-          </div>
-        </${Card}>
-        <${Card} title="Sessions" stats=${[['planned', session.sessions.length]]} actions=${html`<label class="btn btn-outline btn-sm" style="cursor:pointer"><${Icon} name="upload" /> Import planning workbook<input type="file" accept=".xlsx,.xlsm" style="display:none" onChange=${onPlanFile} /></label>`}>
-          ${plan && html`<div class="card" style="margin-bottom:1rem;border-color:var(--accent)"><div class="card-head"><h3>Review parsed sessions · ${plan.fileName} / ${plan.sheetName}</h3><select class="select sm" style="width:auto" value=${planCountry} onChange=${e => setPlanCountry(e.target.value)}><option value="">All countries</option>${plan.countries.map(c => html`<option value=${c}>${c}</option>`)}</select></div><div class="card-body">
-            <table class="matrix"><thead><tr><th></th><th style="text-align:left">Country</th><th style="text-align:left">Process</th><th style="text-align:left">Stream</th><th style="text-align:left">Date</th><th style="text-align:left">Start</th><th style="text-align:left">End</th><th style="text-align:left">Status</th></tr></thead><tbody>
-              ${planRows.map(r => html`<tr key=${r.id} style=${r.incomplete ? 'background:var(--g-harm-soft)' : ''}><td><input type="checkbox" checked=${r.include} onChange=${e => patchPlan(r.id, { include: e.target.checked })} /></td><td style="text-align:left">${r.country}</td><td style="text-align:left">${r.process}<div class="muted small">${r.responsible}${r.tz ? ` · ${r.tz}` : ''}</div></td><td style="text-align:left"><select class="select sm" value=${r.stream} onChange=${e => patchPlan(r.id, { stream: e.target.value })}><option value="">?</option>${[...streamOptions, 'I2P T&E'].map(s => html`<option value=${s}>${s}</option>`)}</select></td><td style="text-align:left"><input class="input sm" type="date" value=${r.date} onChange=${e => patchPlan(r.id, { date: e.target.value })} /></td><td style="text-align:left"><input class="input sm" type="time" value=${r.start} onChange=${e => patchPlan(r.id, { start: e.target.value })} /></td><td style="text-align:left"><input class="input sm" type="time" value=${r.end} onChange=${e => patchPlan(r.id, { end: e.target.value })} /></td><td style="text-align:left" class="muted small">${r.status}</td></tr>`)}
-            </tbody></table>
-            <div class="sg-row" style="justify-content:flex-end;margin-top:.7rem"><span class="muted small">${planRows.filter(r => r.incomplete).length} row(s) need a fix (highlighted)</span><${Button} variant="text" size="sm" onClick=${() => setPlan(null)}>Discard</${Button}><${Button} variant="primary" size="sm" onClick=${addPlanned}>Add ${planRows.filter(r => r.include && r.date && r.stream).length} sessions</${Button}></div>
-          </div></div>`}
-          ${session.sessions.length > 0 && html`<table class="matrix" style="margin-bottom:.75rem"><thead><tr><th style="text-align:left">Date</th><th style="text-align:left">Time</th><th style="text-align:left">Stream</th><th style="text-align:left">Participants</th><th class="num">Est. min</th><th></th></tr></thead><tbody>
-            ${session.sessions.map(s => { const est = effortEstimate(session, summary, s); const over = est.planned !== null && est.minutes > est.planned; const active = s.id === session.activeSessionId; return html`<tr key=${s.id} style=${active ? 'background:var(--accent-soft)' : ''}><td style="text-align:left"><b>${fmtDate(s.date)}</b> <span class="muted small">${WEEKDAY(s.date)}</span>${s.note && html`<div class="muted small">${s.note}</div>`}</td><td style="text-align:left" class="mono">${s.start}${s.end ? `–${s.end}` : ''}</td><td style="text-align:left"><${Tag} kind="GBS">${s.stream}</${Tag}></td><td style="text-align:left"><div class="chips">${session.participants.map(p => html`<${Chip} key=${p.id} active=${s.participantIds.includes(p.id)} onClick=${() => updateSession(x => { const ss = x.sessions.find(y => y.id === s.id); ss.participantIds = ss.participantIds.includes(p.id) ? ss.participantIds.filter(i => i !== p.id) : [...ss.participantIds, p.id]; })}>${p.name}</${Chip}>`)}</div></td><td class=${`num${over ? ' miss' : ''}`} title=${`${est.noGap} NO GAP × ${st.minutesPerActivity.NO_GAP} min + ${est.gap} gaps × ${st.minutesPerActivity.GAP} min`}>${est.minutes}${est.planned !== null ? html`<span class="muted"> / ${est.planned}</span>` : ''}</td><td style="white-space:nowrap"><label class="toggle" title="Recording"><input type="checkbox" checked=${!!s.recordingOn} onChange=${e => updateSession(x => { x.sessions.find(y => y.id === s.id).recordingOn = e.target.checked; })} /><i></i>REC</label> <${Button} variant=${active ? 'primary' : 'outline'} size="sm" onClick=${() => updateSession(x => { x.activeSessionId = active ? null : s.id; })}>${active ? 'Active' : 'Set active'}</${Button}> <${IconButton} icon="file" label="Agenda (print)" onClick=${() => setPrintAgenda(s.id)} /><${IconButton} icon="plan" label="Calendar file (.ics)" onClick=${() => downloadBlob(`${exportFileName(session, 'session-' + s.stream)}.ics`, new Blob([icsFor(session, [s])], { type: 'text/calendar' }))} /><${IconButton} icon="x" label="Remove" onClick=${() => updateSession(x => { x.sessions = x.sessions.filter(y => y.id !== s.id); if (x.activeSessionId === s.id) x.activeSessionId = null; })} /></td></tr>`; })}
-          </tbody></table>`}
-          <div class="fgrid" style="grid-template-columns:1fr 1fr 1fr 1fr auto;align-items:end">
-            <${Field} label="Date"><input class="input sm" type="date" value=${ws.date} onChange=${e => setWs({ ...ws, date: e.target.value })} /></${Field}>
-            <${Field} label="Start"><input class="input sm" type="time" value=${ws.start} onChange=${e => setWs({ ...ws, start: e.target.value })} /></${Field}>
-            <${Field} label="End"><input class="input sm" type="time" value=${ws.end} onChange=${e => setWs({ ...ws, end: e.target.value })} /></${Field}>
-            <${Field} label="Stream"><select class="select sm" value=${ws.stream} onChange=${e => setWs({ ...ws, stream: e.target.value })}>${streamOptions.map(s => html`<option value=${s}>${s}</option>`)}</select></${Field}>
-            <${Button} variant="outline" size="sm" onClick=${addSession}>Add</${Button}>
-            <${Field} label="Recording reference" class="full"><input class="input sm" value=${ws.recording} onInput=${e => setWs({ ...ws, recording: e.target.value })} placeholder="Teams link or file name" /></${Field}>
-          </div>
-          <div class="sg-row" style="margin-top:.6rem">${session.sessions.length > 0 && html`<${Button} variant="outline" size="sm" icon="plan" onClick=${() => downloadBlob(`${exportFileName(session, 'sessions')}.ics`, new Blob([icsFor(session, session.sessions)], { type: 'text/calendar' }))}>All sessions as .ics</${Button}><${Button} variant="outline" size="sm" icon="file" onClick=${() => setPrintAgenda('all')}>Schedule slide / agenda</${Button}>`}</div>
-          <p class="sg-note">Estimated minutes = NO GAP activities × ${st.minutesPerActivity.NO_GAP} + gap activities × ${st.minutesPerActivity.GAP} (from the Ops pre-assessment, all entities, in-scope only). Red = slot too short.</p>
-        </${Card}>
-        ${session.sessions.length > 0 && html`<${Card} title="Session planner · week view"><${CalendarGrid} session=${session} updateSession=${updateSession} toast=${toast} /></${Card}>`}
-        <${Card} title="Milestones" stats=${[['calendar weeks', '']]}><${Milestones} session=${session} updateSession=${updateSession} /></${Card}>
-        ${session.portfolio?.length > 0 && html`<${Card} title="Portfolio · all countries in the planning workbook" stats=${[['rows', session.portfolio.length]]}><div style="overflow:auto;max-height:18rem"><table class="matrix"><thead><tr><th style="text-align:left">Country</th><th style="text-align:left">Process</th><th style="text-align:left">Responsible</th><th style="text-align:left">Date</th><th style="text-align:left">Time</th><th style="text-align:left">Status</th></tr></thead><tbody>${session.portfolio.map((r, i) => html`<tr key=${i} style=${similarity(r.country, st.country) > 0.6 ? 'background:var(--accent-soft)' : ''}><td style="text-align:left">${r.country}</td><td style="text-align:left">${r.process} ${r.stream && html`<span class="mono small muted">${r.stream}</span>`}</td><td style="text-align:left">${r.responsible}</td><td style="text-align:left" class="small">${r.dateRaw}</td><td style="text-align:left" class="small">${r.timeRaw}</td><td style="text-align:left" class="small">${r.status}</td></tr>`)}</tbody></table></div></${Card}>`}
-      </div>
+  return html`<div class="plan">
+    <${PageHead} eyebrow="1 · Plan & prepare" title=${st.country ? `${st.clientName || 'Client'} · ${st.country}` : 'Plan the country fit-gap'} lead="Three things before the first session: who you are, who is in the room, and when the sessions are. Readiness per session shows what still has to be chased." />
+    <div class="plan-grid">
+      <div class="card"><div class="card-body">
+        <${StepHead} n="1" done=${step1} title="Country & you" hint="Your initials tag every change in the audit trail." />
+        <div class="fgrid" style="grid-template-columns:1fr 1fr 6rem">
+          <${Field} label="Client"><${TextInput} value=${st.clientName} onCommit=${v => setS('clientName', v)} placeholder="e.g. Demo Group" /></${Field}>
+          <${Field} label="Country" required><${TextInput} value=${st.country} onCommit=${v => setS('country', v)} placeholder="e.g. France" /></${Field}>
+          <${Field} label="Initials" required><${TextInput} value=${st.editorInitials} onCommit=${v => setS('editorInitials', v.toUpperCase())} placeholder="MR" /></${Field}>
+        </div>
+        <details class="disclosure" style="margin-top:.6rem"><summary>More settings – entities, streams in scope, gap definitions, timing <${Icon} name="chevron" size=${14} /></summary><div class="body" style="max-width:none">
+          <div class="fgrid" style="margin-bottom:.8rem"><${Field} label="Facilitators" hint="Comma-separated"><${TextInput} value=${(st.facilitators || []).join(', ')} onCommit=${v => setS('facilitators', v.split(',').map(x => x.trim()).filter(Boolean))} /></${Field}><${Field} label="Minutes per activity (no gap / gap)" hint="Effort estimate per session"><div class="sg-row" style="margin:0"><${TextInput} class="num sm" value=${String(st.minutesPerActivity.NO_GAP)} onCommit=${v => updateSession(s => { s.settings.minutesPerActivity.NO_GAP = Number(v.replace(',', '.')) || 1.5; })} style="width:4.5rem" /><${TextInput} class="num sm" value=${String(st.minutesPerActivity.GAP)} onCommit=${v => updateSession(s => { s.settings.minutesPerActivity.GAP = Number(v.replace(',', '.')) || 5; })} style="width:4.5rem" /></div></${Field}></div>
+          <div class="eyebrow" style="margin-bottom:.3rem">Streams in scope</div>
+          <div class="sg-row" style="gap:1rem;margin-bottom:.8rem">${SUB_STREAMS.map(s => html`<${Switch} key=${s} checked=${st.streamsInScope[s] !== false} onChange=${v => updateSession(x => { x.settings.streamsInScope[s] = v; })}>${s}${s.startsWith('A2R') || s === 'MD' ? '' : html`<span class="muted small"> · ${summary.activitiesByStream[s] || 0}</span>`}</${Switch}>`)}</div>
+          <div class="eyebrow" style="margin-bottom:.3rem">Entities (from the import)</div>
+          ${entities.length ? html`<table class="matrix" style="margin-bottom:.8rem"><tbody>${entities.map(e => html`<tr key=${e.code}><td class="mono" style="text-align:left">${e.hasCode ? e.code : html`<span class="muted">no code</span>`}</td><td style="text-align:left">${e.name}</td><td style="text-align:left"><${TextInput} class="sm" value=${e.displayName || e.name} onCommit=${v => updateSession(s => { s.entities[e.code].displayName = v || e.name; })} placeholder="Display name" /></td></tr>`)}</tbody></table>` : html`<p class="muted small">Entities appear after the capture sheets are imported.</p>`}
+          <div class="eyebrow" style="margin-bottom:.3rem">Gap type definitions (tooltip and legend slide)</div>
+          <div style="display:grid;gap:.4rem">${['NO_GAP', 'HARMONIZATION', 'STANDARDIZATION', 'BOTH'].map(g => html`<div class="fgrid" style="grid-template-columns:11rem 1fr;align-items:start" key=${g}><${GapPill} value=${g} /><${TextInput} textarea class="sm" style="min-height:2.2rem" value=${st.gapDefinitions[g]} onCommit=${v => updateSession(s => { s.settings.gapDefinitions[g] = v; })} /></div>`)}</div>
+        </div></details>
+      </div></div>
+
+      <div class="card"><div class="card-body">
+        <${StepHead} n="2" done=${step2} title="People in the room" hint="Owners of deviations and next steps are picked from this list." />
+        ${session.participants.length > 0 && html`<table class="matrix" style="margin-bottom:.6rem"><tbody>
+          ${session.participants.map(p => html`<tr key=${p.id}><td style="text-align:left"><b>${p.name}</b> <span class="muted small">${p.role}</span></td><td style="text-align:left" class="small">${p.organisation}${p.entityCode ? ' · ' + (session.entities[p.entityCode]?.displayName || p.entityCode) : ''}</td><td style="text-align:left"><select class="select sm" style="width:auto" value=${p.mode || 'onsite'} onChange=${e => updateSession(s => { s.participants.find(x => x.id === p.id).mode = e.target.value; })}><option value="onsite">on site</option><option value="online">online</option></select></td><td style="text-align:right"><${IconButton} icon="x" label="Remove" onClick=${() => updateSession(s => { s.participants = s.participants.filter(x => x.id !== p.id); })} /></td></tr>`)}
+        </tbody></table>`}
+        <div class="fgrid" style="grid-template-columns:1.3fr 1fr 1fr 1fr 1fr auto;align-items:end">
+          <${Field} label="Name"><input class="input sm" value=${pName} onInput=${e => setPName(e.target.value)} onKeyDown=${e => e.key === 'Enter' && addParticipant()} placeholder="Full name" /></${Field}>
+          <${Field} label="Role"><input class="input sm" value=${pRole} onInput=${e => setPRole(e.target.value)} placeholder="e.g. GL accountant" /></${Field}>
+          <${Field} label="Organisation"><select class="select sm" value=${pOrg} onChange=${e => setPOrg(e.target.value)}>${PARTICIPANT_ORG.map(o => html`<option value=${o}>${o}</option>`)}</select></${Field}>
+          <${Field} label="Entity"><select class="select sm" value=${pEnt} onChange=${e => setPEnt(e.target.value)}><option value="">–</option>${entities.map(e => html`<option value=${e.code}>${e.displayName || e.name}</option>`)}</select></${Field}>
+          <${Field} label="Mode"><select class="select sm" value=${pMode} onChange=${e => setPMode(e.target.value)}><option value="onsite">on site</option><option value="online">online</option></select></${Field}>
+          <${Button} variant="primary" size="sm" onClick=${addParticipant} disabled=${!pName.trim()}>Add</${Button}>
+        </div>
+      </div></div>
+
+      <div class="card"><div class="card-body">
+        <${StepHead} n="3" done=${step3} title="Sessions" hint="One slot per stream. The traffic light shows readiness: file received, Ops pre-assessment complete, participants, room or link sent." />
+        <div class="fgrid" style="grid-template-columns:1fr 1fr 1fr 1fr auto;align-items:end;margin-bottom:.6rem">
+          <${Field} label="Date"><input class="input sm" type="date" value=${ws.date} onChange=${e => setWs({ ...ws, date: e.target.value })} /></${Field}>
+          <${Field} label="Start"><input class="input sm" type="time" value=${ws.start} onChange=${e => setWs({ ...ws, start: e.target.value })} /></${Field}>
+          <${Field} label="End"><input class="input sm" type="time" value=${ws.end} onChange=${e => setWs({ ...ws, end: e.target.value })} /></${Field}>
+          <${Field} label="Stream"><select class="select sm" value=${ws.stream} onChange=${e => setWs({ ...ws, stream: e.target.value })}>${streamOptions.map(s => html`<option value=${s}>${s}</option>`)}</select></${Field}>
+          <${Button} variant="primary" size="sm" onClick=${addSession}>Add session</${Button}>
+        </div>
+        <div class="sg-row" style="margin-bottom:.6rem"><label class="btn btn-outline btn-sm" style="cursor:pointer"><${Icon} name="upload" /> Import planning workbook<input type="file" accept=".xlsx,.xlsm" style="display:none" onChange=${onPlanFile} /></label>${session.sessions.length > 0 && html`<${Button} variant="outline" size="sm" icon="plan" onClick=${() => downloadBlob(`${exportFileName(session, 'sessions')}.ics`, new Blob([icsFor(session, session.sessions)], { type: 'text/calendar' }))}>Calendar file (.ics)</${Button}><${Button} variant="outline" size="sm" icon="file" onClick=${() => setPrintAgenda('all')}>Print schedule</${Button}><${Button} variant="text" size="sm" onClick=${() => setShowCal(!showCal)}>${showCal ? 'Hide' : 'Show'} week view</${Button}>`}</div>
+        ${plan && html`<div class="card" style="margin-bottom:1rem;border-color:var(--accent)"><div class="card-head"><h3>Review parsed sessions · ${plan.fileName} / ${plan.sheetName}</h3><select class="select sm" style="width:auto" value=${planCountry} onChange=${e => setPlanCountry(e.target.value)}><option value="">All countries</option>${plan.countries.map(c => html`<option value=${c}>${c}</option>`)}</select></div><div class="card-body">
+          <table class="matrix"><thead><tr><th></th><th style="text-align:left">Country</th><th style="text-align:left">Process</th><th style="text-align:left">Stream</th><th style="text-align:left">Date</th><th style="text-align:left">Start</th><th style="text-align:left">End</th><th style="text-align:left">Status</th></tr></thead><tbody>
+            ${planRows.map(r => html`<tr key=${r.id} style=${r.incomplete ? 'background:var(--g-harm-soft)' : ''}><td><input type="checkbox" checked=${r.include} onChange=${e => patchPlan(r.id, { include: e.target.checked })} /></td><td style="text-align:left">${r.country}</td><td style="text-align:left">${r.process}<div class="muted small">${r.responsible}${r.tz ? ' · ' + r.tz : ''}</div></td><td style="text-align:left"><select class="select sm" value=${r.stream} onChange=${e => patchPlan(r.id, { stream: e.target.value })}><option value="">?</option>${[...streamOptions, 'I2P T&E'].map(s => html`<option value=${s}>${s}</option>`)}</select></td><td style="text-align:left"><input class="input sm" type="date" value=${r.date} onChange=${e => patchPlan(r.id, { date: e.target.value })} /></td><td style="text-align:left"><input class="input sm" type="time" value=${r.start} onChange=${e => patchPlan(r.id, { start: e.target.value })} /></td><td style="text-align:left"><input class="input sm" type="time" value=${r.end} onChange=${e => patchPlan(r.id, { end: e.target.value })} /></td><td style="text-align:left" class="muted small">${r.status}</td></tr>`)}
+          </tbody></table>
+          <div class="sg-row" style="justify-content:flex-end;margin-top:.7rem"><span class="muted small">${planRows.filter(r => r.incomplete).length} row(s) need a fix (highlighted)</span><${Button} variant="text" size="sm" onClick=${() => setPlan(null)}>Discard</${Button}><${Button} variant="primary" size="sm" onClick=${addPlanned}>Add ${planRows.filter(r => r.include && r.date && r.stream).length} sessions</${Button}></div>
+        </div></div>`}
+        ${session.sessions.length > 0 ? html`<div class="sessions">${session.sessions.map(s => { const est = effortEstimate(session, summary, s); const over = est.planned !== null && est.minutes > est.planned; const active = s.id === session.activeSessionId; return html`<div class=${`sess${active ? ' active' : ''}`} key=${s.id}>
+          <div class="sess-main"><div><b>${fmtDate(s.date)}</b> <span class="muted">${WEEKDAY(s.date)}</span> <span class="mono">${s.start}${s.end ? '–' + s.end : ''}</span> <${Tag} kind="GBS">${s.stream}</${Tag}>${s.note && html` <span class="muted small">${s.note}</span>`}</div>
+            <div class="small muted" style="margin-top:.2rem">est. <b class=${over ? 'incomplete' : ''}>${est.minutes} min</b>${est.planned !== null ? ` of ${est.planned} planned` : ''} · ${s.participantIds.length} of ${session.participants.length} people${s.recordingOn ? ' · recorded' : ''}</div>
+            <div class="chips" style="margin-top:.3rem">${session.participants.map(p => html`<${Chip} key=${p.id} active=${s.participantIds.includes(p.id)} onClick=${() => updateSession(x => { const ss = x.sessions.find(y => y.id === s.id); ss.participantIds = ss.participantIds.includes(p.id) ? ss.participantIds.filter(i => i !== p.id) : [...ss.participantIds, p.id]; })}>${p.name}</${Chip}>`)}</div>
+            <div style="margin-top:.4rem"><${SessionReadiness} session=${session} ws=${s} updateSession=${updateSession} toast=${toast} /></div></div>
+          <div class="sess-actions"><label class="toggle" title="Recording"><input type="checkbox" checked=${!!s.recordingOn} onChange=${e => updateSession(x => { x.sessions.find(y => y.id === s.id).recordingOn = e.target.checked; })} /><i></i>REC</label><${Button} variant=${active ? 'primary' : 'outline'} size="sm" onClick=${() => updateSession(x => { x.activeSessionId = active ? null : s.id; })}>${active ? 'Active' : 'Set active'}</${Button}><${IconButton} icon="file" label="Agenda (print)" onClick=${() => setPrintAgenda(s.id)} /><${IconButton} icon="plan" label="Calendar file (.ics)" onClick=${() => downloadBlob(`${exportFileName(session, 'session-' + s.stream)}.ics`, new Blob([icsFor(session, [s])], { type: 'text/calendar' }))} /><${IconButton} icon="x" label="Remove" onClick=${() => updateSession(x => { x.sessions = x.sessions.filter(y => y.id !== s.id); if (x.activeSessionId === s.id) x.activeSessionId = null; })} /></div>
+        </div>`; })}</div>` : html`<p class="muted small">No sessions yet. Add one above or import the planning workbook.</p>`}
+        ${showCal && session.sessions.length > 0 && html`<div style="margin-top:1rem"><${CalendarGrid} session=${session} updateSession=${updateSession} toast=${toast} /></div>`}
+        <details class="disclosure" style="margin-top:.8rem"><summary>More planning – milestones, portfolio of all countries <${Icon} name="chevron" size=${14} /></summary><div class="body" style="max-width:none">
+          <div class="eyebrow" style="margin-bottom:.4rem">Milestones</div><${Milestones} session=${session} updateSession=${updateSession} />
+          ${session.portfolio?.length > 0 && html`<div class="eyebrow" style="margin:1rem 0 .4rem">Portfolio · all countries in the planning workbook</div><div style="overflow:auto;max-height:18rem"><table class="matrix"><thead><tr><th style="text-align:left">Country</th><th style="text-align:left">Process</th><th style="text-align:left">Responsible</th><th style="text-align:left">Date</th><th style="text-align:left">Time</th><th style="text-align:left">Status</th></tr></thead><tbody>${session.portfolio.map((r, i) => html`<tr key=${i} style=${similarity(r.country, st.country) > 0.6 ? 'background:var(--accent-soft)' : ''}><td style="text-align:left">${r.country}</td><td style="text-align:left">${r.process} ${r.stream && html`<span class="mono small muted">${r.stream}</span>`}</td><td style="text-align:left">${r.responsible}</td><td style="text-align:left" class="small">${r.dateRaw}</td><td style="text-align:left" class="small">${r.timeRaw}</td><td style="text-align:left" class="small">${r.status}</td></tr>`)}</tbody></table></div>`}
+        </div></details>
+      </div></div>
     </div>
     ${printAgenda && html`<${AgendaDialog} session=${session} summary=${summary} which=${printAgenda} onClose=${() => setPrintAgenda(null)} />`}
   </div>`;
@@ -3655,7 +3723,7 @@ function HistoryList({ session, akey }) {
 }
 function fmtVal(v) { if (v === null || v === undefined || v === '') return '–'; if (typeof v === 'object') return JSON.stringify(v); return String(v); }
 
-function ExpandedCell({ session, a, process, updateSession, picks, participants, prevKey, toast, commentRef }) {
+function ExpandedCell({ session, a, process, updateSession, picks, participants, prevKey, toast, commentRef, onAsk }) {
   const key = a.key;
   const set = (path, v) => updateSession(s => applyChange(s, key, path, v));
   const c = completeness(a); const gap = effectiveGap(a); const delta = splitDelta(a, process); const suggestion = suggestGapType(a, process);
@@ -3687,6 +3755,7 @@ function ExpandedCell({ session, a, process, updateSession, picks, participants,
         <${Button} variant="text" size="sm" onClick=${() => setShowHist(!showHist)}>History (${session.audit.filter(e => e.key === key).length})</${Button}>
         <${Button} variant="text" size="sm" onClick=${() => { let n = 0; updateSession(s => { n = applyToAllEntities(s, key); }); toast(`Applied to the other entities (${n} fields)`); }}>Apply to all entities</${Button}>
         <${Button} variant="text" size="sm" onClick=${() => setTcr(tcr ? null : { proposedChange: '', reason: '' })}>Taxonomy change request${myTcrs.length ? ` (${myTcrs.length})` : ''}</${Button}>
+        ${onAsk && html`<${Button} variant="outline" size="sm" icon="spark" onClick=${() => onAsk(key)}>Ask AI</${Button}>`}
       </div>
       ${tcr && html`<div class="fgrid" style="margin-top:.5rem;grid-template-columns:1fr"><${Field} label="Proposed change" hint="The taxonomy is not edited – the request goes to the agreed change path"><input class="input sm" value=${tcr.proposedChange} onInput=${e => setTcr({ ...tcr, proposedChange: e.target.value })} placeholder="e.g. split into two activities / remove duplicate / rename" /></${Field}><${Field} label="Reason"><input class="input sm" value=${tcr.reason} onInput=${e => setTcr({ ...tcr, reason: e.target.value })} /></${Field}><div class="sg-row" style="margin:0"><${Button} variant="primary" size="sm" disabled=${!tcr.proposedChange.trim()} onClick=${() => { updateSession(s => { s.taxonomyChangeRequests.push({ id: newId('tcr'), processId: a.processId, proposedChange: tcr.proposedChange.trim(), reason: tcr.reason.trim(), raisedBy: s.settings.editorInitials, sessionId: s.activeSessionId, ts: new Date().toISOString() }); }); setTcr(null); toast('Taxonomy change request logged'); }}>Log request</${Button}><${Button} variant="text" size="sm" onClick=${() => setTcr(null)}>Cancel</${Button}></div></div>`}
       ${myTcrs.length > 0 && html`<ul class="small muted" style="margin:.4rem 0 0;padding-left:1.1rem">${myTcrs.map(t => html`<li key=${t.id}>${t.proposedChange}${t.reason ? ` – ${t.reason}` : ''}</li>`)}</ul>`}
@@ -3759,7 +3828,7 @@ function EntityCell({ a, process, onOpen, open, updateSession, onFit, onGap }) {
     </div></td>`;
 }
 
-function WorkshopView({ session, summary, updateSession, toast, ui, setUi, onPresent }) {
+function WorkshopView({ session, summary, updateSession, toast, ui, setUi, onPresent, onAsk }) {
   const [panel, setPanel] = useState(() => store.get('fg.panel', 'none'));
   const choosePanel = (v) => { setPanel(v); store.set('fg.panel', v); };
   const rawUpdate = updateSession;
@@ -3841,10 +3910,9 @@ function WorkshopView({ session, summary, updateSession, toast, ui, setUi, onPre
           <div><div class="eyebrow">${crumbsNode.map(c => c.id + ' ' + c.name).join(' › ') || stream}</div><h2 style="font-family:var(--font-serif);font-weight:500;font-size:1.3rem;margin:.15rem 0"><span class="pid mono muted" style="font-size:.85rem">${node.id}</span> ${node.name}</h2>
             <div class="muted small">${acts.length} activities${entityFilter ? '' : ` × ${entities.length} entities`} · pre-assessed by Ops as: ${opsSummary || '–'}${stats.outOfScope ? ` · ${stats.outOfScope} out of scope` : ''}</div>
             <div style="max-width:22rem;margin-top:.4rem"><${MiniBar} segments=${[{ key: 'DONE', value: stats.assessed }, { key: 'OPEN', value: stats.total - stats.assessed }]} pct=${`${stats.assessed}/${stats.total} assessed · ${stats.openGaps} open gaps`} /></div></div>
-          <div style="display:flex;flex-direction:column;gap:.4rem;align-items:flex-end"><div class="sg-row" style="margin:0"><div class="yn"><button aria-pressed=${panel === 'none'} onClick=${() => choosePanel('none')} style="font-family:var(--font-ui);padding:.22rem .5rem">Table</button><button aria-pressed=${panel === 'flow'} onClick=${() => choosePanel('flow')} style="font-family:var(--font-ui);padding:.22rem .5rem">Flow</button><button aria-pressed=${panel === 'swim'} onClick=${() => choosePanel('swim')} style="font-family:var(--font-ui);padding:.22rem .5rem">Flow board</button></div><${Button} variant="outline" size="sm" icon="share" onClick=${() => onPresent({ stream, entityFilter, l3: node.id })}>Present</${Button}><${Button} variant="primary" size="sm" disabled=${!stats.opsNoGap} onClick=${bulk} title="Marks every row the Ops team pre-assessed as NO GAP as confirmed fit – you can undo">Accept all "no gap" pre-assessments (${stats.opsNoGap})</${Button}></div><span class="muted small">${mode === 'exceptions' ? `${hidden} "no gap" row${hidden === 1 ? '' : 's'} hidden` : 'all rows shown'} · <a href="#" onClick=${e => { e.preventDefault(); setUi({ ...ui, mode: mode === 'exceptions' ? 'walk' : 'exceptions' }); }}>${mode === 'exceptions' ? 'show all rows' : 'show only flagged rows'}</a></span></div>
+          <div style="display:flex;flex-direction:column;gap:.4rem;align-items:flex-end"><div class="sg-row" style="margin:0"><div class="yn"><button aria-pressed=${panel === 'none'} onClick=${() => choosePanel('none')} style="font-family:var(--font-ui);padding:.22rem .5rem">Table</button><button aria-pressed=${panel === 'swim'} onClick=${() => choosePanel('swim')} style="font-family:var(--font-ui);padding:.22rem .5rem">Flow board</button></div><${Button} variant="outline" size="sm" icon="share" onClick=${() => onPresent({ stream, entityFilter, l3: node.id })}>Present</${Button}><${Button} variant="primary" size="sm" disabled=${!stats.opsNoGap} onClick=${bulk} title="Marks every row the Ops team pre-assessed as NO GAP as confirmed fit – you can undo">Accept all "no gap" pre-assessments (${stats.opsNoGap})</${Button}></div><span class="muted small">${mode === 'exceptions' ? `${hidden} "no gap" row${hidden === 1 ? '' : 's'} hidden` : 'all rows shown'} · <a href="#" onClick=${e => { e.preventDefault(); setUi({ ...ui, mode: mode === 'exceptions' ? 'walk' : 'exceptions' }); }}>${mode === 'exceptions' ? 'show all rows' : 'show only flagged rows'}</a></span></div>
         </div></div>
-        ${panel === 'flow' && html`<div class="card" style="margin-bottom:.75rem"><div class="card-body"><${FlowViewer} session=${session} node=${node} updateSession=${updateSession} toast=${toast} compact /></div></div>`}
-        ${panel === 'swim' && html`<div class="card" style="margin-bottom:.75rem"><div class="card-body"><div class="sg-row" style="margin:0 0 .4rem">${entities.map(e => html`<${Chip} key=${e.code} active=${(ui.swimEntity || expandedEntity) === e.code} onClick=${() => setUi({ ...ui, swimEntity: e.code })}>${e.displayName || e.name}</${Chip}>`)}</div><${FlowBoard} session=${session} entityCode=${entities.some(e => e.code === ui.swimEntity) ? ui.swimEntity : expandedEntity} node=${node} activities=${acts} updateSession=${updateSession} toast=${toast} onOpenRow=${pid => { setUi({ ...ui, mode: 'walk', expanded: pid, expandedEntity: entities.some(e => e.code === ui.swimEntity) ? ui.swimEntity : expandedEntity, selected: pid }); }} /></div></div>`}
+        ${panel === 'swim' && html`<div class="card" style="margin-bottom:.75rem"><div class="card-body"><div class="sg-row" style="margin:0 0 .4rem">${entities.map(e => html`<${Chip} key=${e.code} active=${(ui.swimEntity || expandedEntity) === e.code} onClick=${() => setUi({ ...ui, swimEntity: e.code })}>${e.displayName || e.name}</${Chip}>`)}</div><${FlowBoard} session=${session} entityCode=${entities.some(e => e.code === ui.swimEntity) ? ui.swimEntity : expandedEntity} node=${node} activities=${acts} updateSession=${updateSession} toast=${toast} onAsk=${onAsk} onOpenRow=${pid => { setUi({ ...ui, mode: 'walk', expanded: pid, expandedEntity: entities.some(e => e.code === ui.swimEntity) ? ui.swimEntity : expandedEntity, selected: pid }); }} /></div></div>`}
         <table class="wtable sticky">
           <thead><tr><th style="width:30%">Activity</th>${entities.map(e => html`<th class="ent" key=${e.code}>${e.displayName || e.name}<small>${e.hasCode ? e.code : ''}</small></th>`)}</tr></thead>
           <tbody>
@@ -3853,7 +3921,7 @@ function WorkshopView({ session, summary, updateSession, toast, ui, setUi, onPre
               ${entities.map(e => html`<${EntityCell} key=${e.code} a=${session.assessments[keyOf(e, p)]} process=${p} open=${expanded === p.id && expandedEntity === e.code} onOpen=${() => open(p.id, e.code)} updateSession=${updateSession} onFit=${() => updateSession(s => confirmFit(s, keyOf(e, p), p))} onGap=${() => { updateSession(s => { const a = s.assessments[keyOf(e, p)]; if (!a.workshop.gapType) { const g = GAP_TYPES_WITH_DEVIATION.has(a.asIs.gap) ? a.asIs.gap : GAP.HARMONIZATION; applyChange(s, a.key, 'workshop.gapType', g); } if (a.workshop.status === WORKSHOP_STATUS.NOT_ASSESSED) applyChange(s, a.key, 'workshop.status', WORKSHOP_STATUS.GAP_CONFIRMED); }); setUi({ ...ui, expanded: p.id, expandedEntity: e.code, selected: p.id }); }} />`)}
             </tr>${expanded === p.id && session.assessments[assessmentKey(expandedEntity, p.id)] && html`<tr class="expand" key=${p.id + ':x'}><td colspan=${entities.length + 1}>
               ${entities.length > 1 && html`<div class="tabs" style="margin:0 1rem;padding-top:.4rem">${entities.map(e => html`<button class="tab" key=${e.code} aria-selected=${e.code === expandedEntity} onClick=${() => setUi({ ...ui, expandedEntity: e.code })}>${e.displayName || e.name}</button>`)}</div>`}
-              <${ExpandedCell} session=${session} a=${session.assessments[assessmentKey(expandedEntity, p.id)]} process=${p} updateSession=${updateSession} picks=${picks} participants=${session.participants} prevKey=${prevKeyFor(p, expandedEntity)} toast=${toast} commentRef=${commentRef} />
+              <${ExpandedCell} session=${session} a=${session.assessments[assessmentKey(expandedEntity, p.id)]} process=${p} updateSession=${updateSession} picks=${picks} participants=${session.participants} prevKey=${prevKeyFor(p, expandedEntity)} toast=${toast} commentRef=${commentRef} onAsk=${onAsk} />
             </td></tr>`}`)}
             ${!rows.length && html`<tr><td colspan=${entities.length + 1}><div class="empty" style="border:0;padding:1.5rem"><h3>All ${acts.length} activities are Ops NO GAP and confirmed</h3><p>Nothing left to discuss in ${node.id}. Switch to "Walk all" to see every row.</p></div></td></tr>`}
           </tbody>
@@ -4081,6 +4149,84 @@ function HandoverPage({ session, toast }) {
 }
 
 
+/* ---- src/ui/ai.js ---- */
+// AI support: explain a process step, suggest what to check and which questions to
+// ask. Calls the Claude API directly from the browser (raw HTTP – no SDK in the
+// single-file build) only when the user has entered an API key; the key lives in
+// this browser's local storage, never in the session file. Without a key the
+// prompt can be copied into any chat tool.
+
+const AI_MODELS = [['claude-opus-5-5', 'Claude Opus 5.5 (default)'], ['claude-sonnet-5-5', 'Claude Sonnet 5.5'], ['claude-haiku-5-5', 'Claude Haiku 5.5']];
+const AI_SYSTEM = `You support a finance-transformation consultant who runs a GBS (global business services) fit-gap workshop with local accountants of several legal entities. A process taxonomy (L1–L4) describes the global standard ("To-Be"); GBS Operations pre-assessed the as-is per entity. In the workshop every activity is assessed: who performs it today (local accounting, GBS, other party), whether there is a gap vs. the global standard, and details.
+Gap types: NO GAP = entity already follows the standard; HARMONIZATION GAP = the split between country and GBS deviates (who does it); STANDARDIZATION GAP = the way it is executed deviates (how – steps, systems, tools); BOTH GAPS = both.
+Resolution approaches for deviations: Separate variant (legal/tax/regulatory reasons), Close before go-live, Lift & shift.
+Answer in English, concise and practical, in short bullet points. Do not invent facts about the client; when something depends on the client, say what to ask.`;
+
+function aiSettings() { return store.get('fg.ai', { apiKey: '', model: 'claude-opus-5-5', effort: 'medium' }); }
+function saveAiSettings(v) { store.set('fg.ai', v); }
+
+function stepContext(session, a) {
+  const p = session.processes[a.processId]; if (!p) return '';
+  const path = []; let cur = session.processes[p.parentId]; while (cur) { path.unshift(`${cur.id} ${cur.name}`); cur = session.processes[cur.parentId]; }
+  const yn = (v) => v === true ? 'yes' : v === false ? 'no' : 'not set';
+  const dg = DETAILED_GAP_FIELDS.filter(f => a.detailedGap[f]).map(f => `${DETAILED_GAP_LABEL[f]}: ${a.detailedGap[f]}`).join('; ');
+  return [`Client: ${session.settings.clientName || 'n/a'} · Country: ${session.settings.country || 'n/a'} · Entity: ${session.entities[a.entityCode]?.displayName || a.entityCode}`,
+    `Process path: ${path.join(' › ')}`, `Activity: ${p.id} ${p.name}${p.description ? ' – ' + p.description : ''}`,
+    `To-Be (global standard): local entity ${yn(p.toBe?.le)}, GBS ${yn(p.toBe?.gbs)}${p.toBe?.system ? ', system ' + p.toBe.system : ''}${p.toBe?.initiative ? ', planned initiative ' + p.toBe.initiative : ''}`,
+    `Ops pre-assessment (as-is): local ${yn(a.asIs.le)}, GBS ${yn(a.asIs.gbs)}${a.asIs.systems ? ', systems ' + a.asIs.systems : ''}, GAP ${GAP_LABEL[a.asIs.gap] || 'not assessed'}${a.asIs.info ? ', note: ' + a.asIs.info : ''}`,
+    `Workshop so far: local ${yn(a.fitGap.local)}, GBS ${yn(a.fitGap.gbs)}, other ${yn(a.fitGap.other)}, gap type ${a.workshop.gapType ? GAP_LABEL[a.workshop.gapType] : 'not set'}${a.workshop.rationale ? ', rationale: ' + a.workshop.rationale : ''}${dg ? '; details: ' + dg : ''}`,
+    ...(p.context ? Object.entries(p.context).map(([k, v]) => `${k}: ${Object.entries(v).map(([h, x]) => `${h}=${x}`).join(', ')}`) : [])].join('\n');
+}
+const EXPLAIN_PROMPT = `Explain this process step for the workshop:
+1. What this activity typically means in practice (2–3 sentences).
+2. Typical reasons why a local entity deviates from the global standard – by dimension: business, IT systems, legal/regulatory.
+3. 3–5 concrete questions to ask the local accountants to decide fit or gap.
+4. If there is a gap: would it rather be a harmonization or a standardization gap, and which resolution approach is typical?
+Keep it under 220 words.`;
+
+async function callClaude({ apiKey, model, effort }, messages) {
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true', 'anthropic-beta': 'server-side-fallback-2026-07-01' },
+    body: JSON.stringify({ model, max_tokens: 2000, system: AI_SYSTEM, output_config: { effort: effort || 'medium' }, fallbacks: 'default', messages }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data?.error?.message || `HTTP ${res.status}`);
+  if (data.stop_reason === 'refusal') throw new Error(`The model declined this request${data.stop_details?.explanation ? ': ' + data.stop_details.explanation : ''}.`);
+  return (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('\n').trim();
+}
+
+function renderAnswer(text) {
+  return text.split(/\n/).map((line, i) => { const m = line.match(/^\s*(?:[-*•]|\d+[.)])\s+(.*)$/); const h = line.match(/^\s*#+\s*(.*)$|^\s*\*\*(.+?)\*\*\s*:?\s*$/); if (h) return html`<div class="ai-h" key=${i}>${h[1] || h[2]}</div>`; if (m) return html`<div class="ai-li" key=${i}>• ${m[1].replace(/\*\*/g, '')}</div>`; if (!line.trim()) return html`<div style="height:.3rem" key=${i}></div>`; return html`<p key=${i} style="margin:0 0 .2rem">${line.replace(/\*\*/g, '')}</p>`; });
+}
+
+function AiPanel({ session, akey, updateSession, toast, onClose }) {
+  const a = akey ? session.assessments[akey] : null; const p = a ? session.processes[a.processId] : null;
+  const [cfg, setCfg] = useState(aiSettings); const [showCfg, setShowCfg] = useState(!aiSettings().apiKey);
+  const [thread, setThread] = useState([]); const [q, setQ] = useState(''); const [busy, setBusy] = useState(false); const [err, setErr] = useState('');
+  useEffect(() => { setThread([]); setErr(''); }, [akey]);
+  const ctx = a ? stepContext(session, a) : `Client: ${session.settings.clientName || 'n/a'} · Country: ${session.settings.country || 'n/a'} · streams: ${[...new Set(Object.values(session.processes).map(x => x.stream))].join(', ')}`;
+  const ask = async (text) => {
+    const msgs = [...thread, { role: 'user', content: thread.length ? text : `${ctx}\n\n${text}` }];
+    setThread(msgs); setErr('');
+    if (!cfg.apiKey) { setErr('No API key – enter one in the settings below, or copy the prompt into your chat tool.'); return; }
+    setBusy(true);
+    try { const answer = await callClaude(cfg, msgs); setThread([...msgs, { role: 'assistant', content: answer }]); }
+    catch (e) { setErr(e.message); setThread(thread); }
+    finally { setBusy(false); }
+  };
+  const copyPrompt = () => { navigator.clipboard?.writeText(`${AI_SYSTEM}\n\n${ctx}\n\n${EXPLAIN_PROMPT}`).then(() => toast('Prompt copied – paste it into your chat tool')); };
+  const save = (patch) => { const v = { ...cfg, ...patch }; setCfg(v); saveAiSettings(v); };
+  return html`<div class="popover card ai-panel"><div class="card-head"><h3><${Icon} name="spark" /> AI support</h3><${IconButton} icon="x" label="Close" onClick=${onClose} /></div><div class="card-body">
+    ${a ? html`<div class="eyebrow">Process step</div><div><span class="mono small muted">${p.id}</span> <b>${p.name}</b> <span class="muted small">· ${session.entities[a.entityCode]?.displayName || a.entityCode}</span></div>` : html`<p class="small muted">Open an activity in the workshop to get step-specific help, or ask a general question.</p>`}
+    <div class="sg-row" style="margin:.6rem 0">${a && html`<${Button} variant="primary" size="sm" icon="spark" disabled=${busy} onClick=${() => ask(EXPLAIN_PROMPT)}>Explain this step</${Button}>`}<${Button} variant="outline" size="sm" icon="copy" onClick=${copyPrompt} title="For laptops without API access: copy the prompt and paste it into your chat tool">Copy prompt</${Button}><${Button} variant="text" size="sm" onClick=${() => setShowCfg(!showCfg)}>Settings</${Button}></div>
+    ${showCfg && html`<div class="ai-cfg"><${Field} label="Claude API key" hint="Stored only in this browser, never in the session file. Each request sends the step context to api.anthropic.com."><input class="input sm" type="password" value=${cfg.apiKey} onInput=${e => save({ apiKey: e.target.value.trim() })} placeholder="sk-ant-…" /></${Field}><div class="fgrid"><${Field} label="Model"><select class="select sm" value=${cfg.model} onChange=${e => save({ model: e.target.value })}>${AI_MODELS.map(([id, l]) => html`<option value=${id}>${l}</option>`)}</select></${Field}><${Field} label="Effort"><select class="select sm" value=${cfg.effort} onChange=${e => save({ effort: e.target.value })}>${['low', 'medium', 'high'].map(x => html`<option value=${x}>${x}</option>`)}</select></${Field}></div></div>`}
+    <div class="ai-thread">${thread.map((m, i) => html`<div class=${`ai-msg ai-${m.role}`} key=${i}>${m.role === 'user' ? html`<div class="small muted">${i === 0 ? (m.content.endsWith(EXPLAIN_PROMPT) ? 'Explain this step' : m.content.split('\n\n').pop()) : m.content}</div>` : html`<div>${renderAnswer(m.content)}</div><div class="sg-row" style="margin:.3rem 0 0">${a && html`<${Button} variant="text" size="sm" onClick=${() => { updateSession(s => applyChange(s, a.key, 'workshop.comment', ((s.assessments[a.key].workshop.comment || '') + '\n[AI] ' + m.content).trim())); toast('Added to the comment'); }}>Add to comment</${Button}>`}<${Button} variant="text" size="sm" onClick=${() => navigator.clipboard?.writeText(m.content)}>Copy</${Button}></div>`}</div>`)}${busy && html`<div class="skeleton" style="width:70%"></div>`}${err && html`<div class="error-box" style="margin-top:.4rem">${err}</div>`}</div>
+    <div class="sg-row" style="margin-top:.6rem"><input class="input sm" style="flex:1" value=${q} placeholder=${a ? 'Ask about this step…' : 'Ask a question…'} onInput=${e => setQ(e.target.value)} onKeyDown=${e => { if (e.key === 'Enter' && q.trim()) { ask(q.trim()); setQ(''); } }} /><${Button} variant="outline" size="sm" disabled=${busy || !q.trim()} onClick=${() => { ask(q.trim()); setQ(''); }}>Ask</${Button}></div>
+  </div></div>`;
+}
+
+
 /* ---- src/ui/home.js ---- */
 // Home / "Start here": the five steps with status and one action each, demo data, session file.
 
@@ -4093,8 +4239,6 @@ async function loadDemoData(updateSession, toast, onDone) {
     const parsed = parseCaptureWorkbook(wb, { XLSX, fileName: f.name });
     if (!parsed.ok) continue;
     updateSession(s => { mergeParsedWorkbook(s, parsed); procs = s.processes; });
-    const flows = await extractFlowsForImport(f.data.buffer, wb, parsed, procs);
-    if (flows.length) updateSession(s => { s.flows = s.flows.filter(x => x.file !== f.name).concat(flows); });
   }
   const monday = (() => { const d = new Date(); d.setDate(d.getDate() + ((8 - d.getDay()) % 7 || 7)); return d; })();
   const iso = (d, plus = 0) => { const x = new Date(d); x.setDate(x.getDate() + plus); return x.toISOString().slice(0, 10); };
@@ -4135,7 +4279,7 @@ function HomePage({ session, summary, updateSession, toast, go, onReplaceSession
           <div class="eyebrow" style="margin-bottom:.4rem">Quick start</div>
           ${!hasData && html`<p class="small muted">No client data at hand? Load a fictional "Demo Group" with three entities and all five streams.</p><${Button} variant="primary" icon="run" disabled=${busy} onClick=${async () => { setBusy(true); try { await loadDemoData(updateSession, toast, () => go('run', 'workshop')); } finally { setBusy(false); } }}>${busy ? 'Loading demo…' : 'Try with demo data'}</${Button}><hr />`}
           <p class="small muted">Everything you do is saved in this browser automatically. Download the session file at the end of each day and to continue on another laptop.</p>
-          <div class="sg-row"><${Button} variant="outline" size="sm" icon="save" disabled=${!hasData} onClick=${() => { downloadSessionJson(session); toast('Session file downloaded'); }}>Save session file</${Button}><${Button} variant="outline" size="sm" icon="upload" onClick=${() => inp.current.click()}>Load session file…</${Button}><input ref=${inp} type="file" accept=".json" style="display:none" onChange=${onLoad} /></div>
+          <div class="sg-row"><${Button} variant="outline" size="sm" icon="file" onClick=${() => downloadTemplates(session, toast)}>Excel templates</${Button}><${Button} variant="outline" size="sm" icon="save" disabled=${!hasData} onClick=${() => { downloadSessionJson(session); toast('Session file downloaded'); }}>Save session file</${Button}><${Button} variant="outline" size="sm" icon="upload" onClick=${() => inp.current.click()}>Load session file…</${Button}><input ref=${inp} type="file" accept=".json" style="display:none" onChange=${onLoad} /></div>
         </div></div>
         <div class="card"><div class="card-body"><div class="eyebrow" style="margin-bottom:.4rem">Good to know</div><ul class="small muted" style="margin:0;padding-left:1.1rem;display:grid;gap:.3rem"><li>Works offline – no network, no server.</li><li><span class="mono">Ctrl K</span> jumps to any entity, stream or activity.</li><li>In the workshop: <span class="mono">↑ ↓</span> rows, <span class="mono">C</span> confirm as fit, <span class="mono">1–5</span> status, <span class="mono">Enter</span> comment.</li><li>Versions of a workbook re-sent later are merged, never duplicated. Workshop results are never overwritten.</li><li>The <b>Feedback</b> button (top bar) logs improvement notes into the session file.</li></ul></div></div>
       </div>
@@ -4193,12 +4337,13 @@ function SavedIndicator({ save }) {
   return html`<span class="saved"><span class="dot" style="background:var(--line-strong)"></span>Not saved yet</span>`;
 }
 
-function TopBar({ crumbs, theme, setTheme, share, setShare, onPalette, onFeedback, save, onSave }) {
+function TopBar({ crumbs, theme, setTheme, share, setShare, onPalette, onFeedback, save, onSave, onAi }) {
   return html`<header class="topbar">
     <div class="crumb">${crumbs.map((c, i) => html`${i > 0 && html`<span class="sep">›</span>`}${i === crumbs.length - 1 ? html`<b>${c}</b>` : html`<span>${c}</span>`}`)}</div>
     <div class="search" role="button" tabindex="0" onClick=${onPalette} onKeyDown=${e => e.key === 'Enter' && onPalette()}><${Icon} name="search" size=${14} />Jump to entity, stream, process ID or activity<kbd>Ctrl K</kbd></div>
     <div class="actions">
       <${SavedIndicator} save=${save} />
+      <${IconButton} icon="spark" label="AI support" onClick=${onAi} />
       <${IconButton} icon="save" label="Save session file (JSON)" onClick=${onSave} />
       <${IconButton} icon="feedback" label="Feedback" onClick=${onFeedback} />
       <${IconButton} icon="share" label=${share ? 'Screen-share mode on' : 'Screen-share mode'} onClick=${() => setShare(!share)} style=${share ? 'color:var(--accent)' : ''} />
@@ -4229,7 +4374,7 @@ function ComingNext({ p }) {
   </div>`;
 }
 
-function RunPage({ session, summary, updateSession, toast, onClearAll, tab, setTab, ui, setUi, onReplaceSession, onPresent }) {
+function RunPage({ session, summary, updateSession, toast, onClearAll, tab, setTab, ui, setUi, onReplaceSession, onPresent, onAsk }) {
   const hasData = session.files.length > 0;
   useEffect(() => { if (!hasData) setTab('import'); }, [hasData]);
   if (tab === 'import' || !hasData) return html`<div>
@@ -4238,7 +4383,7 @@ function RunPage({ session, summary, updateSession, toast, onClearAll, tab, setT
   </div>`;
   return html`<div>
     <div class="sg-row" style="justify-content:flex-end;margin:-.5rem 0 .4rem"><${Button} variant="text" size="sm" icon="file" onClick=${() => setTab('import')}>Files & exports (${session.files.length})</${Button}></div>
-    <${WorkshopView} session=${session} summary=${summary} updateSession=${updateSession} toast=${toast} ui=${ui} setUi=${setUi} onPresent=${onPresent} />
+    <${WorkshopView} session=${session} summary=${summary} updateSession=${updateSession} toast=${toast} ui=${ui} setUi=${setUi} onPresent=${onPresent} onAsk=${onAsk} />
   </div>`;
 }
 
@@ -4271,6 +4416,8 @@ function App() {
   const [runTab, setRunTab] = useState(null);
   const [wsUi, setWsUi] = useState(() => store.get('fg.ws', {}));
   const [present, setPresent] = useState(null);
+  const [ai, setAi] = useState({ open: false, key: null });
+  const onAsk = (key) => setAi({ open: true, key: key || null });
   useEffect(() => { store.set('fg.ws', { stream: wsUi.stream, l3: wsUi.l3, mode: wsUi.mode, entity: wsUi.entity }); }, [wsUi.stream, wsUi.l3, wsUi.mode, wsUi.entity]);
   const dirty = useRef(false);
   const updateSession = useCallback((fn) => { setSession(s => { const n = { ...s }; fn(n); n.updatedAt = new Date().toISOString(); dirty.current = true; return n; }); }, []);
@@ -4316,14 +4463,15 @@ function App() {
   return html`<div class="app" data-rail=${rail ? '1' : '0'}>
     <${Sidebar} phase=${phase} setPhase=${setPhase} summary=${summary} rail=${rail} setRail=${setRail} session=${session} page=${page} setPage=${setPage} onPresent=${() => setPresent({ stream: session.processes[wsUi.l3]?.stream || 'R2R', entityFilter: null, l3: wsUi.l3 })} />
     <div class="content">
-      <${TopBar} crumbs=${crumbs} theme=${theme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')} setTheme=${setTheme} share=${share} setShare=${setShare} onPalette=${() => setPalette(true)} onFeedback=${() => setFeedback(f => !f)} save=${save} onSave=${() => { downloadSessionJson(session); toast('Session file downloaded'); }} />
+      <${TopBar} crumbs=${crumbs} theme=${theme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')} setTheme=${setTheme} share=${share} setShare=${setShare} onPalette=${() => setPalette(true)} onFeedback=${() => setFeedback(f => !f)} save=${save} onSave=${() => { downloadSessionJson(session); toast('Session file downloaded'); }} onAi=${() => setAi(x => ({ open: !x.open, key: x.key || (wsUi.expanded && wsUi.expandedEntity ? assessmentKey(wsUi.expandedEntity, wsUi.expanded) : null) }))} />
       <${KpiStrip} summary=${summary} session=${session} updateSession=${updateSession} toast=${toast} />
-      <main class="main">${page === 'home' ? html`<${HomePage} session=${session} summary=${summary} updateSession=${updateSession} toast=${toast} go=${goStep} onReplaceSession=${replaceSession} />` : page === 'styleguide' ? html`<${StyleGuide} />` : phase === 'run' ? html`<${RunPage} session=${session} summary=${summary} updateSession=${updateSession} toast=${toast} onClearAll=${clearAll} tab=${tab} setTab=${setRunTab} ui=${wsUi} setUi=${setWsUi} onReplaceSession=${replaceSession} onPresent=${p => setPresent(p)} />` : phase === 'plan' ? html`<${PlanView} session=${session} summary=${summary} updateSession=${updateSession} toast=${toast} /><div style="margin-top:2rem"><${PreparePage} session=${session} updateSession=${updateSession} toast=${toast} /></div>` : phase === 'results' ? html`<${EvaluatePage} session=${session} updateSession=${updateSession} toast=${toast} goActivity=${goActivity} />` : phase === 'signoff' ? html`<${Qg2Page} session=${session} updateSession=${updateSession} toast=${toast} /><div style="margin-top:2rem"><${HandoverPage} session=${session} toast=${toast} /></div>` : html`<${ComingNext} p=${current} />`}</main>
+      <main class="main">${page === 'home' ? html`<${HomePage} session=${session} summary=${summary} updateSession=${updateSession} toast=${toast} go=${goStep} onReplaceSession=${replaceSession} />` : page === 'styleguide' ? html`<${StyleGuide} />` : phase === 'run' ? html`<${RunPage} session=${session} summary=${summary} updateSession=${updateSession} toast=${toast} onClearAll=${clearAll} tab=${tab} setTab=${setRunTab} ui=${wsUi} setUi=${setWsUi} onReplaceSession=${replaceSession} onPresent=${p => setPresent(p)} onAsk=${onAsk} />` : phase === 'plan' ? html`<${PlanView} session=${session} summary=${summary} updateSession=${updateSession} toast=${toast} />` : phase === 'results' ? html`<${EvaluatePage} session=${session} updateSession=${updateSession} toast=${toast} goActivity=${goActivity} />` : phase === 'signoff' ? html`<${Qg2Page} session=${session} updateSession=${updateSession} toast=${toast} /><div style="margin-top:2rem"><${HandoverPage} session=${session} toast=${toast} /></div>` : html`<${ComingNext} p=${current} />`}</main>
     </div>
     <${Palette} open=${palette} onClose=${() => setPalette(false)} items=${paletteItems} onPick=${i => { setPalette(false); i.go(); }} />
     <${Welcome} open=${welcome} onClose=${() => { setWelcome(false); store.set('fg.welcomed', true); }} onPrimary=${() => { setWelcome(false); store.set('fg.welcomed', true); setPage('phase'); setPhase('run'); setRunTab('import'); }} onDemo=${async () => { setWelcome(false); store.set('fg.welcomed', true); setPage('home'); await loadDemoData(updateSession, toast, () => goStep('run', 'workshop')); }} />
     <${FeedbackPanel} open=${feedback} onClose=${() => setFeedback(false)} onSave=${logFeedback} view=${viewName} />
-    ${present && html`<${PresentMode} session=${session} updateSession=${updateSession} stream=${present.stream} entityFilter=${present.entityFilter} l3=${present.l3} onClose=${() => setPresent(null)} />`}
+    ${present && html`<${PresentMode} session=${session} updateSession=${updateSession} stream=${present.stream} entityFilter=${present.entityFilter} l3=${present.l3} onClose=${() => setPresent(null)} toast=${toast} onAsk=${onAsk} />`}
+    ${ai.open && html`<${AiPanel} session=${session} akey=${ai.key} updateSession=${updateSession} toast=${toast} onClose=${() => setAi({ open: false, key: ai.key })} />`}
     <div class="toasts">${toasts.map(t => html`<${Toast} key=${t.id} text=${t.text} actionLabel=${t.actionLabel} onAction=${t.onAction} />`)}</div>
   </div>`;
 }

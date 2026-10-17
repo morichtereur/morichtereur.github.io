@@ -465,3 +465,25 @@ dialog.agenda { max-width: 48rem; }
 .present .board-cell { min-height: 6.5cqw; } .present .board .stepcard { font-size: 1cqw; } .present .board-lane { font-size: 1.1cqw; } .present .board-legend { font-size: .9cqw; }
 .ws-toolbar { display: flex; align-items: center; gap: .5rem; margin-bottom: .75rem; padding: .4rem .6rem; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius-lg); }
 .tree-node.root { font-weight: 600; }
+
+/* ---------- Plan steps, sessions, AI panel ---------- */
+.plan-grid { display: grid; gap: 1rem; max-width: 70rem; }
+.pstep-head { display: flex; align-items: center; gap: .7rem; margin-bottom: .8rem; }
+.pstep-head .step-n { width: 2rem; height: 2rem; border-radius: 50%; display: grid; place-items: center; font-family: var(--font-mono); background: var(--accent); color: var(--accent-ink); flex: none; }
+.pstep-head .step-n.done { background: var(--ok-soft); color: var(--ok); border: 1px solid var(--ok); }
+.sessions { display: grid; gap: .5rem; }
+.sess { display: grid; grid-template-columns: 1fr auto; gap: .8rem; padding: .7rem .9rem; border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--panel); }
+.sess.active { border-color: var(--accent); background: var(--accent-soft); }
+.sess-actions { display: flex; flex-direction: column; gap: .35rem; align-items: flex-end; }
+.gapbtns { display: flex; flex-wrap: wrap; gap: .3rem; }
+.gapbtns .pill { cursor: pointer; opacity: .55; border: 1px solid transparent; } .gapbtns .pill.on, .gapbtns .pill:hover { opacity: 1; } .gapbtns .pill.on { outline: 2px solid currentColor; outline-offset: 1px; }
+.ai-panel { width: 26rem; max-height: calc(100vh - 2.5rem); display: flex; flex-direction: column; }
+.ai-panel .card-body { overflow: auto; }
+.ai-thread { display: grid; gap: .5rem; max-height: 40vh; overflow: auto; }
+.ai-msg { font-size: .84rem; padding: .5rem .65rem; border-radius: var(--radius); }
+.ai-user { background: var(--bg); } .ai-assistant { background: var(--accent-soft); }
+.ai-h { font-weight: 600; margin: .3rem 0 .1rem; } .ai-li { padding-left: .5rem; margin: .1rem 0; }
+.ai-cfg { background: var(--bg); border-radius: var(--radius); padding: .6rem .7rem; margin-bottom: .6rem; display: grid; gap: .5rem; }
+.present .board-wrap.with-detail { grid-template-columns: minmax(0, 1fr) 24cqw; }
+.present .board-detail { font-size: 1.05cqw; position: static; max-height: calc(100vh - 16rem); overflow: auto; } .present .board-detail .select, .present .board-detail .input, .present .board-detail .textarea { font-size: 1cqw; }
+.present .gapbtns .pill { font-size: .85cqw; }

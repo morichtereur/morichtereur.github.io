@@ -113,7 +113,6 @@ export function prepareReadiness(session, ws, flowsByNode = {}) {
   const checks = [
     { key: 'file', label: 'Capture sheet received', ok: fileReceived, detail: fileReceived ? 'imported' : 'no file for this stream' },
     { key: 'ops', label: 'Ops pre-assessment complete', ok: list.length > 0 && withGap === list.length, warn: list.length > 0 && withGap / list.length >= 0.9, detail: list.length ? `${Math.round(100 * withGap / list.length)} % of ${list.length} As-Is GAP cells filled` : 'no activities' },
-    { key: 'flows', label: 'Process flows available', ok: leafIds.size > 0 && leavesWithFlow === leafIds.size, warn: leafIds.size > 0 && leavesWithFlow > 0, detail: leafIds.size ? `${leavesWithFlow} of ${leafIds.size} L3 with an image` : '–' },
     { key: 'participants', label: 'Participants nominated', ok: (ws.participantIds || []).length > 0, detail: `${(ws.participantIds || []).length} nominated` },
     { key: 'room', label: 'Room / link sent', ok: !!ws.roomSent, detail: ws.roomSent ? 'sent' : 'not yet' },
   ];

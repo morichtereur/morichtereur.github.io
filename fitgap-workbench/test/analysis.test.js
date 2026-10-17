@@ -63,7 +63,7 @@ test('PREPARE readiness: traffic light and missing pre-fills', () => {
   const r = prepareReadiness(s, { stream: 'R2R', participantIds: [], roomSent: false });
   assert.equal(r.checks[0].ok, true);
   assert.equal(r.light, 'red');
-  assert.ok(r.checks[1].detail.includes('%'));
+  assert.ok(r.checks[1].detail.includes('%')); assert.equal(r.checks.length, 4);
   const md = prepareReadiness(s, { stream: 'MD', participantIds: ['p1'], roomSent: true });
   assert.ok(md.activities > 0 && md.activities < r.activities + 500);
 });

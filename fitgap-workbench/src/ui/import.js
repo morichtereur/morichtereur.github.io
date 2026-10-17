@@ -33,7 +33,6 @@ function useImportQueue(updateSession, onBatchDone, profileRef) {
         if (parsed.needsSheetChoice) { wbRef.current[job.id] = { wb, buf }; patch(job.id, { status: 'choice', progress: 80, message: 'Several candidate sheets – pick one', candidates: parsed.sheets.candidates }); continue; }
         if (!parsed.ok) { patch(job.id, { status: 'error', progress: 100, message: parsed.warnings.map(w => w.message).join(' ') }); continue; }
         results.push(finish(job.id, parsed));
-        const nf = await finishFlows(buf, wb, parsed); if (nf) patch(job.id, { message: `${nf} flow image${nf > 1 ? 's' : ''} extracted` });
       } catch (e) { patch(job.id, { status: 'error', progress: 100, message: `Could not read this file: ${e.message}` }); results.push({ error: e }); }
       await tick();
     }
@@ -44,7 +43,6 @@ function useImportQueue(updateSession, onBatchDone, profileRef) {
     const parsed = parseCaptureWorkbook(entry.wb, { XLSX, fileName: job.name, sheetName, profile: profileRef?.current || undefined });
     if (!parsed.ok) { patch(id, { status: 'error', progress: 100, message: parsed.warnings.map(w => w.message).join(' ') }); return; }
     onBatchDone && onBatchDone([finish(id, parsed)], 1);
-    finishFlows(entry.buf, entry.wb, parsed);
   };
   return { jobs, run, choose, clear: () => setJobs([]) };
 }
@@ -139,6 +137,19 @@ function DiffsCard({ session }) {
   </${Card}>`;
 }
 
+async function downloadTemplates(session, toast, only) {
+  const files = generateTemplateWorkbooks(XLSX, { entities: Object.values(session.entities).filter(e => e.hasCode).map(e => ({ code: e.code, name: e.displayName || e.name })) });
+  if (only) { const f = files.find(x => x.name === only); if (f) downloadBlob(f.name, new Blob([f.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })); return; }
+  const zip = new JSZip(); for (const f of files) zip.file(f.name, f.data);
+  downloadBlob('GBS_FitGap_Excel_templates.zip', await zip.generateAsync({ type: 'blob', compression: 'DEFLATE' })); toast('Excel templates downloaded');
+}
+function TemplatesCard({ session, toast }) {
+  return html`<${Card} title="Excel templates">
+    <p class="muted small">Blank capture sheets per stream (with the block layout GBS Operations fills in) and the planning workbook. ${Object.keys(session.entities).length ? 'Entity labels are taken from the imported files.' : 'Entity labels are placeholders – rename them in the files.'}</p>
+    <div class="sg-row"><${Button} variant="primary" size="sm" icon="file" onClick=${() => downloadTemplates(session, toast)}>All templates (.zip)</${Button}>${['R2R', 'A2R', 'I2P', 'I2C', 'ICO'].map(s => html`<${Button} key=${s} variant="outline" size="sm" onClick=${() => downloadTemplates(session, toast, `Fit-Gap_Template_${s}.xlsx`)}>${s}</${Button}>`)}<${Button} variant="outline" size="sm" onClick=${() => downloadTemplates(session, toast, 'Fit_Gap_Workshops_planning_template.xlsx')}>Planning</${Button}></div>
+  </${Card}>`;
+}
+
 function ImportView({ session, summary, updateSession, toast, onClearAll, onReplaceSession }) {
   const profiles = allProfiles(session); const [profileId, setProfileId] = useState(DEFAULT_PROFILE_ID); const profileRef = useRef(null);
   profileRef.current = profiles.find(p => p.id === profileId) || null;
@@ -155,7 +166,7 @@ function ImportView({ session, summary, updateSession, toast, onClearAll, onRepl
     return html`<div>
       <${PageHead} eyebrow="2 · Workshop · files & exports" title="Import the capture sheets" lead="Start with the pre-filled workbooks from GBS Operations. The tool reads the main Fit-Gap sheet of each file, detects entities and blocks by their titles, and shows you exactly what it found before anything is assessed." how=${html`<ol><li>Drop all stream workbooks at once (or add them one by one).</li><li>Check the import summary: entities × streams, activity counts, gap distribution and warnings.</li><li>If a label without entity code looks like a known entity, confirm or reject the match.</li><li>Re-import a newer version at any time – Ops values are refreshed and listed, workshop results stay.</li></ol>`} />
       <${DropZone} onFiles=${onFiles} ...${dz} />
-      <div style="margin-top:1rem;max-width:46rem"><${ExportsCard} session=${session} summary=${summary} updateSession=${updateSession} toast=${toast} onReplaceSession=${onReplaceSession} /></div>
+      <div style="margin-top:1rem;max-width:46rem;display:grid;gap:1rem"><${TemplatesCard} session=${session} toast=${toast} /><${ExportsCard} session=${session} summary=${summary} updateSession=${updateSession} toast=${toast} onReplaceSession=${onReplaceSession} /></div>
     </div>`;
   }
   return html`<div>
@@ -171,6 +182,7 @@ function ImportView({ session, summary, updateSession, toast, onClearAll, onRepl
       <div style="display:grid;gap:1rem">
         <${ExportsCard} session=${session} summary=${summary} updateSession=${updateSession} toast=${toast} onReplaceSession=${onReplaceSession} />
         <${DropZone} onFiles=${onFiles} compact ...${dz} />
+        <${TemplatesCard} session=${session} toast=${toast} />
         ${q.jobs.length > 0 && html`<div class="filelist">${q.jobs.map(j => html`<${JobRow} key=${j.id} job=${j} onChoose=${q.choose} />`)}</div>`}
         ${hasData && html`<${FilesCard} session=${session} summary=${summary} />`}
         ${hasData && summary.warnings.some(w => w.level !== 'info') && html`<${Card} title="Things to check in the files" stats=${[['open', summary.warnings.filter(w => w.level !== 'info').length]]}><${WarningList} warnings=${summary.warnings} /></${Card}>`}

@@ -49,7 +49,7 @@ await page.click('.side-nav > .side-nav-item:has-text("Plan")'); await page.wait
 for (const [ph, v] of [['e.g. Demo Group', 'Demo Group'], ['e.g. France', 'France'], ['MR', 'MR']]) { await page.fill(`input[placeholder="${ph}"]`, v); await page.press(`input[placeholder="${ph}"]`, 'Enter'); }
 await page.fill('input[placeholder="Full name"]', 'M. Dupont'); await page.press('input[placeholder="Full name"]', 'Enter');
 await page.fill('input[type=date]', '2026-10-19'); await page.fill('input[type=time] >> nth=0', '14:00'); await page.fill('input[type=time] >> nth=1', '15:30');
-await page.click('button.btn-outline:has-text("Add") >> nth=1'); await page.click('button:has-text("Set active")');
+await page.click('button:has-text("Add session")'); await page.click('button:has-text("Set active")');
 step('PLAN-lite: client, country, initials, participant, session', (await page.$$eval('.sessions tr, table.matrix tbody tr', r => r.length)) > 0);
 
 // 3 Simulated R2R session

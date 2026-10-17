@@ -46,12 +46,13 @@ function SavedIndicator({ save }) {
   return html`<span class="saved"><span class="dot" style="background:var(--line-strong)"></span>Not saved yet</span>`;
 }
 
-function TopBar({ crumbs, theme, setTheme, share, setShare, onPalette, onFeedback, save, onSave }) {
+function TopBar({ crumbs, theme, setTheme, share, setShare, onPalette, onFeedback, save, onSave, onAi }) {
   return html`<header class="topbar">
     <div class="crumb">${crumbs.map((c, i) => html`${i > 0 && html`<span class="sep">›</span>`}${i === crumbs.length - 1 ? html`<b>${c}</b>` : html`<span>${c}</span>`}`)}</div>
     <div class="search" role="button" tabindex="0" onClick=${onPalette} onKeyDown=${e => e.key === 'Enter' && onPalette()}><${Icon} name="search" size=${14} />Jump to entity, stream, process ID or activity<kbd>Ctrl K</kbd></div>
     <div class="actions">
       <${SavedIndicator} save=${save} />
+      <${IconButton} icon="spark" label="AI support" onClick=${onAi} />
       <${IconButton} icon="save" label="Save session file (JSON)" onClick=${onSave} />
       <${IconButton} icon="feedback" label="Feedback" onClick=${onFeedback} />
       <${IconButton} icon="share" label=${share ? 'Screen-share mode on' : 'Screen-share mode'} onClick=${() => setShare(!share)} style=${share ? 'color:var(--accent)' : ''} />
@@ -82,7 +83,7 @@ function ComingNext({ p }) {
   </div>`;
 }
 
-function RunPage({ session, summary, updateSession, toast, onClearAll, tab, setTab, ui, setUi, onReplaceSession, onPresent }) {
+function RunPage({ session, summary, updateSession, toast, onClearAll, tab, setTab, ui, setUi, onReplaceSession, onPresent, onAsk }) {
   const hasData = session.files.length > 0;
   useEffect(() => { if (!hasData) setTab('import'); }, [hasData]);
   if (tab === 'import' || !hasData) return html`<div>
@@ -91,7 +92,7 @@ function RunPage({ session, summary, updateSession, toast, onClearAll, tab, setT
   </div>`;
   return html`<div>
     <div class="sg-row" style="justify-content:flex-end;margin:-.5rem 0 .4rem"><${Button} variant="text" size="sm" icon="file" onClick=${() => setTab('import')}>Files & exports (${session.files.length})</${Button}></div>
-    <${WorkshopView} session=${session} summary=${summary} updateSession=${updateSession} toast=${toast} ui=${ui} setUi=${setUi} onPresent=${onPresent} />
+    <${WorkshopView} session=${session} summary=${summary} updateSession=${updateSession} toast=${toast} ui=${ui} setUi=${setUi} onPresent=${onPresent} onAsk=${onAsk} />
   </div>`;
 }
 
@@ -124,6 +125,8 @@ function App() {
   const [runTab, setRunTab] = useState(null);
   const [wsUi, setWsUi] = useState(() => store.get('fg.ws', {}));
   const [present, setPresent] = useState(null);
+  const [ai, setAi] = useState({ open: false, key: null });
+  const onAsk = (key) => setAi({ open: true, key: key || null });
   useEffect(() => { store.set('fg.ws', { stream: wsUi.stream, l3: wsUi.l3, mode: wsUi.mode, entity: wsUi.entity }); }, [wsUi.stream, wsUi.l3, wsUi.mode, wsUi.entity]);
   const dirty = useRef(false);
   const updateSession = useCallback((fn) => { setSession(s => { const n = { ...s }; fn(n); n.updatedAt = new Date().toISOString(); dirty.current = true; return n; }); }, []);
@@ -169,14 +172,15 @@ function App() {
   return html`<div class="app" data-rail=${rail ? '1' : '0'}>
     <${Sidebar} phase=${phase} setPhase=${setPhase} summary=${summary} rail=${rail} setRail=${setRail} session=${session} page=${page} setPage=${setPage} onPresent=${() => setPresent({ stream: session.processes[wsUi.l3]?.stream || 'R2R', entityFilter: null, l3: wsUi.l3 })} />
     <div class="content">
-      <${TopBar} crumbs=${crumbs} theme=${theme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')} setTheme=${setTheme} share=${share} setShare=${setShare} onPalette=${() => setPalette(true)} onFeedback=${() => setFeedback(f => !f)} save=${save} onSave=${() => { downloadSessionJson(session); toast('Session file downloaded'); }} />
+      <${TopBar} crumbs=${crumbs} theme=${theme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')} setTheme=${setTheme} share=${share} setShare=${setShare} onPalette=${() => setPalette(true)} onFeedback=${() => setFeedback(f => !f)} save=${save} onSave=${() => { downloadSessionJson(session); toast('Session file downloaded'); }} onAi=${() => setAi(x => ({ open: !x.open, key: x.key || (wsUi.expanded && wsUi.expandedEntity ? assessmentKey(wsUi.expandedEntity, wsUi.expanded) : null) }))} />
       <${KpiStrip} summary=${summary} session=${session} updateSession=${updateSession} toast=${toast} />
-      <main class="main">${page === 'home' ? html`<${HomePage} session=${session} summary=${summary} updateSession=${updateSession} toast=${toast} go=${goStep} onReplaceSession=${replaceSession} />` : page === 'styleguide' ? html`<${StyleGuide} />` : phase === 'run' ? html`<${RunPage} session=${session} summary=${summary} updateSession=${updateSession} toast=${toast} onClearAll=${clearAll} tab=${tab} setTab=${setRunTab} ui=${wsUi} setUi=${setWsUi} onReplaceSession=${replaceSession} onPresent=${p => setPresent(p)} />` : phase === 'plan' ? html`<${PlanView} session=${session} summary=${summary} updateSession=${updateSession} toast=${toast} /><div style="margin-top:2rem"><${PreparePage} session=${session} updateSession=${updateSession} toast=${toast} /></div>` : phase === 'results' ? html`<${EvaluatePage} session=${session} updateSession=${updateSession} toast=${toast} goActivity=${goActivity} />` : phase === 'signoff' ? html`<${Qg2Page} session=${session} updateSession=${updateSession} toast=${toast} /><div style="margin-top:2rem"><${HandoverPage} session=${session} toast=${toast} /></div>` : html`<${ComingNext} p=${current} />`}</main>
+      <main class="main">${page === 'home' ? html`<${HomePage} session=${session} summary=${summary} updateSession=${updateSession} toast=${toast} go=${goStep} onReplaceSession=${replaceSession} />` : page === 'styleguide' ? html`<${StyleGuide} />` : phase === 'run' ? html`<${RunPage} session=${session} summary=${summary} updateSession=${updateSession} toast=${toast} onClearAll=${clearAll} tab=${tab} setTab=${setRunTab} ui=${wsUi} setUi=${setWsUi} onReplaceSession=${replaceSession} onPresent=${p => setPresent(p)} onAsk=${onAsk} />` : phase === 'plan' ? html`<${PlanView} session=${session} summary=${summary} updateSession=${updateSession} toast=${toast} />` : phase === 'results' ? html`<${EvaluatePage} session=${session} updateSession=${updateSession} toast=${toast} goActivity=${goActivity} />` : phase === 'signoff' ? html`<${Qg2Page} session=${session} updateSession=${updateSession} toast=${toast} /><div style="margin-top:2rem"><${HandoverPage} session=${session} toast=${toast} /></div>` : html`<${ComingNext} p=${current} />`}</main>
     </div>
     <${Palette} open=${palette} onClose=${() => setPalette(false)} items=${paletteItems} onPick=${i => { setPalette(false); i.go(); }} />
     <${Welcome} open=${welcome} onClose=${() => { setWelcome(false); store.set('fg.welcomed', true); }} onPrimary=${() => { setWelcome(false); store.set('fg.welcomed', true); setPage('phase'); setPhase('run'); setRunTab('import'); }} onDemo=${async () => { setWelcome(false); store.set('fg.welcomed', true); setPage('home'); await loadDemoData(updateSession, toast, () => goStep('run', 'workshop')); }} />
     <${FeedbackPanel} open=${feedback} onClose=${() => setFeedback(false)} onSave=${logFeedback} view=${viewName} />
-    ${present && html`<${PresentMode} session=${session} updateSession=${updateSession} stream=${present.stream} entityFilter=${present.entityFilter} l3=${present.l3} onClose=${() => setPresent(null)} />`}
+    ${present && html`<${PresentMode} session=${session} updateSession=${updateSession} stream=${present.stream} entityFilter=${present.entityFilter} l3=${present.l3} onClose=${() => setPresent(null)} toast=${toast} onAsk=${onAsk} />`}
+    ${ai.open && html`<${AiPanel} session=${session} akey=${ai.key} updateSession=${updateSession} toast=${toast} onClose=${() => setAi({ open: false, key: ai.key })} />`}
     <div class="toasts">${toasts.map(t => html`<${Toast} key=${t.id} text=${t.text} actionLabel=${t.actionLabel} onAction=${t.onAction} />`)}</div>
   </div>`;
 }

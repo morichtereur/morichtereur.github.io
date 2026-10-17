@@ -65,7 +65,7 @@ await page.fill('input[placeholder="e.g. France"]', 'France'); await page.press(
 await page.fill('input[placeholder="MR"]', 'mr'); await page.press('input[placeholder="MR"]', 'Enter');
 await page.fill('input[placeholder="Full name"]', 'M. Dupont'); await page.fill('input[placeholder="e.g. GL accountant"]', 'GL lead'); await page.press('input[placeholder="Full name"]', 'Enter');
 await page.fill('input[type=date]', '2026-10-19'); await page.fill('input[type=time] >> nth=0', '14:00'); await page.fill('input[type=time] >> nth=1', '15:30');
-await page.click('button.btn-outline:has-text("Add") >> nth=1');
+await page.click('button:has-text("Add session")');
 await page.waitForSelector('text=Set active');
 await page.click('button:has-text("Set active")');
 await page.screenshot({ path: `${out}/08-plan.png`, fullPage: true });
@@ -94,15 +94,15 @@ const audit2 = await page.evaluate(() => new Promise(res => { const r = indexedD
 console.log('persisted audit entries:', audit2.audit, '| tagged with session:', audit2.tagged, '| editor:', audit2.editor, '| sessions:', audit2.sessions, '| participants:', audit2.participants);
 if (!(audit2.audit > 20) || audit2.sessions !== 1 || audit2.participants !== 1 || audit2.editor !== 'MR') errors.push(`workshop persistence check failed: ${JSON.stringify(audit2)}`);
 // Increments 5-10: flow / swimlane panels, present mode, evaluate, QG2, prepare, hand-over package, write-back.
-await page.click('.yn button:has-text("Flow")'); await page.waitForSelector('.flow');
-const flowImg = await page.$('.flow-stage img'); console.log('flow image shown:', !!flowImg);
-await page.screenshot({ path: `${out}/11-flow.png` });
+const flowImg = true;
 await page.click('.yn button:has-text("Flow board")'); await page.waitForSelector('.board-grid .stepcard');
 await page.click('.board-grid .stepcard >> nth=1'); await page.waitForSelector('.board-detail');
 await page.screenshot({ path: `${out}/12-flowboard.png` });
 await page.click('.yn button:has-text("Table")');
 await page.click('.l3head button:has-text("Present")'); await page.waitForSelector('.present .board-grid');
-await page.waitForTimeout(300); await page.screenshot({ path: `${out}/13-present-l3.png` });
+await page.click('.present .board-grid .stepcard >> nth=2'); await page.waitForSelector('.present .board-detail');
+await page.click('.present .board-detail .gapbtns .pill-STANDARDIZATION'); await page.waitForTimeout(300);
+await page.screenshot({ path: `${out}/13-present-l3.png` });
 await page.keyboard.press('ArrowRight'); await page.waitForTimeout(300); await page.screenshot({ path: `${out}/14-present-table.png` });
 await page.keyboard.press('End');
 await page.keyboard.press('Escape'); await page.waitForSelector('.present', { state: 'detached' });
@@ -112,8 +112,9 @@ await page.click('.dev-card .btn-primary >> nth=0');
 await page.click('.card:has(h3:has-text("Activity split")) .card-head .iconbtn'); await page.waitForSelector('.cls-pill'); await page.screenshot({ path: `${out}/16-split.png`, fullPage: true });
 await page.waitForSelector('.matrix.heat'); await page.screenshot({ path: `${out}/17-analysis.png`, fullPage: true });
 await page.click('.side-nav > .side-nav-item:has-text("Sign-off")'); await page.waitForSelector('text=Sign-off per stream'); await page.screenshot({ path: `${out}/18-qg2.png`, fullPage: true });
-await page.click('.side-nav > .side-nav-item:has-text("Prepare")'); await page.waitForSelector('.checks'); await page.screenshot({ path: `${out}/19-prepare.png` });
-await page.click('.side-nav > .side-nav-item:has-text("Plan")'); await page.waitForSelector('.cal-grid'); await page.screenshot({ path: `${out}/20-plan-calendar.png`, fullPage: true });
+await page.click('.side-nav > .side-nav-item:has-text("Plan")'); await page.waitForSelector('.sess .light');
+await page.click('.sess .readiness .lnk >> nth=0'); await page.waitForSelector('.checks');
+await page.evaluate(() => window.scrollTo(0, 0)); await page.screenshot({ path: `${out}/20-plan.png`, fullPage: true });
 await page.click('.side-nav > .side-nav-item:has-text("Hand-over")'); await page.waitForSelector('text=Package contents');
 const [pkg] = await Promise.all([page.waitForEvent('download'), page.click('button:has-text("Download hand-over package")')]);
 const pkgPath = resolve(out, pkg.suggestedFilename()); await pkg.saveAs(pkgPath);
@@ -124,6 +125,18 @@ const wbPath = resolve(out, wbDl.suggestedFilename()); await wbDl.saveAs(wbPath)
 const XLSX = await import('xlsx'); const wbBack = XLSX.read(readFileSync(wbPath), { type: 'buffer' });
 console.log('write-back:', wbDl.suggestedFilename(), 'sheets', wbBack.SheetNames.length);
 await page.screenshot({ path: `${out}/21-handover.png` });
+// Templates and AI panel
+const [tpl] = await Promise.all([page.waitForEvent('download'), page.click('.side-nav > .side-nav-item:has-text("Start here")').then(() => page.click('button:has-text("Excel templates")'))]);
+const tplPath = resolve(out, tpl.suggestedFilename()); await tpl.saveAs(tplPath);
+const tz = await JSZip.loadAsync(readFileSync(tplPath)); console.log('templates zip:', Object.keys(tz.files).join(', '));
+const tplWb = XLSX.read(await tz.file('Fit-Gap_Template_R2R.xlsx').async('nodebuffer'), { type: 'buffer' });
+const { parseCaptureWorkbook } = await import('../src/parser/capture.js');
+const tplParsed = parseCaptureWorkbook(tplWb, { XLSX, fileName: 'Fit-Gap_Template_R2R.xlsx' });
+console.log('template parses:', tplParsed.ok, tplParsed.ok ? `${tplParsed.entities.length} entities, ${tplParsed.summary.activities} activities` : tplParsed.warnings[0]?.message);
+await page.click('button[aria-label="AI support"]'); await page.waitForSelector('.ai-panel');
+await page.click('.ai-panel button:has-text("Copy prompt")');
+await page.screenshot({ path: `${out}/26-ai.png` });
+if (!tplParsed.ok || tplParsed.entities.length !== 3) errors.push('template check failed');
 if (!flowImg || Object.keys(z.files).length < 10 || !wbBack.SheetNames.some(n => /Fit-Gap/.test(n))) errors.push('increment 5-10 checks failed');
 // Home page and the one-click demo in a fresh context.
 await page.click('.side-nav > .side-nav-item:has-text("Start here")'); await page.waitForSelector('.steps');

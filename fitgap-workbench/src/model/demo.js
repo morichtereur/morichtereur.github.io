@@ -74,7 +74,7 @@ function buildRows(stream, opts = {}) {
   return rows;
 }
 
-function workbook(XLSX, stream, { headerRow, entities, asIsTitle, fitGapTitle, oosL2, rows, sheetName, oldCopy, flows }) {
+function workbook(XLSX, stream, { headerRow, entities, asIsTitle, fitGapTitle, oosL2, rows, sheetName, oldCopy, flows, empty }) {
   const H = headerRow - 1; // 0-based index of the header row
   const aoa = []; const merges = [];
   const put = (r, c, v) => { aoa[r] = aoa[r] || []; aoa[r][c] = v; };
@@ -117,7 +117,7 @@ function workbook(XLSX, stream, { headerRow, entities, asIsTitle, fitGapTitle, o
   let r = H + 1;
   for (const row of rows) {
     put(r, 1, row.level); put(r, 2, row.id); put(r, 3, row.name); if (row.description) put(r, 4, row.description);
-    if (row.level === 4) {
+    if (row.level === 4 && !empty) {
       seedFor(row.id);
       const toGbs = rnd() < 0.7;
       put(r, cols.tobe.le, toGbs ? 'N' : 'Y'); put(r, cols.tobe.gbs, toGbs ? 'Y' : 'N'); put(r, cols.tobe.system, pick(SYSTEMS));
@@ -205,6 +205,29 @@ export async function generateDemoWorkbooks(XLSX, JSZip) {
   const cmdRows = buildRows('I2C', { filterL2: 'I2C 1' });
   const wbCmd = workbook(XLSX, 'I2C', { headerRow: 8, entities: ENTITIES, asIsTitle: 'PRE-FILLED AS-IS PROCESS SPECIFICATION', fitGapTitle: 'FIT-GAP ASSESSMENT', sheetName: 'Fit-Gap Template_I2C_CMD', rows: cmdRows });
   out.push({ name: 'Fit-Gap_Template_I2C_CMD_DemoGroup.xlsx', data: new Uint8Array(XLSX.write(wbCmd, { type: 'array', bookType: 'xlsx' })) });
+  return out;
+}
+
+/** Empty capture-sheet templates (one per stream) and the planning workbook template. */
+export function generateTemplateWorkbooks(XLSX, { entities = [], streams = ['R2R', 'A2R', 'I2P', 'I2C', 'ICO'] } = {}) {
+  const ents = entities.length ? entities : [{ code: '100001', name: 'Entity A (replace)' }, { code: '100002', name: 'Entity B (replace)' }, { code: '100003', name: 'Entity C (replace)' }];
+  const out = [];
+  for (const stream of streams) {
+    const L = { R2R: 'Record to Report', A2R: 'Acquire to Retire', I2P: 'Invoice to Pay', I2C: 'Invoice to Cash', ICO: 'Intercompany' }[stream] || stream;
+    const rows = [
+      { level: 0, id: stream, name: `${stream} ${L}` }, { level: 1, id: `${stream} 1`, name: 'Level-1 process (e.g. General Ledger Accounting)' }, { level: 2, id: `${stream} 1.1`, name: 'Level-2 process (e.g. Journal Entries)' }, { level: 3, id: `${stream} 1.1.1`, name: 'Level-3 process variant (e.g. Journal Entries – standard)' },
+      { level: 4, id: `${stream} 1.1.1.1`, name: 'Level-4 activity (one row per activity)', description: 'What is done in this activity – one sentence.' }, { level: 4, id: `${stream} 1.1.1.2`, name: 'Next activity', description: '' },
+    ];
+    const wb = workbook(XLSX, stream, { headerRow: 8, entities: ents, asIsTitle: 'PRE-FILLED AS-IS PROCESS SPECIFICATION', fitGapTitle: 'FIT-GAP ASSESSMENT', rows, sheetName: `Fit-Gap Template_${stream}`, empty: true });
+    const ws = wb.Sheets[`Fit-Gap Template_${stream}`];
+    ws['B2'] = { t: 's', v: 'How to fill: keep the header row (row 8) and the block titles above it. One row per activity (Process Level 4). GBS Operations pre-fill the AS-IS block per entity (LE/Country/Other, GBS, Used Systems, GAP = NO GAP | HARMONIZATION GAP | STANDARDIZATION GAP | BOTH GAPS, Additional Information). Leave FIT-GAP and DETAILED GAP empty – they are completed in the workshop. Write "Out of scope" into the Fit-Gap cell of an entity to exclude an activity.' };
+    out.push({ name: `Fit-Gap_Template_${stream}.xlsx`, data: new Uint8Array(XLSX.write(wb, { type: 'array', bookType: 'xlsx' })) });
+  }
+  const plan = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(plan, XLSX.utils.aoa_to_sheet([['Fit Gap Workshops'], [], ['Country', 'PROCESS', 'Responsible', 'Comment', 'Workshop Date', 'Meeting time', 'Overall Duration', 'Status'], ['France', 'Record-to-Report', 'J. Keller', '', '19.10.2026 and 20.10.2026', 'Monday from 10:00-12:00 and 13:00-16:00', '5h', 'confirmed with PE and RO'], ['', 'Invoice-to-Pay', 'A. Weber', 'tbc', '21.10.2026', '9:00-11:00 CET', '2h', 'invite sent'], ['UK&I', 'Order-to-Cash', 'C. Smith', '', 'tbd', 'tbd', '', '']]), 'New');
+  XLSX.utils.book_append_sheet(plan, XLSX.utils.aoa_to_sheet([['Old']]), 'Old');
+  out.push({ name: 'Fit_Gap_Workshops_planning_template.xlsx', data: new Uint8Array(XLSX.write(plan, { type: 'array', bookType: 'xlsx' })) });
+  out.push({ name: 'README.txt', data: new TextEncoder().encode(`GBS Fit-Gap Workbench – Excel templates\n\nFit-Gap_Template_<STREAM>.xlsx\n  One workbook per stream (R2R, A2R, I2P, I2C, ICO). Main sheet "Fit-Gap Template_<STREAM>":\n  - row 8 = header row (Process Level | Process ID | Process | Activity description), rows 5-7 carry the block titles and entity labels\n  - TO BE block: LE, GBS, System, Planned initiative (per activity)\n  - per entity: PRE-FILLED AS-IS (LE/Country/Other, GBS, Used Systems, GAP, Additional Information) – filled by GBS Operations before the workshop\n  - per entity: FIT-GAP ASSESSMENT (Local Accounting, Other, GBS, FTE) and DETAILED GAP ASSESSMENT (7 fields) – completed in the workshop\n  - entity label above each block = "<6-digit code> <legal entity name>"\n  - data rows: Process Level 0-5 and Process ID starting with the stream code; levels 0-3 are hierarchy, level 4 = activities\n  - "Out of scope" in a Fit-Gap cell excludes the activity for that entity\n  You may add rows, entities (copy the three blocks and change the label) and extra columns – the parser maps fields by header text, not by column letter.\n\nFit_Gap_Workshops_planning_template.xlsx\n  Planning workbook ("New" sheet): Country | PROCESS | Responsible | Comment | Workshop Date | Meeting time | Overall Duration | Status. Free-text dates and times are parsed best-effort.\n`) });
   return out;
 }
 
