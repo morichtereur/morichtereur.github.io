@@ -7,7 +7,7 @@ const yn = (v) => v === true ? 'Y' : v === false ? 'N' : v && v.text ? v.text : 
 const ts = (s) => s ? s.replace('T', ' ').slice(0, 16) : '';
 
 function ancestors(session, p) { const out = []; let cur = session.processes[p?.parentId]; while (cur) { out.unshift(cur); cur = session.processes[cur.parentId]; } return out; }
-function levelName(session, p, level) { const a = ancestors(session, p).find(x => x.level === level); return a ? `${a.id} ${a.name}` : ''; }
+function levelName(session, p, level) { const anc = ancestors(session, p); const a = level === 'L3' ? anc[anc.length - 1] : level === 'L2' ? anc[anc.length - 2] : anc[0]; return a ? `${a.id} ${a.name}` : ''; }
 function sessionLabel(session, id) { const s = session.sessions.find(x => x.id === id); return s ? `${s.date} ${s.start || ''} ${s.stream}`.trim() : ''; }
 function lastChange(session, key) { for (let i = session.audit.length - 1; i >= 0; i--) if (session.audit[i].key === key) return session.audit[i]; return null; }
 function participant(session, id) { const p = session.participants.find(x => x.id === id); return p ? `${p.name} (${p.organisation})` : (id || ''); }
@@ -22,7 +22,7 @@ export function deviationRows(session) {
     const p = session.processes[a.processId] || {}; const d = a.deviation || {}; const lc = lastChange(session, a.key);
     rows.push({
       'Entity code': session.entities[a.entityCode]?.hasCode ? a.entityCode : '', 'Entity': entityName(session, a.entityCode), 'Country': session.entities[a.entityCode]?.country || session.settings.country || '',
-      'Stream': a.stream, 'L2': levelName(session, p, 1), 'L3': levelName(session, p, 2), 'Process ID': a.processId, 'Process': p.name || '',
+      'Stream': a.stream, 'L2': levelName(session, p, 'L2'), 'L3': levelName(session, p, 'L3'), 'Process ID': a.processId, 'Process': p.name || '',
       'Gap type (workshop)': GAP_LABEL[gap] || gap, 'Gap type (Ops)': GAP_LABEL[a.asIs.gap] || '', 'Dimension': (d.dimensions || []).map(x => DIMENSION_LABEL[x] || x).join(', '),
       'Description': a.workshop.rationale || '', 'Detailed gap findings': detailedFindings(a), 'Resolution approach': RESOLUTION_LABEL[d.resolution] || '', 'Justification': d.justification || '',
       'Accountable owner': participant(session, d.ownerId), 'Target date': d.targetDate || '', 'Escalation level': ESCALATION_LABEL[d.escalation] || '', 'Approval status': d.approval || 'PROPOSED',
@@ -47,7 +47,7 @@ export function flatRows(session) {
   for (const a of Object.values(session.assessments)) {
     const p = session.processes[a.processId] || {}; const d = a.deviation || {}; const gap = effectiveGap(a);
     const r = {
-      'Entity code': session.entities[a.entityCode]?.hasCode ? a.entityCode : '', 'Entity': entityName(session, a.entityCode), 'Stream': a.stream, 'L1': levelName(session, p, 0), 'L2': levelName(session, p, 1), 'L3': levelName(session, p, 2), 'Level': p.level, 'Process ID': a.processId, 'Process': p.name || '', 'Activity description': p.description || '',
+      'Entity code': session.entities[a.entityCode]?.hasCode ? a.entityCode : '', 'Entity': entityName(session, a.entityCode), 'Stream': a.stream, 'L1': levelName(session, p, 0), 'L2': levelName(session, p, 'L2'), 'L3': levelName(session, p, 'L3'), 'Level': p.level, 'Process ID': a.processId, 'Process': p.name || '', 'Activity description': p.description || '',
       'To-Be LE': yn(p.toBe?.le), 'To-Be GBS': yn(p.toBe?.gbs), 'To-Be system': p.toBe?.system || '', 'Planned initiative': p.toBe?.initiative || '',
       'Ops LE/Country/Other': yn(a.asIs.le), 'Ops GBS': yn(a.asIs.gbs), 'Ops used systems': a.asIs.systems || '', 'Ops GAP': GAP_LABEL[a.asIs.gap] || '', 'Ops GAP (raw)': a.asIs.gapRaw || '', 'Ops additional information': a.asIs.info || '',
       'Scope': a.scope.outOfScope ? 'Out of scope' : 'In scope', 'Scope source': a.scope.source || '',

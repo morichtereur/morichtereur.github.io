@@ -33,7 +33,7 @@ test('activity split classes and aggregates', () => {
   const split = activitySplit(s, a.entityCode, 'R2R');
   assert.equal(split.rows.length, 34);
   assert.ok(split.totals.cls.NOT_ASSESSED > 0 && split.totals.cls.MOVES_TO_GBS > 0);
-  assert.ok(split.agg.some(g => g.level === 1) && split.agg.some(g => g.level === 2));
+  assert.ok(new Set(split.agg.map(g => g.level)).size === 2, 'L2 and L3 aggregates');
   assert.equal(split.totals.fte, 0.5);
 });
 

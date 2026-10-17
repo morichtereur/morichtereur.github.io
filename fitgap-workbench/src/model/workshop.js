@@ -145,8 +145,8 @@ export function buildTree(session, stream, { masterDataOnly = false } = {}) {
   const byId = Object.fromEntries(all.map(p => [p.id, { ...p, children: [], activities: [] }]));
   const roots = [];
   for (const n of Object.values(byId)) {
-    const parent = n.parentId && byId[n.parentId];
-    if (n.level >= 4) { if (parent) parent.activities.push(n); else roots.push(n); continue; }
+    let parent = n.parentId && byId[n.parentId];
+    if (n.level >= 4) { while (parent && parent.level >= 4) parent = parent.parentId && byId[parent.parentId]; if (parent) parent.activities.push(n); else roots.push(n); continue; }
     if (parent) parent.children.push(n); else roots.push(n);
   }
   const sortById = (a, b) => a.id.localeCompare(b.id, undefined, { numeric: true });
@@ -164,10 +164,14 @@ export function buildTree(session, stream, { masterDataOnly = false } = {}) {
 export function activitiesOf(node) { return [...node.activities, ...node.children.flatMap(activitiesOf)]; }
 
 /** Stats for a set of activities: assessed / total (in scope), open gaps, per entity filter (null = all). */
-export function nodeStats(session, activities, entityCode = null) {
+/** processId → assessments[] – build once per session change and pass to nodeStats for large files. */
+export function indexAssessments(session) { const m = new Map(); for (const a of Object.values(session.assessments)) { let l = m.get(a.processId); if (!l) { l = []; m.set(a.processId, l); } l.push(a); } return m; }
+
+export function nodeStats(session, activities, entityCode = null, index = null) {
   const s = { total: 0, assessed: 0, complete: 0, outOfScope: 0, openGaps: 0, opsNoGap: 0, ops: {} };
-  for (const p of activities) for (const a of Object.values(session.assessments)) {
-    if (a.processId !== p.id || (entityCode && a.entityCode !== entityCode)) continue;
+  const idx = index || indexAssessments(session);
+  for (const p of activities) for (const a of (idx.get(p.id) || [])) {
+    if (entityCode && a.entityCode !== entityCode) continue;
     if (a.scope.outOfScope) { s.outOfScope++; continue; }
     s.total++;
     const g = a.asIs.gap || 'NOT_ASSESSED'; s.ops[g] = (s.ops[g] || 0) + 1;

@@ -29,7 +29,8 @@ export function classifySplit(a, p) {
   return wsGbs ? 'MOVES_TO_GBS' : 'STAYS_LOCAL';
 }
 
-function ancestorAt(session, p, level) { let cur = p; while (cur && cur.level > level) cur = session.processes[cur.parentId]; return cur && cur.level === level ? cur : null; }
+/** Ancestor relative to the activity: up=1 → L3 (parent), up=2 → L2 (grandparent). Real files start at level 1, demo at 0. */
+function ancestorUp(session, p, up) { let cur = p; for (let i = 0; i < up && cur; i++) cur = session.processes[cur.parentId]; return cur || null; }
 
 /** Activity split rows for one entity × stream (+ aggregates per L2 and L3). */
 export function activitySplit(session, entityCode, stream) {
@@ -37,7 +38,7 @@ export function activitySplit(session, entityCode, stream) {
   for (const a of Object.values(session.assessments)) {
     if (a.entityCode !== entityCode || (stream && a.stream !== stream) || a.scope.outOfScope) continue;
     const p = session.processes[a.processId]; if (!p) continue;
-    rows.push({ key: a.key, processId: a.processId, name: p.name, stream: a.stream, l2: ancestorAt(session, p, 1)?.id || '', l3: ancestorAt(session, p, 2)?.id || '', lanes: lanesOf(a, p), cls: classifySplit(a, p), fte: a.fitGap.fte || 0, gap: effectiveGap(a) });
+    rows.push({ key: a.key, processId: a.processId, name: p.name, stream: a.stream, l2: ancestorUp(session, p, 2)?.id || '', l3: ancestorUp(session, p, 1)?.id || '', lanes: lanesOf(a, p), cls: classifySplit(a, p), fte: a.fitGap.fte || 0, gap: effectiveGap(a) });
   }
   rows.sort((x, y) => x.processId.localeCompare(y.processId, undefined, { numeric: true }));
   const agg = {};
@@ -59,7 +60,7 @@ export function gapAnalysis(session, { entityCode = null, stream = null } = {}) 
     matrix[o] = matrix[o] || {}; matrix[o][w] = (matrix[o][w] || 0) + 1;
     for (const f of DETAILED_GAP_FIELDS) if (a.detailedGap[f] && a.detailedGap[f] !== NA) drivers[f]++;
     const p = session.processes[a.processId]; const isGap = GAP_TYPES_WITH_DEVIATION.has(effectiveGap(a));
-    for (const lvl of [1, 2]) { const n = ancestorAt(session, p, lvl); if (!n) continue; const h = heat[n.id] = heat[n.id] || { id: n.id, name: n.name, level: lvl, stream: n.stream, cells: {} }; const c = h.cells[a.entityCode] = h.cells[a.entityCode] || { total: 0, gaps: 0 }; c.total++; if (isGap) c.gaps++; }
+    for (const up of [2, 1]) { const n = ancestorUp(session, p, up); if (!n) continue; const h = heat[n.id] = heat[n.id] || { id: n.id, name: n.name, level: up === 2 ? 1 : 2, stream: n.stream, cells: {} }; const c = h.cells[a.entityCode] = h.cells[a.entityCode] || { total: 0, gaps: 0 }; c.total++; if (isGap) c.gaps++; }
     const b = byActivity[a.processId] = byActivity[a.processId] || { processId: a.processId, name: p?.name, stream: a.stream, entities: 0, gaps: [] }; b.entities++; if (isGap) b.gaps.push(a.entityCode);
     const c = completeness(a);
     if (a.workshop.status === WORKSHOP_STATUS.OPEN_QUESTION || (isGap && !c.complete) || effectiveGap(a) === GAP.UNCLEAR) openPoints.push({ key: a.key, entityCode: a.entityCode, processId: a.processId, name: p?.name, stream: a.stream, status: a.workshop.status, gap: effectiveGap(a), missing: c.missing, comment: a.workshop.comment, nextStep: a.workshop.nextStep, owner: a.workshop.owner, due: a.workshop.due });

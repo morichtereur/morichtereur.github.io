@@ -19,7 +19,9 @@ async function storageSave(session) {
   const db = await openDb();
   await new Promise((resolve, reject) => {
     const tx = db.transaction(STORE, 'readwrite');
-    tx.objectStore(STORE).put(JSON.parse(JSON.stringify(session)), KEY);
+    // IndexedDB structured-clones the object itself – cheaper than a JSON round trip on a 10 MB session.
+    // Fall back to the JSON copy only if something non-cloneable sneaked in.
+    try { tx.objectStore(STORE).put(session, KEY); } catch { tx.objectStore(STORE).put(JSON.parse(JSON.stringify(session)), KEY); }
     tx.oncomplete = resolve; tx.onerror = () => reject(tx.error); tx.onabort = () => reject(tx.error);
   });
   db.close();

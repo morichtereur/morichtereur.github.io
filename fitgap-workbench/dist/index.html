@@ -674,7 +674,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 </script>
 <script id="app">
 'use strict';
-const BUILD = { version: '0.1.0', builtAt: '2026-10-17T23:02:39.349Z' };
+const BUILD = { version: '0.1.0', builtAt: '2026-10-17T23:16:53.841Z' };
 
 /* ---- src/model/constants.js ---- */
 // Domain constants. Pure data – no client-specific values anywhere in here.
@@ -910,9 +910,13 @@ function parseEntityLabel(raw) {
   const code = m ? m[1] : null;
   let name = t;
   if (code) name = name.replace(m[0], m[0].replace(code, '')).trim();
-  name = name.replace(/\s*\([^)]*\)\s*/g, ' ').replace(/^[\s\-–:|]+|[\s\-–:|]+$/g, '').replace(/\s+/g, ' ').trim();
+  name = name.replace(/\s*\([^)]*\)\s*/g, ' ');
+  // Trailing remarks after a dash ("Entity XY S.A.S. - out of scope") are notes, not part of the name.
+  let outOfScope = false; const dash = name.match(/^(.*?\S)\s+[-–—]\s+(.+)$/);
+  if (dash) { if (/out of scope|not in scope/i.test(dash[2])) outOfScope = true; name = dash[1]; }
+  name = name.replace(/^[\s\-–:|]+|[\s\-–:|]+$/g, '').replace(/\s+/g, ' ').trim();
   if (!code && !name) return null;
-  return { code, name: name || (code ? `Entity ${code}` : ''), raw: t };
+  return { code, name: name || (code ? `Entity ${code}` : ''), raw: t, outOfScope };
 }
 
 /** Stream prefix of a process ID ("R2R 2.1.1" → "R2R"). */
@@ -1193,53 +1197,56 @@ function buildBlocks(grid, headerRow, band, core, profile, warnings) {
     if (band.subHeaders.length) warnings.push({ level: 'info', code: 'ASIS_FROM_SUBHEADER', message: `No "AS-IS PROCESS SPECIFICATION" title found – As-Is block(s) detected from the "${band.subHeaders[0].text}" sub-header.` });
   }
   titles.sort((a, b) => a.col - b.col || a.row - b.row);
-  // Column end: merge span if known, else up to the next title start.
-  const lastCol = Math.max(grid.width - 1, core.description ? core.description.col : 0);
-  for (let i = 0; i < titles.length; i++) {
-    const next = titles.slice(i + 1).find(t => t.col > titles[i].col);
-    const toNext = next ? next.col - 1 : lastCol;
-    if (titles[i].colEnd === null || titles[i].colEnd === titles[i].col || (titles[i].colEnd > toNext && !titles[i].merged)) titles[i].colEnd = toNext;
-    if (next && titles[i].colEnd >= next.col) titles[i].colEnd = next.col - 1; // never overlap
-  }
-  // Entity labels sorted by column.
   const labels = band.labels.slice().sort((a, b) => a.col - b.col || a.row - b.row);
   const dedupLabels = (list) => { const seen = new Set(); return list.filter(l => { const k = l.code || fuzzyKey(l.name); if (seen.has(k)) return false; seen.add(k); return true; }); };
-
-  const blocks = [];
-  const ordinal = {};
+  // Block start: the title column, or an entity label just left of it (R2R: label in K, title in L).
+  // Block end: the column before the next block starts – merged title spans are NOT trusted,
+  // real files merge the title over part of the block only (GAP / Comments sat outside).
+  const lastCol = Math.max(grid.width - 1, core.description ? core.description.col : 0);
+  for (let i = 0; i < titles.length; i++) {
+    const prev = titles[i - 1]; const t = titles[i];
+    const lower = prev ? prev.col : -1;
+    const nearLabel = labels.filter(l => l.col > lower && l.col < t.col && (!prev || l.col > prev.col)).sort((a, b) => b.col - a.col)[0];
+    t.start = nearLabel && profile.blocks[t.kind].perEntity ? nearLabel.col : t.col;
+    if (prev && t.start <= prev.start) t.start = t.col;
+  }
+  for (let i = 0; i < titles.length; i++) {
+    const next = titles.slice(i + 1).find(x => x.start > titles[i].start);
+    titles[i].colEnd = next ? next.start - 1 : lastCol;
+  }
+  const blocks = []; const ordinal = {};
   for (const t of titles) {
     const def = profile.blocks[t.kind];
-    if (!def.perEntity) { blocks.push({ kind: t.kind, title: t.text, titleRow: t.row, col: t.col, colEnd: t.colEnd, entity: null }); continue; }
-    // Labels that start inside the range, or whose merged span covers the range start.
-    const inside = dedupLabels(labels.filter(l => l.col >= t.col && l.col <= t.colEnd));
-    const covering = dedupLabels(labels.filter(l => l.col < t.col && l.colEnd >= t.col));
+    if (!def.perEntity) { blocks.push({ kind: t.kind, title: t.text, titleRow: t.row, col: t.start, colEnd: t.colEnd, entity: null }); continue; }
+    const inside = dedupLabels(labels.filter(l => l.col >= t.start && l.col <= t.colEnd));
     if (inside.length >= 2) {
       for (let i = 0; i < inside.length; i++) {
-        const start = i === 0 ? t.col : inside[i].col;
+        const start = i === 0 ? t.start : inside[i].col;
         const end = i + 1 < inside.length ? inside[i + 1].col - 1 : t.colEnd;
         blocks.push({ kind: t.kind, title: t.text, titleRow: t.row, col: start, colEnd: end, entity: inside[i], labelCell: cellRef(inside[i].row, inside[i].col) });
       }
-    } else if (inside.length === 1 || covering.length >= 1) {
-      const l = inside[0] || covering[covering.length - 1];
-      blocks.push({ kind: t.kind, title: t.text, titleRow: t.row, col: t.col, colEnd: t.colEnd, entity: l, labelCell: cellRef(l.row, l.col) });
+    } else if (inside.length === 1) {
+      blocks.push({ kind: t.kind, title: t.text, titleRow: t.row, col: t.start, colEnd: t.colEnd, entity: inside[0], labelCell: cellRef(inside[0].row, inside[0].col) });
     } else {
       ordinal[t.kind] = (ordinal[t.kind] || 0) + 1;
-      blocks.push({ kind: t.kind, title: t.text, titleRow: t.row, col: t.col, colEnd: t.colEnd, entity: null, ordinal: ordinal[t.kind] });
+      blocks.push({ kind: t.kind, title: t.text, titleRow: t.row, col: t.start, colEnd: t.colEnd, entity: null, ordinal: ordinal[t.kind] });
     }
   }
-  // Blocks without a label: pair by ordinal with the labelled blocks of other kinds.
-  const labelled = blocks.filter(b => b.entity).map(b => b.entity);
-  const uniqueEntities = dedupLabels(labelled);
-  for (const b of blocks.filter(b => profile.blocks[b.kind].perEntity && !b.entity)) {
+  // Blocks without a label: the entity label is usually written once per entity group
+  // (above the As-Is or Fit-Gap block) – inherit from the previous per-entity block.
+  const uniqueEntities = dedupLabels(blocks.filter(b => b.entity).map(b => b.entity));
+  for (let i = 0; i < blocks.length; i++) {
+    const b = blocks[i]; if (!profile.blocks[b.kind].perEntity || b.entity) continue;
+    let prevEnt = null;
+    for (let j = i - 1; j >= 0; j--) { if (profile.blocks[blocks[j].kind].perEntity && blocks[j].entity) { prevEnt = blocks[j].entity; break; } }
+    if (prevEnt) { b.entity = prevEnt; b.entityInherited = true; continue; }
     const guess = uniqueEntities[b.ordinal - 1];
-    if (guess) {
-      b.entity = guess; b.entityGuessed = true;
-      warnings.push({ level: 'warn', code: 'ENTITY_BY_ORDINAL', message: `${b.kind} block at column ${colLetter(b.col)} has no entity label – assigned to "${guess.name}" by position (${b.ordinal}). Please verify.` });
-    } else {
-      b.entity = { code: null, name: `Unknown entity ${b.ordinal}`, raw: '' }; b.entityGuessed = true;
-      warnings.push({ level: 'error', code: 'ENTITY_UNKNOWN', message: `${b.kind} block at column ${colLetter(b.col)} has no entity label and no other block to pair with.` });
-    }
+    if (guess) { b.entity = guess; b.entityGuessed = true; warnings.push({ level: 'warn', code: 'ENTITY_BY_ORDINAL', message: `${b.kind} block at column ${colLetter(b.col)} has no entity label – assigned to "${guess.name}" by position (${b.ordinal}). Please verify.` }); }
+    else { b.entity = { code: null, name: `Unknown entity ${b.ordinal}`, raw: '' }; b.entityGuessed = true; warnings.push({ level: 'error', code: 'ENTITY_UNKNOWN', message: `${b.kind} block at column ${colLetter(b.col)} has no entity label and no other block to pair with.` }); }
   }
+  const inherited = blocks.filter(b => b.entityInherited).length;
+  if (inherited) warnings.push({ level: 'info', code: 'ENTITY_INHERITED', message: `${inherited} block(s) without their own entity label took the entity of the block to their left (labels are written once per entity group).` });
+  for (const b of blocks) if (b.entity?.outOfScope) warnings.push({ level: 'warn', code: 'ENTITY_OUT_OF_SCOPE', message: `Entity label "${b.entity.raw}" says out of scope – all ${b.kind === 'ASIS' ? 'its' : 'its'} activities in this file are imported as out of scope (can be included in the workshop).` });
   return blocks;
 }
 
@@ -1422,12 +1429,18 @@ function parseCaptureWorkbook(wb, opts) {
         }
         if (Object.keys(extra).length) (kind === 'FITGAP' ? a.fitGap : a.detailedGap).extra = extra;
       }
+      if (!a.scope.outOfScope && Object.values(blocks).some(b => b.entity?.outOfScope)) a.scope = { outOfScope: true, source: 'entity-label', reason: 'entity marked out of scope in the capture sheet' };
       if (a.scope.outOfScope) a.workshop.status = WORKSHOP_STATUS.OUT_OF_SCOPE;
       assessments.push(a);
     }
   }
-  if (skippedCount) warnings.push({ level: 'info', code: 'ROWS_SKIPPED', message: `${skippedCount} non-data row(s) skipped (no numeric level 0–5 with a stream process ID).`, examples: skipped });
-  if (hierarchyMismatch) warnings.push({ level: 'warn', code: 'HIERARCHY', message: `${hierarchyMismatch} row(s) where the parent by position differs from the parent implied by the Process ID.` });
+  // Prefer the parent implied by the Process ID when that node exists – row order is not always the hierarchy.
+  const byId = new Map(processes.map(p => [p.id, p])); let reparented = 0;
+  for (const p of processes) { if (p.structuralParentId && p.structuralParentId !== p.parentId && byId.has(p.structuralParentId) && byId.get(p.structuralParentId).level < p.level) { p.parentId = p.structuralParentId; reparented++; } }
+  if (reparented) warnings.push({ level: 'info', code: 'REPARENTED', message: `${reparented} row(s) attached to the parent implied by their Process ID instead of the row above.` });
+  const skippedNamed = skipped.filter(x => x.name).length;
+  if (skippedCount) warnings.push({ level: skippedNamed ? 'warn' : 'info', code: 'ROWS_SKIPPED', message: `${skippedCount} non-data row(s) skipped (no numeric level 0–5 with a stream process ID).`, examples: skipped });
+  if (hierarchyMismatch - reparented > 0) warnings.push({ level: 'info', code: 'HIERARCHY', message: `${hierarchyMismatch - reparented} row(s) where the parent implied by the Process ID does not exist – kept under the row above.` });
   if (unmappedGap.length) warnings.push({ level: 'warn', code: 'GAP_UNMAPPED', message: `${unmappedGap.length} GAP value(s) could not be mapped (set to UNCLEAR).`, examples: unmappedGap.slice(0, 10) });
   if (notes.length) warnings.push({ level: 'info', code: 'INSTRUCTION_TEXT', message: `${notes.length} cell(s) with instruction text imported as notes, not values.`, examples: notes.slice(0, 10) });
 
@@ -1613,6 +1626,15 @@ function sameValue(a, b) { return JSON.stringify(a ?? null) === JSON.stringify(b
  * by name when no code); workshop results are never overwritten; changed Ops
  * values are applied and recorded in importDiffs for review.
  */
+/** "…_Assessment__A2R_France.xlsx" → "France" (the trailing token when it is not a stream / version / date). */
+function countryFromFileName(fileName = '') {
+  const m = String(fileName).replace(/\.[a-z]+$/i, '').match(/[_\- ]([A-Za-z][A-Za-z ]{2,30})$/);
+  if (!m) return '';
+  const tok = m[1].trim();
+  if (/^(A2R|R2R|I2P|I2C|ICO|O2C|P2P|H2R|MD|FAA|IA|CMD|CM|FINAL|DRAFT|NEW|OLD|VOLD|TEMPLATE|TEMP|COPY|VERSION|FIT|GAP|ASSESSMENT)$/i.test(tok)) return '';
+  return tok.charAt(0).toUpperCase() + tok.slice(1);
+}
+
 function mergeParsedWorkbook(session, parsed, opts = {}) {
   const now = new Date().toISOString();
   const report = { file: parsed.fileName, sheet: parsed.sheetName, entities: { added: [], merged: [], pending: [] }, processes: { added: 0, existing: 0, renamed: [] }, assessments: { added: 0, merged: 0, changedOps: 0, protectedWorkshop: 0 }, warnings: parsed.warnings.slice() };
@@ -1634,7 +1656,7 @@ function mergeParsedWorkbook(session, parsed, opts = {}) {
       }
     }
     if (!target) {
-      target = { code: e.code, name: e.name, displayName: e.name, country: session.settings.country || '', hasCode: e.hasCode, sources: [] };
+      target = { code: e.code, name: e.name, displayName: e.name, country: session.settings.country || countryFromFileName(parsed.fileName), hasCode: e.hasCode, sources: [] };
       session.entities[e.code] = target;
       report.entities.added.push(e.name);
     }
@@ -1888,8 +1910,8 @@ function buildTree(session, stream, { masterDataOnly = false } = {}) {
   const byId = Object.fromEntries(all.map(p => [p.id, { ...p, children: [], activities: [] }]));
   const roots = [];
   for (const n of Object.values(byId)) {
-    const parent = n.parentId && byId[n.parentId];
-    if (n.level >= 4) { if (parent) parent.activities.push(n); else roots.push(n); continue; }
+    let parent = n.parentId && byId[n.parentId];
+    if (n.level >= 4) { while (parent && parent.level >= 4) parent = parent.parentId && byId[parent.parentId]; if (parent) parent.activities.push(n); else roots.push(n); continue; }
     if (parent) parent.children.push(n); else roots.push(n);
   }
   const sortById = (a, b) => a.id.localeCompare(b.id, undefined, { numeric: true });
@@ -1907,10 +1929,14 @@ function buildTree(session, stream, { masterDataOnly = false } = {}) {
 function activitiesOf(node) { return [...node.activities, ...node.children.flatMap(activitiesOf)]; }
 
 /** Stats for a set of activities: assessed / total (in scope), open gaps, per entity filter (null = all). */
-function nodeStats(session, activities, entityCode = null) {
+/** processId → assessments[] – build once per session change and pass to nodeStats for large files. */
+function indexAssessments(session) { const m = new Map(); for (const a of Object.values(session.assessments)) { let l = m.get(a.processId); if (!l) { l = []; m.set(a.processId, l); } l.push(a); } return m; }
+
+function nodeStats(session, activities, entityCode = null, index = null) {
   const s = { total: 0, assessed: 0, complete: 0, outOfScope: 0, openGaps: 0, opsNoGap: 0, ops: {} };
-  for (const p of activities) for (const a of Object.values(session.assessments)) {
-    if (a.processId !== p.id || (entityCode && a.entityCode !== entityCode)) continue;
+  const idx = index || indexAssessments(session);
+  for (const p of activities) for (const a of (idx.get(p.id) || [])) {
+    if (entityCode && a.entityCode !== entityCode) continue;
     if (a.scope.outOfScope) { s.outOfScope++; continue; }
     s.total++;
     const g = a.asIs.gap || 'NOT_ASSESSED'; s.ops[g] = (s.ops[g] || 0) + 1;
@@ -1975,7 +2001,8 @@ function classifySplit(a, p) {
   return wsGbs ? 'MOVES_TO_GBS' : 'STAYS_LOCAL';
 }
 
-function ancestorAt(session, p, level) { let cur = p; while (cur && cur.level > level) cur = session.processes[cur.parentId]; return cur && cur.level === level ? cur : null; }
+/** Ancestor relative to the activity: up=1 → L3 (parent), up=2 → L2 (grandparent). Real files start at level 1, demo at 0. */
+function ancestorUp(session, p, up) { let cur = p; for (let i = 0; i < up && cur; i++) cur = session.processes[cur.parentId]; return cur || null; }
 
 /** Activity split rows for one entity × stream (+ aggregates per L2 and L3). */
 function activitySplit(session, entityCode, stream) {
@@ -1983,7 +2010,7 @@ function activitySplit(session, entityCode, stream) {
   for (const a of Object.values(session.assessments)) {
     if (a.entityCode !== entityCode || (stream && a.stream !== stream) || a.scope.outOfScope) continue;
     const p = session.processes[a.processId]; if (!p) continue;
-    rows.push({ key: a.key, processId: a.processId, name: p.name, stream: a.stream, l2: ancestorAt(session, p, 1)?.id || '', l3: ancestorAt(session, p, 2)?.id || '', lanes: lanesOf(a, p), cls: classifySplit(a, p), fte: a.fitGap.fte || 0, gap: effectiveGap(a) });
+    rows.push({ key: a.key, processId: a.processId, name: p.name, stream: a.stream, l2: ancestorUp(session, p, 2)?.id || '', l3: ancestorUp(session, p, 1)?.id || '', lanes: lanesOf(a, p), cls: classifySplit(a, p), fte: a.fitGap.fte || 0, gap: effectiveGap(a) });
   }
   rows.sort((x, y) => x.processId.localeCompare(y.processId, undefined, { numeric: true }));
   const agg = {};
@@ -2005,7 +2032,7 @@ function gapAnalysis(session, { entityCode = null, stream = null } = {}) {
     matrix[o] = matrix[o] || {}; matrix[o][w] = (matrix[o][w] || 0) + 1;
     for (const f of DETAILED_GAP_FIELDS) if (a.detailedGap[f] && a.detailedGap[f] !== NA) drivers[f]++;
     const p = session.processes[a.processId]; const isGap = GAP_TYPES_WITH_DEVIATION.has(effectiveGap(a));
-    for (const lvl of [1, 2]) { const n = ancestorAt(session, p, lvl); if (!n) continue; const h = heat[n.id] = heat[n.id] || { id: n.id, name: n.name, level: lvl, stream: n.stream, cells: {} }; const c = h.cells[a.entityCode] = h.cells[a.entityCode] || { total: 0, gaps: 0 }; c.total++; if (isGap) c.gaps++; }
+    for (const up of [2, 1]) { const n = ancestorUp(session, p, up); if (!n) continue; const h = heat[n.id] = heat[n.id] || { id: n.id, name: n.name, level: up === 2 ? 1 : 2, stream: n.stream, cells: {} }; const c = h.cells[a.entityCode] = h.cells[a.entityCode] || { total: 0, gaps: 0 }; c.total++; if (isGap) c.gaps++; }
     const b = byActivity[a.processId] = byActivity[a.processId] || { processId: a.processId, name: p?.name, stream: a.stream, entities: 0, gaps: [] }; b.entities++; if (isGap) b.gaps.push(a.entityCode);
     const c = completeness(a);
     if (a.workshop.status === WORKSHOP_STATUS.OPEN_QUESTION || (isGap && !c.complete) || effectiveGap(a) === GAP.UNCLEAR) openPoints.push({ key: a.key, entityCode: a.entityCode, processId: a.processId, name: p?.name, stream: a.stream, status: a.workshop.status, gap: effectiveGap(a), missing: c.missing, comment: a.workshop.comment, nextStep: a.workshop.nextStep, owner: a.workshop.owner, due: a.workshop.due });
@@ -2077,7 +2104,7 @@ const yn = (v) => v === true ? 'Y' : v === false ? 'N' : v && v.text ? v.text : 
 const ts = (s) => s ? s.replace('T', ' ').slice(0, 16) : '';
 
 function ancestors(session, p) { const out = []; let cur = session.processes[p?.parentId]; while (cur) { out.unshift(cur); cur = session.processes[cur.parentId]; } return out; }
-function levelName(session, p, level) { const a = ancestors(session, p).find(x => x.level === level); return a ? `${a.id} ${a.name}` : ''; }
+function levelName(session, p, level) { const anc = ancestors(session, p); const a = level === 'L3' ? anc[anc.length - 1] : level === 'L2' ? anc[anc.length - 2] : anc[0]; return a ? `${a.id} ${a.name}` : ''; }
 function sessionLabel(session, id) { const s = session.sessions.find(x => x.id === id); return s ? `${s.date} ${s.start || ''} ${s.stream}`.trim() : ''; }
 function lastChange(session, key) { for (let i = session.audit.length - 1; i >= 0; i--) if (session.audit[i].key === key) return session.audit[i]; return null; }
 function participant(session, id) { const p = session.participants.find(x => x.id === id); return p ? `${p.name} (${p.organisation})` : (id || ''); }
@@ -2092,7 +2119,7 @@ function deviationRows(session) {
     const p = session.processes[a.processId] || {}; const d = a.deviation || {}; const lc = lastChange(session, a.key);
     rows.push({
       'Entity code': session.entities[a.entityCode]?.hasCode ? a.entityCode : '', 'Entity': entityName(session, a.entityCode), 'Country': session.entities[a.entityCode]?.country || session.settings.country || '',
-      'Stream': a.stream, 'L2': levelName(session, p, 1), 'L3': levelName(session, p, 2), 'Process ID': a.processId, 'Process': p.name || '',
+      'Stream': a.stream, 'L2': levelName(session, p, 'L2'), 'L3': levelName(session, p, 'L3'), 'Process ID': a.processId, 'Process': p.name || '',
       'Gap type (workshop)': GAP_LABEL[gap] || gap, 'Gap type (Ops)': GAP_LABEL[a.asIs.gap] || '', 'Dimension': (d.dimensions || []).map(x => DIMENSION_LABEL[x] || x).join(', '),
       'Description': a.workshop.rationale || '', 'Detailed gap findings': detailedFindings(a), 'Resolution approach': RESOLUTION_LABEL[d.resolution] || '', 'Justification': d.justification || '',
       'Accountable owner': participant(session, d.ownerId), 'Target date': d.targetDate || '', 'Escalation level': ESCALATION_LABEL[d.escalation] || '', 'Approval status': d.approval || 'PROPOSED',
@@ -2117,7 +2144,7 @@ function flatRows(session) {
   for (const a of Object.values(session.assessments)) {
     const p = session.processes[a.processId] || {}; const d = a.deviation || {}; const gap = effectiveGap(a);
     const r = {
-      'Entity code': session.entities[a.entityCode]?.hasCode ? a.entityCode : '', 'Entity': entityName(session, a.entityCode), 'Stream': a.stream, 'L1': levelName(session, p, 0), 'L2': levelName(session, p, 1), 'L3': levelName(session, p, 2), 'Level': p.level, 'Process ID': a.processId, 'Process': p.name || '', 'Activity description': p.description || '',
+      'Entity code': session.entities[a.entityCode]?.hasCode ? a.entityCode : '', 'Entity': entityName(session, a.entityCode), 'Stream': a.stream, 'L1': levelName(session, p, 0), 'L2': levelName(session, p, 'L2'), 'L3': levelName(session, p, 'L3'), 'Level': p.level, 'Process ID': a.processId, 'Process': p.name || '', 'Activity description': p.description || '',
       'To-Be LE': yn(p.toBe?.le), 'To-Be GBS': yn(p.toBe?.gbs), 'To-Be system': p.toBe?.system || '', 'Planned initiative': p.toBe?.initiative || '',
       'Ops LE/Country/Other': yn(a.asIs.le), 'Ops GBS': yn(a.asIs.gbs), 'Ops used systems': a.asIs.systems || '', 'Ops GAP': GAP_LABEL[a.asIs.gap] || '', 'Ops GAP (raw)': a.asIs.gapRaw || '', 'Ops additional information': a.asIs.info || '',
       'Scope': a.scope.outOfScope ? 'Out of scope' : 'In scope', 'Scope source': a.scope.source || '',
@@ -2648,7 +2675,9 @@ async function storageSave(session) {
   const db = await openDb();
   await new Promise((resolve, reject) => {
     const tx = db.transaction(STORE, 'readwrite');
-    tx.objectStore(STORE).put(JSON.parse(JSON.stringify(session)), KEY);
+    // IndexedDB structured-clones the object itself – cheaper than a JSON round trip on a 10 MB session.
+    // Fall back to the JSON copy only if something non-cloneable sneaked in.
+    try { tx.objectStore(STORE).put(session, KEY); } catch { tx.objectStore(STORE).put(JSON.parse(JSON.stringify(session)), KEY); }
     tx.oncomplete = resolve; tx.onerror = () => reject(tx.error); tx.onabort = () => reject(tx.error);
   });
   db.close();
@@ -3697,13 +3726,13 @@ function laneTags(local, gbs, other) {
 }
 const ynText = (v) => v === true ? 'Y' : v === false ? 'N' : v && v.text ? v.text : '–';
 
-function TreePanel({ tree, selectedId, onSelect, session, entityFilter, collapsed, toggle, pace }) {
+function TreePanel({ tree, selectedId, onSelect, session, entityFilter, collapsed, toggle, pace, index }) {
   const Node = ({ n, depth }) => {
-    const acts = activitiesOf(n); const s = nodeStats(session, acts, entityFilter);
+    const acts = activitiesOf(n); const s = nodeStats(session, acts, entityFilter, index);
     const isLeaf = n.activities.length > 0; const open = !collapsed.has(n.id);
     const pct = s.total ? Math.round(100 * s.assessed / s.total) : 0;
     return html`<div>
-      <button class=${`tree-node${selectedId === n.id ? ' sel' : ''}${n.level === 0 ? ' root' : ''}`} style=${`padding-left:${0.5 + depth * 0.8}rem`} onClick=${() => isLeaf ? onSelect(n.id) : toggle(n.id)}>
+      <button class=${`tree-node${selectedId === n.id ? ' sel' : ''}${!n.parentId ? ' root' : ''}`} style=${`padding-left:${0.5 + depth * 0.8}rem`} onClick=${() => isLeaf ? onSelect(n.id) : toggle(n.id)}>
         ${!isLeaf && n.children.length ? html`<span class=${`tw${open ? ' open' : ''}`}><${Icon} name="chevron" size=${12} /></span>` : html`<span class="tw"></span>`}
         <span class="tn"><span class="pid">${n.id}</span> ${n.name}</span>
         <span class="tp"><span class="num">${s.assessed}/${s.total}</span>${s.openGaps ? html`<span class="og" title="open gaps">${s.openGaps}</span>` : null}</span>
@@ -3851,19 +3880,20 @@ function WorkshopView({ session, summary, updateSession, toast, ui, setUi, onPre
     });
   }, [session.processes, inScope.join(), st.streamsInScope, mdOnly]);
   const leaves = useMemo(() => { const out = []; const walk = (n) => { if (n.activities.length) out.push(n); n.children.forEach(walk); }; tree.forEach(walk); return out; }, [tree]);
+  const index = useMemo(() => indexAssessments(session), [session.assessments]);
   const node = leaves.find(n => n.id === ui.l3) || leaves[0];
   const stream = node ? node.stream : (inScope[0] || 'R2R');
   const picks = useQuickPicks(session, stream === 'MD' ? null : stream);
   // Collapse every stream root except the one holding the selected node.
   const [collapsed, setCollapsed] = useState(() => new Set());
-  useEffect(() => { if (!node) return; setCollapsed(c => { const n = new Set(c); for (const r of tree) if (r.level === 0 && !activitiesOf(r).some(p => p.parentId === node.id)) n.add(r.id); if (node) { let cur = session.processes[node.id]; while (cur) { n.delete(cur.id); cur = session.processes[cur.parentId]; } } return n; }); }, [tree, node?.id]);
+  useEffect(() => { if (!node) return; setCollapsed(c => { const n = new Set(c); for (const r of tree) if (!r.parentId && !activitiesOf(r).some(p => p.parentId === node.id)) n.add(r.id); if (node) { let cur = session.processes[node.id]; while (cur) { n.delete(cur.id); cur = session.processes[cur.parentId]; } } return n; }); }, [tree, node?.id]);
   const toggleNode = (id) => setCollapsed(c => { const n = new Set(c); n.has(id) ? n.delete(id) : n.add(id); return n; });
   const mode = ui.mode || (stream === 'R2R' ? 'walk' : 'exceptions');
   const commentRef = useRef();
   if (!node) return html`<div><${EmptyState} icon="info" title="Nothing to assess" text="Either every stream is out of scope (1 · Plan & prepare) or the imported files hold no activities." /></div>`;
 
   const acts = node.activities;
-  const stats = nodeStats(session, acts, entityFilter);
+  const stats = nodeStats(session, acts, entityFilter, index);
   const keyOf = (e, p) => assessmentKey(e.code, p.id);
   const rowFlagged = (p) => entities.some(e => { const a = session.assessments[keyOf(e, p)]; if (!a || a.scope.outOfScope) return false; return !(a.asIs.gap === GAP.NO_GAP && (a.workshop.status === WORKSHOP_STATUS.NOT_ASSESSED || a.workshop.status === WORKSHOP_STATUS.CONFIRMED_FIT) && !a.workshop.changedAt) || a.workshop.status === WORKSHOP_STATUS.OPEN_QUESTION; });
   const rows = mode === 'exceptions' ? acts.filter(p => rowFlagged(p) || p.id === ui.expanded) : acts;
@@ -3904,7 +3934,7 @@ function WorkshopView({ session, summary, updateSession, toast, ui, setUi, onPre
       <div class="yn" style="align-self:center;margin-left:.5rem"><button aria-pressed=${mode === 'exceptions'} onClick=${() => setUi({ ...ui, mode: 'exceptions' })} style="font-family:var(--font-ui);padding:.22rem .6rem" title="Hide rows pre-assessed as NO GAP">Only flagged</button><button aria-pressed=${mode === 'walk'} onClick=${() => setUi({ ...ui, mode: 'walk' })} style="font-family:var(--font-ui);padding:.22rem .6rem">All rows</button></div>
     </div>
     <div class="ws-grid">
-      <${TreePanel} tree=${tree} selectedId=${node.id} onSelect=${leaveCheck} session=${session} entityFilter=${entityFilter} collapsed=${collapsed} toggle=${toggleNode} />
+      <${TreePanel} tree=${tree} selectedId=${node.id} onSelect=${leaveCheck} session=${session} entityFilter=${entityFilter} collapsed=${collapsed} toggle=${toggleNode} index=${index} />
       <div style="min-width:0">
         <div class="card l3head"><div class="card-body" style="display:grid;grid-template-columns:1fr auto;gap:1rem;align-items:center">
           <div><div class="eyebrow">${crumbsNode.map(c => c.id + ' ' + c.name).join(' › ') || stream}</div><h2 style="font-family:var(--font-serif);font-weight:500;font-size:1.3rem;margin:.15rem 0"><span class="pid mono muted" style="font-size:.85rem">${node.id}</span> ${node.name}</h2>
@@ -3961,7 +3991,7 @@ function deviationList(session) {
 }
 
 function DeviationBoard({ session, updateSession, toast, goActivity }) {
-  const [stream, setStream] = useState(''); const [entity, setEntity] = useState(''); const [level, setLevel] = useState('');
+  const [stream, setStream] = useState(''); const [entity, setEntity] = useState(''); const [level, setLevel] = useState(''); const [limit, setLimit] = useState(40);
   const all = deviationList(session);
   const list = all.filter(x => (!stream || x.a.stream === stream) && (!entity || x.a.entityCode === entity) && (!level || (x.d.escalation || 'L1') === level));
   const setDev = (a, patch) => updateSession(s => applyChange(s, a.key, 'deviation', { dimensions: [], resolution: '', justification: '', ownerId: '', targetDate: '', escalation: 'L1', approval: 'PROPOSED', ...(s.assessments[a.key].deviation || {}), ...patch }));
@@ -3970,7 +4000,7 @@ function DeviationBoard({ session, updateSession, toast, goActivity }) {
     <div class="actionbar"><select class="select sm" style="width:auto" value=${stream} onChange=${e => setStream(e.target.value)}><option value="">All streams</option>${STREAMS.map(s => html`<option value=${s}>${s}</option>`)}</select><select class="select sm" style="width:auto" value=${entity} onChange=${e => setEntity(e.target.value)}><option value="">All entities</option>${Object.values(session.entities).map(e => html`<option value=${e.code}>${e.displayName || e.name}</option>`)}</select>
       <span class="spacer"></span><span class="eyebrow">Escalation queue</span>${['', ...ESCALATION].map(l => html`<${Chip} key=${l} active=${level === l} onClick=${() => setLevel(l)}>${l ? `${ESCALATION_LABEL[l].split(' ')[0]} · ${queue[l] || 0} open` : 'All levels'}</${Chip}>`)}</div>
     <div class="board-cols">${RES_COLS.map(([key, label]) => { const col = list.filter(x => (x.d.resolution || 'UNDECIDED') === key); return html`<div class="board-col" key=${key}><div class="board-col-head"><b>${label}</b><span class="num muted">${col.length}</span></div>
-      ${col.map(({ a, p, d, gap }) => html`<div class="dev-card" key=${a.key}>
+      ${col.slice(0, limit).map(({ a, p, d, gap }) => html`<div class="dev-card" key=${a.key}>
         <div class="sg-row" style="margin:0;justify-content:space-between"><${GapPill} value=${gap} size="sm" /><span class=${`appr appr-${d.approval || 'PROPOSED'}`}>${d.approval || 'PROPOSED'}</span></div>
         <div style="margin:.3rem 0 .1rem"><a href="#" onClick=${e => { e.preventDefault(); goActivity(p); }}><span class="mono small">${a.processId}</span> ${p?.name}</a></div>
         <div class="muted small">${session.entities[a.entityCode]?.displayName || a.entityCode} · ${a.stream}${d.dimensions?.length ? ' · ' + d.dimensions.map(x => DIMENSION_LABEL[x]).join(', ') : ''}</div>
@@ -3982,18 +4012,22 @@ function DeviationBoard({ session, updateSession, toast, goActivity }) {
           ${APPROVAL_NEXT[d.approval || 'PROPOSED'] && html`<${Button} variant="primary" size="sm" onClick=${() => setDev(a, { approval: APPROVAL_NEXT[d.approval || 'PROPOSED'] })}>→ ${APPROVAL_NEXT[d.approval || 'PROPOSED'][0] + APPROVAL_NEXT[d.approval || 'PROPOSED'].slice(1).toLowerCase()}</${Button}>`}
           ${(d.approval || 'PROPOSED') !== 'REJECTED' ? html`<${Button} variant="text" size="sm" onClick=${() => setDev(a, { approval: 'REJECTED' })}>Reject</${Button}>` : html`<${Button} variant="text" size="sm" onClick=${() => setDev(a, { approval: 'PROPOSED' })}>Reopen</${Button}>`}
         </div></div>`)}
-      ${!col.length && html`<div class="muted small" style="padding:.5rem">–</div>`}</div>`; })}</div>
+      ${!col.length && html`<div class="muted small" style="padding:.5rem">–</div>`}${col.length > limit && html`<${Button} variant="text" size="sm" onClick=${() => setLimit(limit + 80)}>Show more (${col.length - limit} left)</${Button}>`}</div>`; })}</div>
   </div>`;
 }
 
 const CLS_COLOR = { MOVES_TO_GBS: 'var(--gbs)', STAYS_LOCAL: 'var(--local)', PLANNED_GBS_STAYS_LOCAL: 'var(--flag)', PLANNED_LOCAL_DONE_BY_GBS: 'var(--split)', OTHER_PARTY: 'var(--coe)', NOT_ASSESSED: 'var(--none)' };
 function ActivitySplitView({ session, goActivity }) {
-  const ents = Object.values(session.entities); const [entity, setEntity] = useState(ents[0]?.code || ''); const [stream, setStream] = useState('R2R'); const [cls, setCls] = useState('');
+  const ents = Object.values(session.entities);
+  // Default to the first entity/stream combination that actually has in-scope rows (real files often have entities without a given stream).
+  const present = useMemo(() => STREAMS.filter(s => Object.values(session.processes).some(p => p.stream === s)), [session.processes]);
+  const firstCombo = useMemo(() => { for (const s of present) for (const e of ents) if (Object.values(session.assessments).some(a => a.entityCode === e.code && a.stream === s && !a.scope.outOfScope)) return { e: e.code, s }; return { e: ents[0]?.code || '', s: present[0] || '' }; }, [session.assessments]);
+  const [entity, setEntity] = useState(firstCombo.e); const [stream, setStream] = useState(firstCombo.s); const [cls, setCls] = useState('');
   const split = useMemo(() => entity ? activitySplit(session, entity, stream) : { rows: [], agg: [], totals: { cls: {}, fte: 0, total: 0 } }, [session, entity, stream]);
   const rows = cls ? split.rows.filter(r => r.cls === cls) : split.rows;
   const laneTag = (l) => l ? html`<${Tag} kind=${l} />` : html`<span class="muted small">–</span>`;
   return html`<div>
-    <div class="actionbar"><select class="select sm" style="width:auto" value=${entity} onChange=${e => setEntity(e.target.value)}>${ents.map(e => html`<option value=${e.code}>${e.displayName || e.name}</option>`)}</select><select class="select sm" style="width:auto" value=${stream} onChange=${e => setStream(e.target.value)}>${STREAMS.filter(s => Object.values(session.processes).some(p => p.stream === s)).map(s => html`<option value=${s}>${s}</option>`)}</select><span class="spacer"></span>${['', ...SPLIT_CLASS_KEYS].map(k => html`<${Chip} key=${k} active=${cls === k} onClick=${() => setCls(k)}>${k ? `${SPLIT_CLASS[k]} · ${split.totals.cls[k] || 0}` : `All · ${split.totals.total}`}</${Chip}>`)}</div>
+    <div class="actionbar"><select class="select sm" style="width:auto" value=${entity} onChange=${e => setEntity(e.target.value)}>${ents.map(e => html`<option value=${e.code}>${e.displayName || e.name}</option>`)}</select><select class="select sm" style="width:auto" value=${stream} onChange=${e => setStream(e.target.value)}>${present.map(s => html`<option value=${s}>${s}</option>`)}</select><span class="spacer"></span>${['', ...SPLIT_CLASS_KEYS].map(k => html`<${Chip} key=${k} active=${cls === k} onClick=${() => setCls(k)}>${k ? `${SPLIT_CLASS[k]} · ${split.totals.cls[k] || 0}` : `All · ${split.totals.total}`}</${Chip}>`)}</div>
     <div class="kpi-row">${SPLIT_CLASS_KEYS.slice(0, 4).map(k => html`<${Kpi} key=${k} value=${split.totals.cls[k] || 0} unit=${split.totals.total ? `· ${Math.round(100 * (split.totals.cls[k] || 0) / split.totals.total)} %` : ''} label=${SPLIT_CLASS[k]} color=${CLS_COLOR[k]} />`)}<${Kpi} value=${split.totals.fte.toFixed(1)} label="FTE entered (Fit-Gap)" color="var(--auto)" /></div>
     <div class="import-grid">
       <${Card} title="Per L2 / L3" stats=${[['nodes', split.agg.length]]}><table class="matrix"><thead><tr><th style="text-align:left">Node</th><th style="text-align:left">Classes</th><th class="num">Activities</th><th class="num">FTE</th></tr></thead><tbody>${split.agg.map(g => html`<tr key=${g.id}><td style=${`text-align:left;padding-left:${g.level === 2 ? 1.4 : 0.6}rem`}><span class="mono small">${g.id}</span> ${g.name}</td><td style="text-align:left"><div class="stack" style="width:12rem;display:inline-flex;vertical-align:middle">${SPLIT_CLASS_KEYS.filter(k => g.cls[k]).map(k => html`<i key=${k} style=${`width:${100 * g.cls[k] / g.total}%;background:${CLS_COLOR[k]}`} title=${`${SPLIT_CLASS[k]}: ${g.cls[k]}`}></i>`)}</div></td><td class="num">${g.total}</td><td class="num">${g.fte.toFixed(1)}</td></tr>`)}</tbody></table></${Card}>

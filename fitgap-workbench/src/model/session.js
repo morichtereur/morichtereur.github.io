@@ -58,6 +58,15 @@ function sameValue(a, b) { return JSON.stringify(a ?? null) === JSON.stringify(b
  * by name when no code); workshop results are never overwritten; changed Ops
  * values are applied and recorded in importDiffs for review.
  */
+/** "…_Assessment__A2R_France.xlsx" → "France" (the trailing token when it is not a stream / version / date). */
+export function countryFromFileName(fileName = '') {
+  const m = String(fileName).replace(/\.[a-z]+$/i, '').match(/[_\- ]([A-Za-z][A-Za-z ]{2,30})$/);
+  if (!m) return '';
+  const tok = m[1].trim();
+  if (/^(A2R|R2R|I2P|I2C|ICO|O2C|P2P|H2R|MD|FAA|IA|CMD|CM|FINAL|DRAFT|NEW|OLD|VOLD|TEMPLATE|TEMP|COPY|VERSION|FIT|GAP|ASSESSMENT)$/i.test(tok)) return '';
+  return tok.charAt(0).toUpperCase() + tok.slice(1);
+}
+
 export function mergeParsedWorkbook(session, parsed, opts = {}) {
   const now = new Date().toISOString();
   const report = { file: parsed.fileName, sheet: parsed.sheetName, entities: { added: [], merged: [], pending: [] }, processes: { added: 0, existing: 0, renamed: [] }, assessments: { added: 0, merged: 0, changedOps: 0, protectedWorkshop: 0 }, warnings: parsed.warnings.slice() };
@@ -79,7 +88,7 @@ export function mergeParsedWorkbook(session, parsed, opts = {}) {
       }
     }
     if (!target) {
-      target = { code: e.code, name: e.name, displayName: e.name, country: session.settings.country || '', hasCode: e.hasCode, sources: [] };
+      target = { code: e.code, name: e.name, displayName: e.name, country: session.settings.country || countryFromFileName(parsed.fileName), hasCode: e.hasCode, sources: [] };
       session.entities[e.code] = target;
       report.entities.added.push(e.name);
     }

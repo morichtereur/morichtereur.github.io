@@ -1,0 +1,45 @@
+#!/usr/bin/env node
+// Performance run with real capture sheets: import time, render time, edit latency,
+// session size. Usage: node scripts/perf.mjs <folder with xlsx> (nothing is written to the repo)
+import { chromium } from 'playwright-core';
+import { readdirSync, mkdirSync } from 'node:fs';
+import { resolve } from 'node:path';
+const folder = resolve(process.argv[2] || 'samples/real');
+mkdirSync(process.env.PERF_OUT || 'dist/smoke', { recursive: true });
+const files = readdirSync(folder).filter(f => /\.xlsx$/i.test(f)).map(f => resolve(folder, f));
+const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--no-sandbox'] });
+const page = await (await browser.newContext({ viewport: { width: 1440, height: 900 } })).newPage();
+const errors = []; page.on('pageerror', e => errors.push(String(e))); page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
+await page.goto('file://' + resolve('dist/index.html')); await page.waitForSelector('dialog[open]'); await page.click('dialog .btn-primary');
+const t0 = Date.now();
+await page.setInputFiles('.dropzone input[type=file]', files);
+await page.waitForFunction(n => document.querySelectorAll('.filerow .st.ok, .filerow .st.warn, .filerow .st.err').length === n, files.length, { timeout: 300000 });
+const tImport = Date.now() - t0;
+const kpis = await page.$$eval('.kpi .value', e => e.map(x => x.textContent.trim()));
+await page.waitForFunction(() => /Saved/.test(document.querySelector('.saved')?.textContent || ''), null, { timeout: 60000 });
+const tSaved = Date.now() - t0;
+const size = await page.evaluate(() => new Promise(res => { const r = indexedDB.open('gbs-fitgap-workbench'); r.onsuccess = () => { const g = r.result.transaction('sessions').objectStore('sessions').get('current'); g.onsuccess = () => res(JSON.stringify(g.result).length); }; }));
+const t1 = Date.now(); await page.click('button:has-text("Back to the workshop")'); await page.waitForSelector('.wtable tr.act'); const tWorkshop = Date.now() - t1;
+const t2 = Date.now(); await page.click('.wtable tr.act td.ent .pill >> nth=0'); await page.waitForSelector('.expand-inner'); const tExpand = Date.now() - t2;
+const t3 = Date.now(); await page.click('.expand-inner .yn >> nth=0 >> button >> nth=0'); await page.waitForFunction(() => document.querySelector('.expand-inner .yn button[aria-pressed="true"]')); const tEdit = Date.now() - t3;
+const t4 = Date.now(); await page.click('.l3head .btn-primary'); await page.waitForSelector('.toast:has-text("confirmed")'); const tBulk = Date.now() - t4;
+const t5 = Date.now(); await page.click('.side-nav > .side-nav-item:has-text("Results")'); await page.waitForSelector('.board-cols'); const tResults = Date.now() - t5;
+const t6 = Date.now(); await page.click('.card:has(h3:has-text("Activity split")) .card-head .iconbtn'); await page.waitForSelector('.cls-pill'); const tSplit = Date.now() - t6;
+await page.click('.side-nav > .side-nav-item:has-text("Workshop")'); await page.waitForSelector('.wtable tr.act');
+const t7 = Date.now(); await page.click('.yn button:has-text("Flow board")'); await page.waitForSelector('.board-grid .stepcard'); const tBoard = Date.now() - t7;
+await page.click('.yn button:has-text("Table")');
+const t8 = Date.now(); await page.click('.l3head button:has-text("Present")'); await page.waitForSelector('.present .board-grid'); const tPresent = Date.now() - t8;
+await page.keyboard.press('ArrowRight'); await page.waitForTimeout(200); await page.keyboard.press('End'); await page.waitForTimeout(200); await page.keyboard.press('Escape'); await page.waitForSelector('.present', { state: 'detached' });
+const t9 = Date.now(); await page.click('.side-nav > .side-nav-item:has-text("Sign-off")'); await page.waitForSelector('text=Sign-off per stream'); const tQg2 = Date.now() - t9;
+await page.click('.side-nav > .side-nav-item:has-text("Hand-over")'); await page.waitForSelector('text=Package contents');
+const t10 = Date.now(); const [pkg] = await Promise.all([page.waitForEvent('download'), page.click('button:has-text("Download hand-over package")')]); const pkgPath = resolve(process.env.PERF_OUT || 'dist/smoke', pkg.suggestedFilename()); await pkg.saveAs(pkgPath); const tPkg = Date.now() - t10;
+const JSZip = (await import('jszip')).default; const z = await JSZip.loadAsync((await import('node:fs')).readFileSync(pkgPath));
+const t11 = Date.now(); const [wbDl] = await Promise.all([page.waitForEvent('download'), page.setInputFiles('input[type=file][multiple][accept=".xlsx,.xlsm"]', files.slice(0, 1))]); const wbPath = resolve(process.env.PERF_OUT || 'dist/smoke', wbDl.suggestedFilename()); await wbDl.saveAs(wbPath); const tWb = Date.now() - t11;
+const warnings = await page.evaluate(() => new Promise(res => { const r = indexedDB.open('gbs-fitgap-workbench'); r.onsuccess = () => { const g = r.result.transaction('sessions').objectStore('sessions').get('current'); g.onsuccess = () => res(g.result.files.flatMap(f => f.warnings.filter(w => w.level !== 'info').map(w => `${f.name.slice(36)}: ${w.message}`))); }; }));
+console.log(`import ${files.length} files: ${(tImport / 1000).toFixed(1)} s · autosaved after ${(tSaved / 1000).toFixed(1)} s · session JSON ${(size / 1024 / 1024).toFixed(1)} MB`);
+console.log(`KPIs (entities, activities, assessments, out of scope, warnings): ${kpis.join(' | ')}`);
+console.log(`workshop open ${tWorkshop} ms · expand row ${tExpand} ms · toggle edit ${tEdit} ms (incl. Playwright click overhead) · bulk confirm ${tBulk} ms · results page ${tResults} ms · activity split ${tSplit} ms · flow board ${tBoard} ms · present ${tPresent} ms · sign-off ${tQg2} ms`);
+console.log(`hand-over package ${pkg.suggestedFilename()}: ${Object.keys(z.files).length} files in ${tPkg} ms · write-back ${wbDl.suggestedFilename()} in ${tWb} ms`);
+console.log('warnings:', warnings.length); for (const w of warnings) console.log('  ' + w);
+console.log('console errors:', errors.length, errors.slice(0, 3));
+await browser.close();

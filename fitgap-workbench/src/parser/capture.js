@@ -159,53 +159,56 @@ function buildBlocks(grid, headerRow, band, core, profile, warnings) {
     if (band.subHeaders.length) warnings.push({ level: 'info', code: 'ASIS_FROM_SUBHEADER', message: `No "AS-IS PROCESS SPECIFICATION" title found – As-Is block(s) detected from the "${band.subHeaders[0].text}" sub-header.` });
   }
   titles.sort((a, b) => a.col - b.col || a.row - b.row);
-  // Column end: merge span if known, else up to the next title start.
-  const lastCol = Math.max(grid.width - 1, core.description ? core.description.col : 0);
-  for (let i = 0; i < titles.length; i++) {
-    const next = titles.slice(i + 1).find(t => t.col > titles[i].col);
-    const toNext = next ? next.col - 1 : lastCol;
-    if (titles[i].colEnd === null || titles[i].colEnd === titles[i].col || (titles[i].colEnd > toNext && !titles[i].merged)) titles[i].colEnd = toNext;
-    if (next && titles[i].colEnd >= next.col) titles[i].colEnd = next.col - 1; // never overlap
-  }
-  // Entity labels sorted by column.
   const labels = band.labels.slice().sort((a, b) => a.col - b.col || a.row - b.row);
   const dedupLabels = (list) => { const seen = new Set(); return list.filter(l => { const k = l.code || fuzzyKey(l.name); if (seen.has(k)) return false; seen.add(k); return true; }); };
-
-  const blocks = [];
-  const ordinal = {};
+  // Block start: the title column, or an entity label just left of it (R2R: label in K, title in L).
+  // Block end: the column before the next block starts – merged title spans are NOT trusted,
+  // real files merge the title over part of the block only (GAP / Comments sat outside).
+  const lastCol = Math.max(grid.width - 1, core.description ? core.description.col : 0);
+  for (let i = 0; i < titles.length; i++) {
+    const prev = titles[i - 1]; const t = titles[i];
+    const lower = prev ? prev.col : -1;
+    const nearLabel = labels.filter(l => l.col > lower && l.col < t.col && (!prev || l.col > prev.col)).sort((a, b) => b.col - a.col)[0];
+    t.start = nearLabel && profile.blocks[t.kind].perEntity ? nearLabel.col : t.col;
+    if (prev && t.start <= prev.start) t.start = t.col;
+  }
+  for (let i = 0; i < titles.length; i++) {
+    const next = titles.slice(i + 1).find(x => x.start > titles[i].start);
+    titles[i].colEnd = next ? next.start - 1 : lastCol;
+  }
+  const blocks = []; const ordinal = {};
   for (const t of titles) {
     const def = profile.blocks[t.kind];
-    if (!def.perEntity) { blocks.push({ kind: t.kind, title: t.text, titleRow: t.row, col: t.col, colEnd: t.colEnd, entity: null }); continue; }
-    // Labels that start inside the range, or whose merged span covers the range start.
-    const inside = dedupLabels(labels.filter(l => l.col >= t.col && l.col <= t.colEnd));
-    const covering = dedupLabels(labels.filter(l => l.col < t.col && l.colEnd >= t.col));
+    if (!def.perEntity) { blocks.push({ kind: t.kind, title: t.text, titleRow: t.row, col: t.start, colEnd: t.colEnd, entity: null }); continue; }
+    const inside = dedupLabels(labels.filter(l => l.col >= t.start && l.col <= t.colEnd));
     if (inside.length >= 2) {
       for (let i = 0; i < inside.length; i++) {
-        const start = i === 0 ? t.col : inside[i].col;
+        const start = i === 0 ? t.start : inside[i].col;
         const end = i + 1 < inside.length ? inside[i + 1].col - 1 : t.colEnd;
         blocks.push({ kind: t.kind, title: t.text, titleRow: t.row, col: start, colEnd: end, entity: inside[i], labelCell: cellRef(inside[i].row, inside[i].col) });
       }
-    } else if (inside.length === 1 || covering.length >= 1) {
-      const l = inside[0] || covering[covering.length - 1];
-      blocks.push({ kind: t.kind, title: t.text, titleRow: t.row, col: t.col, colEnd: t.colEnd, entity: l, labelCell: cellRef(l.row, l.col) });
+    } else if (inside.length === 1) {
+      blocks.push({ kind: t.kind, title: t.text, titleRow: t.row, col: t.start, colEnd: t.colEnd, entity: inside[0], labelCell: cellRef(inside[0].row, inside[0].col) });
     } else {
       ordinal[t.kind] = (ordinal[t.kind] || 0) + 1;
-      blocks.push({ kind: t.kind, title: t.text, titleRow: t.row, col: t.col, colEnd: t.colEnd, entity: null, ordinal: ordinal[t.kind] });
+      blocks.push({ kind: t.kind, title: t.text, titleRow: t.row, col: t.start, colEnd: t.colEnd, entity: null, ordinal: ordinal[t.kind] });
     }
   }
-  // Blocks without a label: pair by ordinal with the labelled blocks of other kinds.
-  const labelled = blocks.filter(b => b.entity).map(b => b.entity);
-  const uniqueEntities = dedupLabels(labelled);
-  for (const b of blocks.filter(b => profile.blocks[b.kind].perEntity && !b.entity)) {
+  // Blocks without a label: the entity label is usually written once per entity group
+  // (above the As-Is or Fit-Gap block) – inherit from the previous per-entity block.
+  const uniqueEntities = dedupLabels(blocks.filter(b => b.entity).map(b => b.entity));
+  for (let i = 0; i < blocks.length; i++) {
+    const b = blocks[i]; if (!profile.blocks[b.kind].perEntity || b.entity) continue;
+    let prevEnt = null;
+    for (let j = i - 1; j >= 0; j--) { if (profile.blocks[blocks[j].kind].perEntity && blocks[j].entity) { prevEnt = blocks[j].entity; break; } }
+    if (prevEnt) { b.entity = prevEnt; b.entityInherited = true; continue; }
     const guess = uniqueEntities[b.ordinal - 1];
-    if (guess) {
-      b.entity = guess; b.entityGuessed = true;
-      warnings.push({ level: 'warn', code: 'ENTITY_BY_ORDINAL', message: `${b.kind} block at column ${colLetter(b.col)} has no entity label – assigned to "${guess.name}" by position (${b.ordinal}). Please verify.` });
-    } else {
-      b.entity = { code: null, name: `Unknown entity ${b.ordinal}`, raw: '' }; b.entityGuessed = true;
-      warnings.push({ level: 'error', code: 'ENTITY_UNKNOWN', message: `${b.kind} block at column ${colLetter(b.col)} has no entity label and no other block to pair with.` });
-    }
+    if (guess) { b.entity = guess; b.entityGuessed = true; warnings.push({ level: 'warn', code: 'ENTITY_BY_ORDINAL', message: `${b.kind} block at column ${colLetter(b.col)} has no entity label – assigned to "${guess.name}" by position (${b.ordinal}). Please verify.` }); }
+    else { b.entity = { code: null, name: `Unknown entity ${b.ordinal}`, raw: '' }; b.entityGuessed = true; warnings.push({ level: 'error', code: 'ENTITY_UNKNOWN', message: `${b.kind} block at column ${colLetter(b.col)} has no entity label and no other block to pair with.` }); }
   }
+  const inherited = blocks.filter(b => b.entityInherited).length;
+  if (inherited) warnings.push({ level: 'info', code: 'ENTITY_INHERITED', message: `${inherited} block(s) without their own entity label took the entity of the block to their left (labels are written once per entity group).` });
+  for (const b of blocks) if (b.entity?.outOfScope) warnings.push({ level: 'warn', code: 'ENTITY_OUT_OF_SCOPE', message: `Entity label "${b.entity.raw}" says out of scope – all ${b.kind === 'ASIS' ? 'its' : 'its'} activities in this file are imported as out of scope (can be included in the workshop).` });
   return blocks;
 }
 
@@ -388,12 +391,18 @@ export function parseCaptureWorkbook(wb, opts) {
         }
         if (Object.keys(extra).length) (kind === 'FITGAP' ? a.fitGap : a.detailedGap).extra = extra;
       }
+      if (!a.scope.outOfScope && Object.values(blocks).some(b => b.entity?.outOfScope)) a.scope = { outOfScope: true, source: 'entity-label', reason: 'entity marked out of scope in the capture sheet' };
       if (a.scope.outOfScope) a.workshop.status = WORKSHOP_STATUS.OUT_OF_SCOPE;
       assessments.push(a);
     }
   }
-  if (skippedCount) warnings.push({ level: 'info', code: 'ROWS_SKIPPED', message: `${skippedCount} non-data row(s) skipped (no numeric level 0–5 with a stream process ID).`, examples: skipped });
-  if (hierarchyMismatch) warnings.push({ level: 'warn', code: 'HIERARCHY', message: `${hierarchyMismatch} row(s) where the parent by position differs from the parent implied by the Process ID.` });
+  // Prefer the parent implied by the Process ID when that node exists – row order is not always the hierarchy.
+  const byId = new Map(processes.map(p => [p.id, p])); let reparented = 0;
+  for (const p of processes) { if (p.structuralParentId && p.structuralParentId !== p.parentId && byId.has(p.structuralParentId) && byId.get(p.structuralParentId).level < p.level) { p.parentId = p.structuralParentId; reparented++; } }
+  if (reparented) warnings.push({ level: 'info', code: 'REPARENTED', message: `${reparented} row(s) attached to the parent implied by their Process ID instead of the row above.` });
+  const skippedNamed = skipped.filter(x => x.name).length;
+  if (skippedCount) warnings.push({ level: skippedNamed ? 'warn' : 'info', code: 'ROWS_SKIPPED', message: `${skippedCount} non-data row(s) skipped (no numeric level 0–5 with a stream process ID).`, examples: skipped });
+  if (hierarchyMismatch - reparented > 0) warnings.push({ level: 'info', code: 'HIERARCHY', message: `${hierarchyMismatch - reparented} row(s) where the parent implied by the Process ID does not exist – kept under the row above.` });
   if (unmappedGap.length) warnings.push({ level: 'warn', code: 'GAP_UNMAPPED', message: `${unmappedGap.length} GAP value(s) could not be mapped (set to UNCLEAR).`, examples: unmappedGap.slice(0, 10) });
   if (notes.length) warnings.push({ level: 'info', code: 'INSTRUCTION_TEXT', message: `${notes.length} cell(s) with instruction text imported as notes, not values.`, examples: notes.slice(0, 10) });
 

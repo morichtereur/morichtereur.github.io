@@ -129,9 +129,13 @@ export function parseEntityLabel(raw) {
   const code = m ? m[1] : null;
   let name = t;
   if (code) name = name.replace(m[0], m[0].replace(code, '')).trim();
-  name = name.replace(/\s*\([^)]*\)\s*/g, ' ').replace(/^[\s\-–:|]+|[\s\-–:|]+$/g, '').replace(/\s+/g, ' ').trim();
+  name = name.replace(/\s*\([^)]*\)\s*/g, ' ');
+  // Trailing remarks after a dash ("Entity XY S.A.S. - out of scope") are notes, not part of the name.
+  let outOfScope = false; const dash = name.match(/^(.*?\S)\s+[-–—]\s+(.+)$/);
+  if (dash) { if (/out of scope|not in scope/i.test(dash[2])) outOfScope = true; name = dash[1]; }
+  name = name.replace(/^[\s\-–:|]+|[\s\-–:|]+$/g, '').replace(/\s+/g, ' ').trim();
   if (!code && !name) return null;
-  return { code, name: name || (code ? `Entity ${code}` : ''), raw: t };
+  return { code, name: name || (code ? `Entity ${code}` : ''), raw: t, outOfScope };
 }
 
 /** Stream prefix of a process ID ("R2R 2.1.1" → "R2R"). */

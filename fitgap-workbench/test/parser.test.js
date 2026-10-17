@@ -41,7 +41,9 @@ test('GAP normalisation maps the known variants', () => {
 });
 
 test('entity labels: code + name, parentheses stripped', () => {
-  assert.deepEqual(parseEntityLabel('201023 Demo Vial S.A.S.'), { code: '201023', name: 'Demo Vial S.A.S.', raw: '201023 Demo Vial S.A.S.' });
+  assert.deepEqual(parseEntityLabel('201023 Demo Vial S.A.S.'), { code: '201023', name: 'Demo Vial S.A.S.', raw: '201023 Demo Vial S.A.S.', outOfScope: false });
+  const oos = parseEntityLabel('201060 Demo Logistics S.A.S. - out of scope'); assert.equal(oos.name, 'Demo Logistics S.A.S.'); assert.equal(oos.outOfScope, true);
+  assert.equal(parseEntityLabel('201010 Demo Vial S.A.S. (201A)').name, 'Demo Vial S.A.S.');
   assert.deepEqual(parseEntityLabel('Demo Logistics SARL (incl. branch Lyon)').name, 'Demo Logistics SARL');
   assert.equal(parseEntityLabel('Demo Logistics SARL').code, null);
   assert.equal(parseEntityLabel('  '), null);

@@ -31,13 +31,13 @@ function laneTags(local, gbs, other) {
 }
 const ynText = (v) => v === true ? 'Y' : v === false ? 'N' : v && v.text ? v.text : '–';
 
-function TreePanel({ tree, selectedId, onSelect, session, entityFilter, collapsed, toggle, pace }) {
+function TreePanel({ tree, selectedId, onSelect, session, entityFilter, collapsed, toggle, pace, index }) {
   const Node = ({ n, depth }) => {
-    const acts = activitiesOf(n); const s = nodeStats(session, acts, entityFilter);
+    const acts = activitiesOf(n); const s = nodeStats(session, acts, entityFilter, index);
     const isLeaf = n.activities.length > 0; const open = !collapsed.has(n.id);
     const pct = s.total ? Math.round(100 * s.assessed / s.total) : 0;
     return html`<div>
-      <button class=${`tree-node${selectedId === n.id ? ' sel' : ''}${n.level === 0 ? ' root' : ''}`} style=${`padding-left:${0.5 + depth * 0.8}rem`} onClick=${() => isLeaf ? onSelect(n.id) : toggle(n.id)}>
+      <button class=${`tree-node${selectedId === n.id ? ' sel' : ''}${!n.parentId ? ' root' : ''}`} style=${`padding-left:${0.5 + depth * 0.8}rem`} onClick=${() => isLeaf ? onSelect(n.id) : toggle(n.id)}>
         ${!isLeaf && n.children.length ? html`<span class=${`tw${open ? ' open' : ''}`}><${Icon} name="chevron" size=${12} /></span>` : html`<span class="tw"></span>`}
         <span class="tn"><span class="pid">${n.id}</span> ${n.name}</span>
         <span class="tp"><span class="num">${s.assessed}/${s.total}</span>${s.openGaps ? html`<span class="og" title="open gaps">${s.openGaps}</span>` : null}</span>
@@ -185,19 +185,20 @@ function WorkshopView({ session, summary, updateSession, toast, ui, setUi, onPre
     });
   }, [session.processes, inScope.join(), st.streamsInScope, mdOnly]);
   const leaves = useMemo(() => { const out = []; const walk = (n) => { if (n.activities.length) out.push(n); n.children.forEach(walk); }; tree.forEach(walk); return out; }, [tree]);
+  const index = useMemo(() => indexAssessments(session), [session.assessments]);
   const node = leaves.find(n => n.id === ui.l3) || leaves[0];
   const stream = node ? node.stream : (inScope[0] || 'R2R');
   const picks = useQuickPicks(session, stream === 'MD' ? null : stream);
   // Collapse every stream root except the one holding the selected node.
   const [collapsed, setCollapsed] = useState(() => new Set());
-  useEffect(() => { if (!node) return; setCollapsed(c => { const n = new Set(c); for (const r of tree) if (r.level === 0 && !activitiesOf(r).some(p => p.parentId === node.id)) n.add(r.id); if (node) { let cur = session.processes[node.id]; while (cur) { n.delete(cur.id); cur = session.processes[cur.parentId]; } } return n; }); }, [tree, node?.id]);
+  useEffect(() => { if (!node) return; setCollapsed(c => { const n = new Set(c); for (const r of tree) if (!r.parentId && !activitiesOf(r).some(p => p.parentId === node.id)) n.add(r.id); if (node) { let cur = session.processes[node.id]; while (cur) { n.delete(cur.id); cur = session.processes[cur.parentId]; } } return n; }); }, [tree, node?.id]);
   const toggleNode = (id) => setCollapsed(c => { const n = new Set(c); n.has(id) ? n.delete(id) : n.add(id); return n; });
   const mode = ui.mode || (stream === 'R2R' ? 'walk' : 'exceptions');
   const commentRef = useRef();
   if (!node) return html`<div><${EmptyState} icon="info" title="Nothing to assess" text="Either every stream is out of scope (1 · Plan & prepare) or the imported files hold no activities." /></div>`;
 
   const acts = node.activities;
-  const stats = nodeStats(session, acts, entityFilter);
+  const stats = nodeStats(session, acts, entityFilter, index);
   const keyOf = (e, p) => assessmentKey(e.code, p.id);
   const rowFlagged = (p) => entities.some(e => { const a = session.assessments[keyOf(e, p)]; if (!a || a.scope.outOfScope) return false; return !(a.asIs.gap === GAP.NO_GAP && (a.workshop.status === WORKSHOP_STATUS.NOT_ASSESSED || a.workshop.status === WORKSHOP_STATUS.CONFIRMED_FIT) && !a.workshop.changedAt) || a.workshop.status === WORKSHOP_STATUS.OPEN_QUESTION; });
   const rows = mode === 'exceptions' ? acts.filter(p => rowFlagged(p) || p.id === ui.expanded) : acts;
@@ -238,7 +239,7 @@ function WorkshopView({ session, summary, updateSession, toast, ui, setUi, onPre
       <div class="yn" style="align-self:center;margin-left:.5rem"><button aria-pressed=${mode === 'exceptions'} onClick=${() => setUi({ ...ui, mode: 'exceptions' })} style="font-family:var(--font-ui);padding:.22rem .6rem" title="Hide rows pre-assessed as NO GAP">Only flagged</button><button aria-pressed=${mode === 'walk'} onClick=${() => setUi({ ...ui, mode: 'walk' })} style="font-family:var(--font-ui);padding:.22rem .6rem">All rows</button></div>
     </div>
     <div class="ws-grid">
-      <${TreePanel} tree=${tree} selectedId=${node.id} onSelect=${leaveCheck} session=${session} entityFilter=${entityFilter} collapsed=${collapsed} toggle=${toggleNode} />
+      <${TreePanel} tree=${tree} selectedId=${node.id} onSelect=${leaveCheck} session=${session} entityFilter=${entityFilter} collapsed=${collapsed} toggle=${toggleNode} index=${index} />
       <div style="min-width:0">
         <div class="card l3head"><div class="card-body" style="display:grid;grid-template-columns:1fr auto;gap:1rem;align-items:center">
           <div><div class="eyebrow">${crumbsNode.map(c => c.id + ' ' + c.name).join(' › ') || stream}</div><h2 style="font-family:var(--font-serif);font-weight:500;font-size:1.3rem;margin:.15rem 0"><span class="pid mono muted" style="font-size:.85rem">${node.id}</span> ${node.name}</h2>

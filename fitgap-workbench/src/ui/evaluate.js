@@ -9,7 +9,7 @@ function deviationList(session) {
 }
 
 function DeviationBoard({ session, updateSession, toast, goActivity }) {
-  const [stream, setStream] = useState(''); const [entity, setEntity] = useState(''); const [level, setLevel] = useState('');
+  const [stream, setStream] = useState(''); const [entity, setEntity] = useState(''); const [level, setLevel] = useState(''); const [limit, setLimit] = useState(40);
   const all = deviationList(session);
   const list = all.filter(x => (!stream || x.a.stream === stream) && (!entity || x.a.entityCode === entity) && (!level || (x.d.escalation || 'L1') === level));
   const setDev = (a, patch) => updateSession(s => applyChange(s, a.key, 'deviation', { dimensions: [], resolution: '', justification: '', ownerId: '', targetDate: '', escalation: 'L1', approval: 'PROPOSED', ...(s.assessments[a.key].deviation || {}), ...patch }));
@@ -18,7 +18,7 @@ function DeviationBoard({ session, updateSession, toast, goActivity }) {
     <div class="actionbar"><select class="select sm" style="width:auto" value=${stream} onChange=${e => setStream(e.target.value)}><option value="">All streams</option>${STREAMS.map(s => html`<option value=${s}>${s}</option>`)}</select><select class="select sm" style="width:auto" value=${entity} onChange=${e => setEntity(e.target.value)}><option value="">All entities</option>${Object.values(session.entities).map(e => html`<option value=${e.code}>${e.displayName || e.name}</option>`)}</select>
       <span class="spacer"></span><span class="eyebrow">Escalation queue</span>${['', ...ESCALATION].map(l => html`<${Chip} key=${l} active=${level === l} onClick=${() => setLevel(l)}>${l ? `${ESCALATION_LABEL[l].split(' ')[0]} · ${queue[l] || 0} open` : 'All levels'}</${Chip}>`)}</div>
     <div class="board-cols">${RES_COLS.map(([key, label]) => { const col = list.filter(x => (x.d.resolution || 'UNDECIDED') === key); return html`<div class="board-col" key=${key}><div class="board-col-head"><b>${label}</b><span class="num muted">${col.length}</span></div>
-      ${col.map(({ a, p, d, gap }) => html`<div class="dev-card" key=${a.key}>
+      ${col.slice(0, limit).map(({ a, p, d, gap }) => html`<div class="dev-card" key=${a.key}>
         <div class="sg-row" style="margin:0;justify-content:space-between"><${GapPill} value=${gap} size="sm" /><span class=${`appr appr-${d.approval || 'PROPOSED'}`}>${d.approval || 'PROPOSED'}</span></div>
         <div style="margin:.3rem 0 .1rem"><a href="#" onClick=${e => { e.preventDefault(); goActivity(p); }}><span class="mono small">${a.processId}</span> ${p?.name}</a></div>
         <div class="muted small">${session.entities[a.entityCode]?.displayName || a.entityCode} · ${a.stream}${d.dimensions?.length ? ' · ' + d.dimensions.map(x => DIMENSION_LABEL[x]).join(', ') : ''}</div>
@@ -30,18 +30,22 @@ function DeviationBoard({ session, updateSession, toast, goActivity }) {
           ${APPROVAL_NEXT[d.approval || 'PROPOSED'] && html`<${Button} variant="primary" size="sm" onClick=${() => setDev(a, { approval: APPROVAL_NEXT[d.approval || 'PROPOSED'] })}>→ ${APPROVAL_NEXT[d.approval || 'PROPOSED'][0] + APPROVAL_NEXT[d.approval || 'PROPOSED'].slice(1).toLowerCase()}</${Button}>`}
           ${(d.approval || 'PROPOSED') !== 'REJECTED' ? html`<${Button} variant="text" size="sm" onClick=${() => setDev(a, { approval: 'REJECTED' })}>Reject</${Button}>` : html`<${Button} variant="text" size="sm" onClick=${() => setDev(a, { approval: 'PROPOSED' })}>Reopen</${Button}>`}
         </div></div>`)}
-      ${!col.length && html`<div class="muted small" style="padding:.5rem">–</div>`}</div>`; })}</div>
+      ${!col.length && html`<div class="muted small" style="padding:.5rem">–</div>`}${col.length > limit && html`<${Button} variant="text" size="sm" onClick=${() => setLimit(limit + 80)}>Show more (${col.length - limit} left)</${Button}>`}</div>`; })}</div>
   </div>`;
 }
 
 const CLS_COLOR = { MOVES_TO_GBS: 'var(--gbs)', STAYS_LOCAL: 'var(--local)', PLANNED_GBS_STAYS_LOCAL: 'var(--flag)', PLANNED_LOCAL_DONE_BY_GBS: 'var(--split)', OTHER_PARTY: 'var(--coe)', NOT_ASSESSED: 'var(--none)' };
 function ActivitySplitView({ session, goActivity }) {
-  const ents = Object.values(session.entities); const [entity, setEntity] = useState(ents[0]?.code || ''); const [stream, setStream] = useState('R2R'); const [cls, setCls] = useState('');
+  const ents = Object.values(session.entities);
+  // Default to the first entity/stream combination that actually has in-scope rows (real files often have entities without a given stream).
+  const present = useMemo(() => STREAMS.filter(s => Object.values(session.processes).some(p => p.stream === s)), [session.processes]);
+  const firstCombo = useMemo(() => { for (const s of present) for (const e of ents) if (Object.values(session.assessments).some(a => a.entityCode === e.code && a.stream === s && !a.scope.outOfScope)) return { e: e.code, s }; return { e: ents[0]?.code || '', s: present[0] || '' }; }, [session.assessments]);
+  const [entity, setEntity] = useState(firstCombo.e); const [stream, setStream] = useState(firstCombo.s); const [cls, setCls] = useState('');
   const split = useMemo(() => entity ? activitySplit(session, entity, stream) : { rows: [], agg: [], totals: { cls: {}, fte: 0, total: 0 } }, [session, entity, stream]);
   const rows = cls ? split.rows.filter(r => r.cls === cls) : split.rows;
   const laneTag = (l) => l ? html`<${Tag} kind=${l} />` : html`<span class="muted small">–</span>`;
   return html`<div>
-    <div class="actionbar"><select class="select sm" style="width:auto" value=${entity} onChange=${e => setEntity(e.target.value)}>${ents.map(e => html`<option value=${e.code}>${e.displayName || e.name}</option>`)}</select><select class="select sm" style="width:auto" value=${stream} onChange=${e => setStream(e.target.value)}>${STREAMS.filter(s => Object.values(session.processes).some(p => p.stream === s)).map(s => html`<option value=${s}>${s}</option>`)}</select><span class="spacer"></span>${['', ...SPLIT_CLASS_KEYS].map(k => html`<${Chip} key=${k} active=${cls === k} onClick=${() => setCls(k)}>${k ? `${SPLIT_CLASS[k]} · ${split.totals.cls[k] || 0}` : `All · ${split.totals.total}`}</${Chip}>`)}</div>
+    <div class="actionbar"><select class="select sm" style="width:auto" value=${entity} onChange=${e => setEntity(e.target.value)}>${ents.map(e => html`<option value=${e.code}>${e.displayName || e.name}</option>`)}</select><select class="select sm" style="width:auto" value=${stream} onChange=${e => setStream(e.target.value)}>${present.map(s => html`<option value=${s}>${s}</option>`)}</select><span class="spacer"></span>${['', ...SPLIT_CLASS_KEYS].map(k => html`<${Chip} key=${k} active=${cls === k} onClick=${() => setCls(k)}>${k ? `${SPLIT_CLASS[k]} · ${split.totals.cls[k] || 0}` : `All · ${split.totals.total}`}</${Chip}>`)}</div>
     <div class="kpi-row">${SPLIT_CLASS_KEYS.slice(0, 4).map(k => html`<${Kpi} key=${k} value=${split.totals.cls[k] || 0} unit=${split.totals.total ? `· ${Math.round(100 * (split.totals.cls[k] || 0) / split.totals.total)} %` : ''} label=${SPLIT_CLASS[k]} color=${CLS_COLOR[k]} />`)}<${Kpi} value=${split.totals.fte.toFixed(1)} label="FTE entered (Fit-Gap)" color="var(--auto)" /></div>
     <div class="import-grid">
       <${Card} title="Per L2 / L3" stats=${[['nodes', split.agg.length]]}><table class="matrix"><thead><tr><th style="text-align:left">Node</th><th style="text-align:left">Classes</th><th class="num">Activities</th><th class="num">FTE</th></tr></thead><tbody>${split.agg.map(g => html`<tr key=${g.id}><td style=${`text-align:left;padding-left:${g.level === 2 ? 1.4 : 0.6}rem`}><span class="mono small">${g.id}</span> ${g.name}</td><td style="text-align:left"><div class="stack" style="width:12rem;display:inline-flex;vertical-align:middle">${SPLIT_CLASS_KEYS.filter(k => g.cls[k]).map(k => html`<i key=${k} style=${`width:${100 * g.cls[k] / g.total}%;background:${CLS_COLOR[k]}`} title=${`${SPLIT_CLASS[k]}: ${g.cls[k]}`}></i>`)}</div></td><td class="num">${g.total}</td><td class="num">${g.fte.toFixed(1)}</td></tr>`)}</tbody></table></${Card}>
