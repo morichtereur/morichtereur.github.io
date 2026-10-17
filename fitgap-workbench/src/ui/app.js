@@ -21,7 +21,7 @@ function Sidebar({ phase, setPhase, summary, rail, setRail, session, page, setPa
     </div>
     <div class="side-section" style="padding-bottom:.25rem"><div class="eyebrow">Lifecycle</div></div>
     <nav class="side-nav" aria-label="Phases">
-      ${PHASES.map(p => html`<button class="side-nav-item" aria-current=${page === 'phase' && phase === p.key ? 'page' : 'false'} onClick=${() => { setPage('phase'); setPhase(p.key); }}><span class="n">${p.n}</span><span>${p.label}</span>${p.increment !== 1 ? html`<span class="state">next</span>` : html`<span class="state">build</span>`}</button>`)}
+      ${PHASES.map(p => { const done = p.key === 'plan' ? (!!session.settings.country && session.participants.length > 0 && session.sessions.length > 0) : p.key === 'run' ? (Object.keys(session.assessments).length > 0 && Object.values(session.assessments).every(a => a.scope.outOfScope || a.workshop.status !== 'NOT_ASSESSED')) : false; const built = ['plan', 'run'].includes(p.key); return html`<button class="side-nav-item" aria-current=${page === 'phase' && phase === p.key ? 'page' : 'false'} onClick=${() => { setPage('phase'); setPhase(p.key); }}><span class="n">${p.n}</span><span>${p.label}</span>${done ? html`<span class="state done"><${Icon} name="check" size=${13} /></span>` : built ? html`<span class="state"></span>` : html`<span class="state">next</span>`}</button>`; })}
     </nav>
     <div class="side-footer">
       <button class="side-nav-item" aria-current=${page === 'styleguide' ? 'page' : 'false'} onClick=${() => setPage('styleguide')}><${Icon} name="palette" /><span>Style sheet</span></button>
@@ -54,13 +54,17 @@ function TopBar({ crumbs, theme, setTheme, share, setShare, onPalette, onFeedbac
   </header>`;
 }
 
-function KpiStrip({ summary, session }) {
+function KpiStrip({ summary, session, updateSession, toast }) {
   const total = summary.assessments || 0;
-  if (!total) return html`<div class="kpi-strip"><div class="headline"><b>0</b> activities loaded</div><div class="muted small">Import the stream capture sheets to see the headline KPI and gap mix here.</div></div>`;
-  const g = {}; for (const s of Object.values(summary.gapByStream)) for (const [k, v] of Object.entries(s)) g[k] = (g[k] || 0) + v;
-  const segs = ['NO_GAP', 'HARMONIZATION', 'STANDARDIZATION', 'BOTH', 'NA', 'UNCLEAR', 'NOT_ASSESSED'].map(k => ({ key: k, value: g[k] || 0, label: GAP_LABEL[k] || 'Not assessed' }));
-  const pct = Math.round(100 * (g.NO_GAP || 0) / Math.max(1, total - summary.outOfScope));
-  return html`<div class="kpi-strip"><div class="headline"><b>${pct}%</b> Ops NO GAP · ${session.settings.clientName || summary.entities.length + ' entities'}</div><${Stack} segments=${segs} legend=${true} /></div>`;
+  if (!total) return html`<div class="kpi-strip"><div class="headline"><b>0</b> activities loaded</div><div class="muted small">Import the stream capture sheets to see the headline KPI and gap mix here.</div><${SessionBar} session=${session} updateSession=${updateSession} toast=${toast} /></div>`;
+  // Workshop progress: confirmed fit share and workshop gap mix (effective gap type), in-scope only.
+  const g = {}; let assessed = 0, fit = 0, inScope = 0;
+  for (const a of Object.values(session.assessments)) { if (a.scope.outOfScope) continue; inScope++; if (a.workshop.status !== 'NOT_ASSESSED') assessed++; if (a.workshop.status === 'CONFIRMED_FIT') fit++; const k = effectiveGap(a) || 'NOT_ASSESSED'; g[k] = (g[k] || 0) + 1; }
+  const SHORT = { NO_GAP: 'NO GAP', HARMONIZATION: 'HARM', STANDARDIZATION: 'STD', BOTH: 'BOTH', NA: 'N/A', UNCLEAR: 'UNCLEAR', NOT_ASSESSED: 'OPEN' };
+  const segs = ['NO_GAP', 'HARMONIZATION', 'STANDARDIZATION', 'BOTH', 'NA', 'UNCLEAR', 'NOT_ASSESSED'].map(k => ({ key: k, value: g[k] || 0, label: SHORT[k] }));
+  const pct = Math.round(100 * fit / Math.max(1, inScope));
+  const name = session.settings.clientName ? `${session.settings.clientName}${session.settings.country ? ' · ' + session.settings.country : ''}` : `${summary.entities.length} entities`;
+  return html`<div class="kpi-strip"><div class="headline"><b>${pct}%</b> confirmed fit · ${assessed}/${inScope} assessed · ${name}</div><${Stack} segments=${segs} legend=${true} /><${SessionBar} session=${session} updateSession=${updateSession} toast=${toast} /></div>`;
 }
 
 function ComingNext({ p }) {
@@ -70,14 +74,14 @@ function ComingNext({ p }) {
   </div>`;
 }
 
-function RunPage({ session, summary, updateSession, toast, onClearAll, tab, setTab }) {
+function RunPage({ session, summary, updateSession, toast, onClearAll, tab, setTab, ui, setUi }) {
   const hasData = session.files.length > 0;
   return html`<div>
     <div class="tabs" role="tablist">
       <button class="tab" role="tab" aria-selected=${tab === 'workshop'} onClick=${() => setTab('workshop')}>Workshop</button>
       <button class="tab" role="tab" aria-selected=${tab === 'import'} onClick=${() => setTab('import')}>Import & data${hasData && html`<span class="cnt">${session.files.length}</span>`}</button>
     </div>
-    ${tab === 'import' ? html`<${ImportView} session=${session} summary=${summary} updateSession=${updateSession} toast=${toast} onClearAll=${onClearAll} />` : hasData ? html`<${ComingNext} p=${PHASES[2]} />` : html`<${EmptyState} icon="upload" title="No capture sheets yet" text="Import the stream workbooks first – the workshop view is built from them." action=${html`<${Button} variant="primary" icon="upload" onClick=${() => setTab('import')}>Go to import</${Button}>`} />`}
+    ${tab === 'import' ? html`<${ImportView} session=${session} summary=${summary} updateSession=${updateSession} toast=${toast} onClearAll=${onClearAll} />` : hasData ? html`<${WorkshopView} session=${session} summary=${summary} updateSession=${updateSession} toast=${toast} ui=${ui} setUi=${setUi} />` : html`<${EmptyState} icon="upload" title="No capture sheets yet" text="Import the stream workbooks first – the workshop view is built from them." action=${html`<${Button} variant="primary" icon="upload" onClick=${() => setTab('import')}>Go to import</${Button}>`} />`}
   </div>`;
 }
 
@@ -108,6 +112,8 @@ function App() {
   const [session, setSession] = useState(null);
   const [save, setSave] = useState({ status: 'idle' });
   const [runTab, setRunTab] = useState(null);
+  const [wsUi, setWsUi] = useState(() => store.get('fg.ws', {}));
+  useEffect(() => { store.set('fg.ws', { stream: wsUi.stream, l3: wsUi.l3, mode: wsUi.mode, entity: wsUi.entity }); }, [wsUi.stream, wsUi.l3, wsUi.mode, wsUi.entity]);
   const dirty = useRef(false);
   const updateSession = useCallback((fn) => { setSession(s => { const n = { ...s }; fn(n); n.updatedAt = new Date().toISOString(); dirty.current = true; return n; }); }, []);
   useEffect(() => { (async () => { let loaded = null; try { loaded = await storageLoad(); } catch (e) { setSave({ status: 'unavailable', error: String(e) }); } if (loaded) setSave({ status: 'loaded', at: loaded.updatedAt ? new Date(loaded.updatedAt).toLocaleString([], { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '' }); setSession(loaded ? { ...createSession(), ...loaded } : createSession()); })(); }, []);
@@ -141,15 +147,16 @@ function App() {
   const viewName = page === 'styleguide' ? 'Style sheet' : `${current.n} ${current.label}`;
   const crumbs = page === 'styleguide' ? ['Design system', 'Style sheet'] : [`${current.n} ${current.label}`, phase === 'run' && tab === 'import' ? 'Import & data' : current.title];
   if (!session) return html`<div class="app"><aside class="sidebar"></aside><div class="content"><div class="main" style="display:grid;gap:.6rem;max-width:30rem"><div class="skeleton" style="width:40%"></div><div class="skeleton" style="width:80%"></div><div class="skeleton" style="width:60%"></div></div></div></div>`;
-  const paletteItems = [...Object.values(session.entities).map(e => ({ label: `${e.displayName || e.name} · ${e.code}`, kind: 'entity', icon: 'file', go: () => { setPage('phase'); setPhase('run'); setRunTab('import'); } })), ...PHASES.map(p => ({ label: `${p.n} ${p.label} – ${p.title}`, kind: 'phase', icon: p.icon, go: () => { setPage('phase'); setPhase(p.key); } })), { label: 'Style sheet', kind: 'design', icon: 'palette', go: () => setPage('styleguide') }, { label: theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme', kind: 'theme', icon: 'sun', go: () => setTheme(theme === 'dark' ? 'light' : 'dark') }];
+  const goActivity = (p) => { const l3 = p.level >= 4 ? p.parentId : p.id; setPage('phase'); setPhase('run'); setRunTab('workshop'); setWsUi(u => ({ ...u, stream: p.stream, l3, expanded: p.level >= 4 ? p.id : null, selected: p.level >= 4 ? p.id : null, entity: null })); };
+  const paletteItems = [...Object.values(session.entities).map(e => ({ label: `${e.displayName || e.name} · ${e.code}`, kind: 'entity', icon: 'file', go: () => { setPage('phase'); setPhase('run'); setRunTab('workshop'); setWsUi(u => ({ ...u, entity: e.code })); } })), ...STREAMS.filter(s => summary.activitiesByStream[s]).map(s => ({ label: `${s} · ${summary.activitiesByStream[s]} activities`, kind: 'stream', icon: 'run', go: () => { setPage('phase'); setPhase('run'); setRunTab('workshop'); setWsUi(u => ({ ...u, stream: s, l3: null })); } })), ...Object.values(session.processes).filter(p => p.level >= 2).map(p => ({ label: `${p.id} ${p.name}`, kind: `L${p.level}`, icon: 'file', go: () => goActivity(p) })), ...PHASES.map(p => ({ label: `${p.n} ${p.label} – ${p.title}`, kind: 'phase', icon: p.icon, go: () => { setPage('phase'); setPhase(p.key); } })), { label: 'Style sheet', kind: 'design', icon: 'palette', go: () => setPage('styleguide') }, { label: theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme', kind: 'theme', icon: 'sun', go: () => setTheme(theme === 'dark' ? 'light' : 'dark') }];
   const logFeedback = (note) => { updateSession(s => { s.feedback = [...s.feedback, { ts: new Date().toISOString(), view: viewName, note, sessionId: s.activeSessionId }]; }); toast('Feedback logged'); };
   const clearAll = async () => { try { await storageClear(); } catch { /* ignore */ } setSession(createSession()); dirty.current = true; setRunTab('import'); toast('All data cleared'); };
   return html`<div class="app" data-rail=${rail ? '1' : '0'}>
     <${Sidebar} phase=${phase} setPhase=${setPhase} summary=${summary} rail=${rail} setRail=${setRail} session=${session} page=${page} setPage=${setPage} />
     <div class="content">
       <${TopBar} crumbs=${crumbs} theme=${theme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')} setTheme=${setTheme} share=${share} setShare=${setShare} onPalette=${() => setPalette(true)} onFeedback=${() => setFeedback(f => !f)} save=${save} />
-      <${KpiStrip} summary=${summary} session=${session} />
-      <main class="main">${page === 'styleguide' ? html`<${StyleGuide} />` : phase === 'run' ? html`<${RunPage} session=${session} summary=${summary} updateSession=${updateSession} toast=${toast} onClearAll=${clearAll} tab=${tab} setTab=${setRunTab} />` : html`<${ComingNext} p=${current} />`}</main>
+      <${KpiStrip} summary=${summary} session=${session} updateSession=${updateSession} toast=${toast} />
+      <main class="main">${page === 'styleguide' ? html`<${StyleGuide} />` : phase === 'run' ? html`<${RunPage} session=${session} summary=${summary} updateSession=${updateSession} toast=${toast} onClearAll=${clearAll} tab=${tab} setTab=${setRunTab} ui=${wsUi} setUi=${setWsUi} />` : phase === 'plan' ? html`<${PlanView} session=${session} summary=${summary} updateSession=${updateSession} toast=${toast} />` : html`<${ComingNext} p=${current} />`}</main>
     </div>
     <${Palette} open=${palette} onClose=${() => setPalette(false)} items=${paletteItems} onPick=${i => { setPalette(false); i.go(); }} />
     <${Welcome} open=${welcome} onClose=${() => { setWelcome(false); store.set('fg.welcomed', true); }} onPrimary=${() => { setWelcome(false); store.set('fg.welcomed', true); setPage('styleguide'); }} />

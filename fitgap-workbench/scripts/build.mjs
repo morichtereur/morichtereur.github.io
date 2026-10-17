@@ -26,7 +26,7 @@ const CSS = ['src/styles/tokens.css', 'src/styles/base.css', 'src/styles/compone
 // Dependency order matters: later modules may use names declared earlier.
 const MODULES = [
   'src/model/constants.js', 'src/model/normalize.js', 'src/parser/profiles.js', 'src/parser/capture.js',
-  'src/model/session.js', 'src/model/storage.js', 'src/ui/icons.js', 'src/ui/components.js', 'src/ui/styleguide.js', 'src/ui/import.js', 'src/ui/app.js',
+  'src/model/session.js', 'src/model/workshop.js', 'src/parser/planning.js', 'src/model/storage.js', 'src/ui/icons.js', 'src/ui/components.js', 'src/ui/styleguide.js', 'src/ui/import.js', 'src/ui/plan.js', 'src/ui/workshop.js', 'src/ui/app.js',
 ];
 
 const FONT_LICENCES = `/* Fonts embedded under the SIL Open Font License 1.1: Instrument Sans (Rodrigo Fuenzalida, Jordan Egstad), Source Serif 4 (Adobe), IBM Plex Mono (IBM). */`;

@@ -307,9 +307,9 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 1rem 0; }
 .c-GBS { background: var(--gbs); } .c-LOCAL { background: var(--local); } .c-MIXED { background: var(--split); } .c-DONE { background: var(--accent); } .c-OPEN { background: var(--none); }
 
 /* ---------- Workshop table ---------- */
-.wtable { width: 100%; border-collapse: separate; border-spacing: 0; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius-lg); overflow: hidden; font-size: .84rem; }
+.wtable { width: 100%; border-collapse: separate; border-spacing: 0; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius-lg); font-size: .84rem; }
 .wtable th { background: var(--panel); text-align: left; font-size: .68rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-2); padding: .55rem .7rem; border-bottom: 1px solid var(--line); }
-.wtable.sticky th { position: sticky; top: calc(var(--topbar) + 2.6rem); z-index: 5; }
+.wtable.sticky th { position: sticky; top: calc(var(--topbar) + 3.6rem); z-index: 5; }
 .wtable th.ent { border-left: 1px solid var(--line); }
 .wtable th.ent small { display: block; font-family: var(--font-mono); letter-spacing: 0; text-transform: none; color: var(--ink-3); font-weight: 400; }
 .wtable td { padding: .5rem .7rem; border-bottom: 1px solid var(--line); vertical-align: top; }
@@ -464,6 +464,36 @@ dialog .dlg-actions { display: flex; justify-content: flex-end; gap: .5rem; padd
 .actionbar .spacer { flex: 1; }
 .entity-choice { display: grid; grid-template-columns: 1fr auto; gap: .6rem; align-items: center; padding: .6rem .8rem; border: 1px solid var(--g-harm); background: var(--g-harm-soft); border-radius: var(--radius); font-size: .84rem; }
 
+/* ---------- Workshop ---------- */
+.ws-grid { display: grid; grid-template-columns: 17rem minmax(0, 1fr); gap: 1rem; align-items: start; }
+@media (max-width: 75rem) { .ws-grid { grid-template-columns: 1fr; } }
+.tree { position: sticky; top: calc(var(--topbar) + 3rem); max-height: calc(100vh - var(--topbar) - 4rem); overflow: auto; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: .2rem 0 .4rem; }
+.tree-node { display: grid; grid-template-columns: .9rem 1fr auto; grid-template-rows: auto 3px; column-gap: .3rem; row-gap: .25rem; width: 100%; background: none; border: 0; text-align: left; padding: .35rem .6rem .35rem; font-size: .8rem; color: var(--ink); border-radius: 0; transition: background var(--t-fast); }
+.tree-node:hover { background: var(--bg); }
+.tree-node.sel { background: var(--accent-soft); box-shadow: inset 2px 0 0 var(--accent); }
+.tree-node .tw { color: var(--ink-3); display: inline-grid; place-items: center; transform: rotate(-90deg); transition: transform var(--t-fast); }
+.tree-node .tw.open { transform: none; }
+.tree-node .tn { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tree-node .tn .pid { font-family: var(--font-mono); font-size: .68rem; color: var(--ink-3); }
+.tree-node .tp { font-size: .68rem; color: var(--ink-3); display: inline-flex; gap: .3rem; align-items: center; }
+.tree-node .tp .og { background: var(--g-harm-soft); color: var(--g-harm); border-radius: 3px; padding: 0 .25rem; font-family: var(--font-mono); }
+.tree-node .tb { grid-column: 2 / -1; height: 3px; background: var(--none); border-radius: 2px; overflow: hidden; }
+.tree-node .tb i { display: block; height: 100%; background: var(--accent); }
+.l3head { margin-bottom: .75rem; }
+.wtable td.ent.open { background: var(--accent-soft); }
+.wtable td.ent { cursor: pointer; }
+.expand-inner .block.ctx { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr; }
+@media (min-width: 90rem) { .expand-inner { grid-template-columns: 18rem repeat(auto-fit, minmax(18rem, 1fr)); } .expand-inner .block.ctx { grid-column: auto; } }
+.expand-inner .block { align-self: start; }
+.expand-inner .block.dev { border-left: 3px solid var(--g-harm); padding-left: .8rem; }
+.missing { margin-top: .6rem; font-size: .78rem; color: var(--flag); background: var(--flag-soft); border-radius: var(--radius); padding: .35rem .5rem; }
+.missing.ok { color: var(--ok); background: var(--ok-soft); }
+.sessionbar { display: flex; align-items: center; gap: .5rem; justify-self: end; font-size: .8rem; white-space: nowrap; }
+.sessionbar .pace { color: var(--ink-2); }
+.kpi-strip { grid-template-columns: auto 1fr auto; min-height: 3.6rem; }
+.kpi-strip .legend { flex-wrap: nowrap; overflow: hidden; white-space: nowrap; font-size: .68rem; gap: .25rem .7rem; }
+:root[data-share="on"] .wtable { font-size: 1rem; } :root[data-share="on"] .pill { font-size: .82rem; } :root[data-share="on"] .yn.sm button { font-size: .82rem; padding: .2rem .55rem; }
+
 </style>
 </head>
 <body>
@@ -509,7 +539,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 </script>
 <script id="app">
 'use strict';
-const BUILD = { version: '0.1.0', builtAt: '2026-10-17T10:41:26.528Z' };
+const BUILD = { version: '0.1.0', builtAt: '2026-10-17T10:59:27.214Z' };
 
 /* ---- src/model/constants.js ---- */
 // Domain constants. Pure data – no client-specific values anywhere in here.
@@ -1178,6 +1208,7 @@ function parseCaptureWorkbook(wb, opts) {
   const processes = []; const assessments = []; const skipped = []; const notes = [];
   const unmappedGap = []; const stack = {}; let hierarchyMismatch = 0;
   const toBe = layout.blocks.find(b => b.kind === 'TOBE');
+  const shared = layout.blocks.filter(b => !profile.blocks[b.kind].perEntity && b.kind !== 'TOBE');
   const perEntity = layout.blocks.filter(b => profile.blocks[b.kind].perEntity);
   const entityOf = (b) => b.entity.code || fuzzyKey(b.entity.name);
   const activityLevels = new Set(profile.dataRow.activityLevels);
@@ -1206,6 +1237,7 @@ function parseCaptureWorkbook(wb, opts) {
       const { out, extra } = readTextFields(grid, r, toBe);
       p.toBe = { le: parseYN(out.le), gbs: parseYN(out.gbs), system: out.system || '', initiative: out.initiative || '', extra };
     }
+    for (const b of shared) { const { extra } = readTextFields(grid, r, b); if (Object.keys(extra).length) { p.context = p.context || {}; p.context[b.kind] = extra; } }
     processes.push(p);
     if (!activityLevels.has(level)) continue;
 
@@ -1457,6 +1489,313 @@ function deserializeSession(text) {
   const s = JSON.parse(text);
   if (typeof s.version !== 'number' || s.version > SESSION_FILE_VERSION) throw new Error(`Unsupported session file version ${s.version}`);
   return { ...createSession(), ...s };
+}
+
+
+/* ---- src/model/workshop.js ---- */
+// Workshop rules: every change goes through applyChange (audit trail), plus the
+// derived views the screen needs – effective gap type, completeness, tree stats,
+// confirm-as-fit and bulk confirmation with undo. Pure functions on the session.
+
+
+
+const GAP_TYPES_WITH_DEVIATION = new Set([GAP.HARMONIZATION, GAP.STANDARDIZATION, GAP.BOTH]);
+const NA = 'n/a';
+
+function getPath(obj, path) { return path.split('.').reduce((o, k) => (o == null ? undefined : o[k]), obj); }
+function setPath(obj, path, value) { const ks = path.split('.'); let o = obj; for (const k of ks.slice(0, -1)) { if (o[k] == null || typeof o[k] !== 'object') o[k] = {}; o = o[k]; } o[ks[ks.length - 1]] = value; }
+const same = (a, b) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
+
+/** Meta for audit entries: { sessionId, editor, bulkId? }. */
+function auditMeta(session, extra = {}) { return { sessionId: session.activeSessionId, editor: session.settings.editorInitials || '', ...extra }; }
+
+/** Set one field of an assessment, record the change. Returns true when something changed. */
+function applyChange(session, key, path, value, meta = auditMeta(session)) {
+  const a = session.assessments[key]; if (!a) return false;
+  const old = getPath(a, path);
+  if (same(old, value)) return false;
+  setPath(a, path, value);
+  const ts = new Date().toISOString();
+  a.workshop.changedAt = ts;
+  session.audit.push({ ts, key, field: path, old: old === undefined ? null : old, new: value, sessionId: meta.sessionId ?? null, editor: meta.editor ?? '', bulkId: meta.bulkId || null, note: meta.note || null });
+  return true;
+}
+
+function effectiveGap(a) { return a.workshop.gapType || a.asIs.gap || null; }
+function gapDiffersFromOps(a) { return !!a.workshop.gapType && a.workshop.gapType !== a.asIs.gap; }
+function fitGapComplete(a) { return [a.fitGap.local, a.fitGap.other, a.fitGap.gbs].every(v => v === true || v === false); }
+function detailedGapFilled(a) { return DETAILED_GAP_FIELDS.filter(f => a.detailedGap[f] && a.detailedGap[f] !== NA); }
+function detailedGapTouched(a) { return DETAILED_GAP_FIELDS.filter(f => a.detailedGap[f]); }
+
+/** Fit-Gap split vs. To-Be split: returns { differs, toBe: 'GBS'|'Local'|'Both'|'?', workshop } */
+function splitDelta(a, process) {
+  const tb = process?.toBe || {};
+  const lane = (local, gbs, other) => { const parts = []; if (local === true) parts.push('Local'); if (other === true) parts.push('Other'); if (gbs === true) parts.push('GBS'); return parts.length ? parts.join(' + ') : (local === false || gbs === false ? 'none' : '?'); };
+  const toBe = lane(tb.le, tb.gbs, false), ws = fitGapComplete(a) ? lane(a.fitGap.local, a.fitGap.gbs, a.fitGap.other) : '?';
+  const known = toBe !== '?' && ws !== '?';
+  return { toBe, workshop: ws, differs: known && toBe !== ws, known };
+}
+
+/** Suggested workshop gap type from the split delta and the Ops value. */
+function suggestGapType(a, process) {
+  const d = splitDelta(a, process);
+  if (!d.known) return null;
+  const ops = a.asIs.gap;
+  if (d.differs) return ops === GAP.STANDARDIZATION || ops === GAP.BOTH ? GAP.BOTH : GAP.HARMONIZATION;
+  if (ops === GAP.HARMONIZATION) return GAP.NO_GAP; // split matches To-Be: harmonization gap not confirmed
+  return null;
+}
+
+/** Completeness and mandatory-field check for one assessment. */
+function completeness(a) {
+  const missing = [];
+  if (a.scope.outOfScope || a.workshop.status === WORKSHOP_STATUS.OUT_OF_SCOPE) return { complete: true, outOfScope: true, missing, gap: effectiveGap(a) };
+  const gap = effectiveGap(a);
+  const touched = a.workshop.status !== WORKSHOP_STATUS.NOT_ASSESSED || !!a.workshop.changedAt;
+  if (!fitGapComplete(a)) missing.push('Fit-Gap split (Local / Other / GBS)');
+  const isGap = GAP_TYPES_WITH_DEVIATION.has(gap);
+  const rationaleNeeded = (gap && gap !== GAP.NO_GAP) || gapDiffersFromOps(a);
+  if (rationaleNeeded && !a.workshop.rationale?.trim()) missing.push('Rationale');
+  if (isGap) {
+    if (!detailedGapFilled(a).length) missing.push('At least one Detailed Gap field');
+    const d = a.deviation || {};
+    if (!d.dimensions?.length) missing.push('Deviation dimension');
+    if (!d.resolution) missing.push('Resolution approach');
+    if (!d.ownerId) missing.push('Accountable owner');
+    if (d.resolution === RESOLUTION.SEPARATE_VARIANT && !d.justification?.trim()) missing.push('Justification (separate variant)');
+  } else if (gap === GAP.NO_GAP || gap === GAP.NA) {
+    // Detailed Gap optional – n/a allowed. Nothing to add.
+  } else if (!gap) {
+    missing.push('Workshop gap type');
+  }
+  if (a.workshop.status === WORKSHOP_STATUS.NOT_ASSESSED) missing.push('Workshop status');
+  return { complete: missing.length === 0, outOfScope: false, missing, touched, gap, isGap };
+}
+
+/** "Confirm as fit": split from To-Be (if not set), Detailed Gap n/a, gap type NO GAP, status confirmed. */
+function confirmFit(session, key, process, meta = auditMeta(session)) {
+  const a = session.assessments[key]; if (!a || a.scope.outOfScope) return false;
+  let changed = false;
+  if (!fitGapComplete(a)) {
+    const tb = process?.toBe || {};
+    const local = tb.le === true ? true : tb.le === false ? false : (a.asIs.le === true);
+    const gbs = tb.gbs === true ? true : tb.gbs === false ? false : (a.asIs.gbs === true);
+    changed = applyChange(session, key, 'fitGap.local', local, meta) || changed;
+    changed = applyChange(session, key, 'fitGap.other', a.fitGap.other === true, meta) || changed;
+    changed = applyChange(session, key, 'fitGap.gbs', gbs, meta) || changed;
+  }
+  for (const f of DETAILED_GAP_FIELDS) if (!a.detailedGap[f]) changed = applyChange(session, key, `detailedGap.${f}`, NA, meta) || changed;
+  changed = applyChange(session, key, 'workshop.gapType', GAP.NO_GAP, meta) || changed;
+  changed = applyChange(session, key, 'workshop.status', WORKSHOP_STATUS.CONFIRMED_FIT, meta) || changed;
+  return changed;
+}
+
+/** Bulk: confirm every not-yet-assessed assessment with Ops NO GAP among the given keys. Returns { bulkId, count }. */
+function bulkConfirmNoGap(session, keys, processes, meta = auditMeta(session)) {
+  const bulkId = newId('bulk'); let count = 0;
+  for (const key of keys) {
+    const a = session.assessments[key]; if (!a) continue;
+    if (a.asIs.gap !== GAP.NO_GAP || a.scope.outOfScope || a.workshop.status !== WORKSHOP_STATUS.NOT_ASSESSED) continue;
+    if (confirmFit(session, key, processes[a.processId], { ...meta, bulkId, note: 'bulk confirmation of Ops NO GAP' })) count++;
+  }
+  if (count) session.audit.push({ ts: new Date().toISOString(), key: 'bulk', field: 'bulk.confirmNoGap', old: null, new: count, sessionId: meta.sessionId ?? null, editor: meta.editor ?? '', bulkId });
+  return { bulkId, count };
+}
+
+/** Undo every change of a bulk action by replaying the audit entries backwards. */
+function undoBulk(session, bulkId, meta = auditMeta(session)) {
+  const entries = session.audit.filter(e => e.bulkId === bulkId && e.key !== 'bulk');
+  let n = 0;
+  for (const e of entries.slice().reverse()) { if (applyChange(session, e.key, e.field, e.old, { ...meta, bulkId: `undo:${bulkId}`, note: 'undo bulk confirmation' })) n++; }
+  for (const key of new Set(entries.map(e => e.key))) { const a = session.assessments[key]; if (a && !session.audit.some(x => x.key === key && !x.bulkId)) a.workshop.changedAt = null; }
+  return n;
+}
+
+function copyDetailedGap(session, fromKey, toKey, meta = auditMeta(session)) {
+  const src = session.assessments[fromKey]; if (!src) return 0; let n = 0;
+  for (const f of DETAILED_GAP_FIELDS) if (src.detailedGap[f]) n += applyChange(session, toKey, `detailedGap.${f}`, src.detailedGap[f], meta) ? 1 : 0;
+  return n;
+}
+
+/** Apply the Fit-Gap split, gap type, rationale, Detailed Gap and status of one entity's assessment to the other entities of the same activity. */
+function applyToAllEntities(session, fromKey, meta = auditMeta(session)) {
+  const src = session.assessments[fromKey]; if (!src) return 0; let n = 0;
+  for (const a of Object.values(session.assessments)) {
+    if (a.processId !== src.processId || a.key === fromKey || a.scope.outOfScope) continue;
+    for (const f of ['local', 'other', 'gbs', 'fte']) if (src.fitGap[f] !== null) n += applyChange(session, a.key, `fitGap.${f}`, src.fitGap[f], meta) ? 1 : 0;
+    for (const f of DETAILED_GAP_FIELDS) if (src.detailedGap[f]) n += applyChange(session, a.key, `detailedGap.${f}`, src.detailedGap[f], meta) ? 1 : 0;
+    for (const f of ['gapType', 'rationale', 'status']) if (src.workshop[f]) n += applyChange(session, a.key, `workshop.${f}`, src.workshop[f], meta) ? 1 : 0;
+    if (src.deviation) n += applyChange(session, a.key, 'deviation', JSON.parse(JSON.stringify(src.deviation)), meta) ? 1 : 0;
+  }
+  return n;
+}
+
+/* ------------------------------------------------------------ tree & stats */
+
+function isMasterDataNode(p) { return /master\s*data/i.test(p.name || ''); }
+
+/** Hierarchy of one stream (or all streams for MD): nodes with children, activities attached to their parent node. */
+function buildTree(session, stream, { masterDataOnly = false } = {}) {
+  const all = Object.values(session.processes).filter(p => masterDataOnly ? true : p.stream === stream);
+  const byId = Object.fromEntries(all.map(p => [p.id, { ...p, children: [], activities: [] }]));
+  const roots = [];
+  for (const n of Object.values(byId)) {
+    const parent = n.parentId && byId[n.parentId];
+    if (n.level >= 4) { if (parent) parent.activities.push(n); else roots.push(n); continue; }
+    if (parent) parent.children.push(n); else roots.push(n);
+  }
+  const sortById = (a, b) => a.id.localeCompare(b.id, undefined, { numeric: true });
+  for (const n of Object.values(byId)) { n.children.sort(sortById); n.activities.sort(sortById); }
+  roots.sort(sortById);
+  if (masterDataOnly) {
+    // keep only sub-trees under a master-data node (any level 1–3)
+    const keep = (n) => { if (isMasterDataNode(n)) return true; n.children = n.children.filter(keep); n.activities = isMasterDataNode(n) ? n.activities : []; return n.children.length > 0; };
+    return roots.filter(keep);
+  }
+  return roots;
+}
+
+/** All activities below a node (depth-first, ID order). */
+function activitiesOf(node) { return [...node.activities, ...node.children.flatMap(activitiesOf)]; }
+
+/** Stats for a set of activities: assessed / total (in scope), open gaps, per entity filter (null = all). */
+function nodeStats(session, activities, entityCode = null) {
+  const s = { total: 0, assessed: 0, complete: 0, outOfScope: 0, openGaps: 0, opsNoGap: 0, ops: {} };
+  for (const p of activities) for (const a of Object.values(session.assessments)) {
+    if (a.processId !== p.id || (entityCode && a.entityCode !== entityCode)) continue;
+    if (a.scope.outOfScope) { s.outOfScope++; continue; }
+    s.total++;
+    const g = a.asIs.gap || 'NOT_ASSESSED'; s.ops[g] = (s.ops[g] || 0) + 1;
+    if (a.asIs.gap === GAP.NO_GAP && a.workshop.status === WORKSHOP_STATUS.NOT_ASSESSED) s.opsNoGap++;
+    if (a.workshop.status !== WORKSHOP_STATUS.NOT_ASSESSED) s.assessed++;
+    if (completeness(a).complete) s.complete++;
+    if (GAP_TYPES_WITH_DEVIATION.has(effectiveGap(a)) && a.workshop.status !== WORKSHOP_STATUS.CONFIRMED_FIT) s.openGaps++;
+  }
+  return s;
+}
+
+/** Session timer figures for the active session. */
+function sessionPace(session, now = Date.now()) {
+  const ws = session.sessions.find(s => s.id === session.activeSessionId); if (!ws) return null;
+  const planned = ws.start && ws.end ? minutesBetween(ws.start, ws.end) : null;
+  const started = ws.startedAt ? new Date(ws.startedAt).getTime() : null;
+  const elapsed = started ? Math.max(0, Math.round((now - started) / 60000)) : 0;
+  const streams = ws.stream === 'MD' ? null : [ws.stream.replace(/-.*$/, '')];
+  let remaining = 0;
+  for (const a of Object.values(session.assessments)) {
+    if (a.scope.outOfScope || a.workshop.status !== WORKSHOP_STATUS.NOT_ASSESSED) continue;
+    if (streams && !streams.includes(a.stream)) continue;
+    if (ws.stream === 'MD' && !isMasterDataNode(session.processes[a.processId] || {})) continue;
+    remaining++;
+  }
+  const left = planned !== null ? Math.max(0, planned - elapsed) : null;
+  const secPer = left !== null && remaining ? Math.round(left * 60 / remaining) : null;
+  return { session: ws, planned, elapsed, left, remaining, secPerActivity: secPer, running: !!started && !ws.endedAt };
+}
+function minutesBetween(a, b) { const [h1, m1] = a.split(':').map(Number), [h2, m2] = b.split(':').map(Number); return (h2 * 60 + m2) - (h1 * 60 + m1); }
+
+
+/* ---- src/parser/planning.js ---- */
+// Planning workbook ("Fit Gap Workshops"): Country | PROCESS | Responsible |
+// Comment | Workshop Date | Meeting time | Overall Duration | Status, several
+// countries in one sheet, sheets "New"/"Old" (use "New"). Free-text dates and
+// times are parsed best-effort; anything unparsed is flagged for the review table.
+
+
+const STREAM_BY_PROCESS = [
+  [/record.?to.?report|\bR2R\b|general ledger/i, 'R2R'],
+  [/invoice.?to.?pay|procure.?to.?pay|\bI2P\b|\bP2P\b|accounts payable/i, 'I2P'],
+  [/order.?to.?cash|invoice.?to.?cash|\bI2C\b|\bO2C\b|accounts receivable/i, 'I2C'],
+  [/acquire.?to.?retire|\bA2R\b|fixed asset|inventory/i, 'A2R'],
+  [/master.?data|\bMD\b|\bMDM\b/i, 'MD'],
+  [/travel|expense|T&E|\bTE\b/i, 'I2P T&E'],
+  [/intercompany|\bICO\b|\bIC\b/i, 'ICO'],
+];
+function streamFromProcessName(name) {
+  const t = normText(name);
+  for (const [rx, s] of STREAM_BY_PROCESS) if (rx.test(t)) return s;
+  return null;
+}
+
+const MONTHS = { jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6, jul: 7, aug: 8, sep: 9, sept: 9, oct: 10, nov: 11, dec: 12 };
+/** Extract ISO dates from free text (dd.mm.yyyy, dd/mm/yyyy, yyyy-mm-dd, "19 Oct 2026", "Oct 19, 2026", Excel serials). */
+function extractDates(raw) {
+  if (raw instanceof Date) return [isoDate(raw)];
+  if (typeof raw === 'number' && raw > 30000 && raw < 80000) { const d = new Date(Math.round((raw - 25569) * 86400000)); return [isoDate(d, true)]; }
+  const t = normText(raw); const out = [];
+  for (const m of t.matchAll(/\b(\d{1,2})[./-](\d{1,2})[./-](\d{4}|\d{2})\b/g)) out.push(mk(m[3], m[2], m[1]));
+  for (const m of t.matchAll(/\b(\d{4})-(\d{2})-(\d{2})\b/g)) out.push(mk(m[1], m[2], m[3]));
+  for (const m of t.matchAll(/\b(\d{1,2})(?:st|nd|rd|th)?\s+([A-Za-z]{3,9})\.?\s+(\d{4})\b/g)) { const mo = MONTHS[m[2].slice(0, 3).toLowerCase()]; if (mo) out.push(mk(m[3], mo, m[1])); }
+  for (const m of t.matchAll(/\b([A-Za-z]{3,9})\.?\s+(\d{1,2})(?:st|nd|rd|th)?,?\s+(\d{4})\b/g)) { const mo = MONTHS[m[1].slice(0, 3).toLowerCase()]; if (mo) out.push(mk(m[3], mo, m[2])); }
+  return [...new Set(out.filter(Boolean))];
+}
+function mk(y, mo, d) { y = String(y); if (y.length === 2) y = '20' + y; mo = Number(mo); d = Number(d); if (mo < 1 || mo > 12 || d < 1 || d > 31) return null; return `${y}-${String(mo).padStart(2, '0')}-${String(d).padStart(2, '0')}`; }
+function isoDate(d, utc = false) { return utc ? d.toISOString().slice(0, 10) : `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; }
+
+/** Extract time ranges from free text: "10:00-12:00", "9.00 – 11.30", "13:00 to 16:00", "2-4 pm", "9am-11am". Returns [{start,end,tz}]. */
+function extractTimeRanges(raw) {
+  const t = normText(raw).replace(/–|—/g, '-');
+  const out = [];
+  const tz = (t.match(/\b(CET|CEST|UTC|GMT|KST|JST|PHT|SGT|IST|EST|PST|BST)\b/i) || [])[1] || null;
+  const rx = /(\d{1,2})(?:[:.h](\d{2}))?\s*(am|pm)?\s*(?:-|to|until|bis)\s*(\d{1,2})(?:[:.h](\d{2}))?\s*(am|pm)?/gi;
+  for (const m of t.matchAll(rx)) {
+    let h1 = Number(m[1]), m1 = Number(m[2] || 0), h2 = Number(m[4]), m2 = Number(m[5] || 0);
+    const ap1 = (m[3] || '').toLowerCase(), ap2 = (m[6] || '').toLowerCase();
+    if (h1 > 24 || h2 > 24 || m1 > 59 || m2 > 59) continue;
+    if ((ap2 === 'pm' || (!ap2 && ap1 === 'pm')) && h2 < 12) h2 += 12;
+    if ((ap1 === 'pm') && h1 < 12) h1 += 12;
+    if (!ap1 && ap2 === 'pm' && h1 < 12 && h1 + 12 < h2) h1 += 12; // "2-4 pm"
+
+    if (!ap1 && !ap2 && h1 < 8 && h2 <= 12 && m[2] === undefined && m[5] === undefined) { /* "2-4" without am/pm – ambiguous, keep as given */ }
+    if (h2 * 60 + m2 <= h1 * 60 + m1) continue;
+    out.push({ start: `${String(h1).padStart(2, '0')}:${String(m1).padStart(2, '0')}`, end: `${String(h2).padStart(2, '0')}:${String(m2).padStart(2, '0')}`, tz });
+  }
+  return out;
+}
+
+const COLS = { country: ['country'], process: ['process', 'stream', 'process area'], responsible: ['responsible', 'process expert', 'owner', 'expert'], comment: ['comment', 'comments', 'remarks'], date: ['workshop date', 'date', 'dates'], time: ['meeting time', 'time', 'time slot'], duration: ['overall duration', 'duration'], status: ['status'] };
+
+/** Parse the planning workbook. Returns { ok, sheetName, countries[], rows[], sessions[], warnings[] }. */
+function parsePlanningWorkbook(wb, { XLSX, fileName = 'planning.xlsx' } = {}) {
+  const names = wb.SheetNames;
+  const sheetName = names.find(n => fuzzyKey(n) === 'new') || names.find(n => !/old/i.test(n)) || names[0];
+  const ws = wb.Sheets[sheetName];
+  const rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: null, blankrows: false });
+  const warnings = [];
+  let header = -1, map = {};
+  for (let r = 0; r < Math.min(rows.length, 20); r++) {
+    const m = {}; const row = rows[r] || [];
+    for (let c = 0; c < row.length; c++) { const k = fuzzyKey(row[c]); if (!k) continue; for (const [f, syns] of Object.entries(COLS)) if (m[f] === undefined && syns.some(s => fuzzyKey(s) === k)) m[f] = c; }
+    if (m.country !== undefined && m.process !== undefined) { header = r; map = m; break; }
+  }
+  if (header < 0) return { ok: false, fileName, sheetName, warnings: [{ level: 'error', code: 'NO_HEADER', message: `No header row with "Country" and "PROCESS" found in sheet "${sheetName}".` }] };
+  for (const f of ['date', 'time']) if (map[f] === undefined) warnings.push({ level: 'warn', code: 'COL_MISSING', message: `Column "${f}" not found – sessions will need manual dates/times.` });
+  const out = []; let lastCountry = '';
+  for (let r = header + 1; r < rows.length; r++) {
+    const row = rows[r]; const get = (f) => map[f] === undefined ? null : row[map[f]];
+    const country = normText(get('country')) || lastCountry; const process = normText(get('process'));
+    if (!process && !normText(get('country'))) continue;
+    if (!process) continue;
+    lastCountry = country;
+    const dateRaw = get('date'), timeRaw = get('time');
+    const dates = extractDates(dateRaw), times = extractTimeRanges(normText(timeRaw) + ' ' + (typeof dateRaw === 'string' ? dateRaw : ''));
+    const stream = streamFromProcessName(process);
+    const rec = { row: r + 1, country, process, stream, responsible: normText(get('responsible')), comment: normText(get('comment')), dateRaw: dateRaw instanceof Date ? dateRaw.toISOString() : normText(dateRaw), timeRaw: normText(timeRaw), duration: normText(get('duration')), status: normText(get('status')), dates, times, issues: [] };
+    if (!stream) rec.issues.push('stream');
+    if (!dates.length) rec.issues.push('date');
+    if (!times.length) rec.issues.push('time');
+    out.push(rec);
+  }
+  const sessions = [];
+  for (const rec of out) {
+    const dates = rec.dates.length ? rec.dates : [''];
+    const times = rec.times.length ? rec.times : [{ start: '', end: '' }];
+    // Pair dates with time ranges: equal counts → pairwise; else every date gets every range.
+    const pairs = dates.length === times.length && dates.length > 1 ? dates.map((d, i) => [d, times[i]]) : dates.flatMap(d => times.map(t => [d, t]));
+    for (const [date, t] of pairs) sessions.push({ country: rec.country, stream: rec.stream || '', process: rec.process, date, start: t.start, end: t.end, tz: t.tz || null, responsible: rec.responsible, status: rec.status, comment: rec.comment, source: { file: fileName, row: rec.row }, incomplete: !rec.stream || !date || !t.start });
+  }
+  const countries = [...new Set(out.map(r => r.country).filter(Boolean))];
+  return { ok: true, fileName, sheetName, countries, rows: out, sessions, warnings };
 }
 
 
@@ -1944,6 +2283,383 @@ function ImportView({ session, summary, updateSession, toast, onClearAll }) {
 }
 
 
+/* ---- src/ui/plan.js ---- */
+// PLAN-lite: country set-up, entities, streams in scope, participants, sessions,
+// optional planning-workbook import with review table, gap definitions.
+
+function TextInput({ value, onCommit, textarea, ...rest }) {
+  const [v, setV] = useState(value ?? ''); const last = useRef(value);
+  useEffect(() => { if (value !== last.current) { setV(value ?? ''); last.current = value; } }, [value]);
+  const commit = () => { if ((v ?? '') !== (value ?? '')) { last.current = v; onCommit(v); } };
+  const props = { value: v, onInput: e => setV(e.target.value), onBlur: commit, onKeyDown: e => { if (e.key === 'Enter' && !textarea) e.target.blur(); if (e.key === 'Escape') { setV(value ?? ''); e.target.blur(); } }, ...rest };
+  return textarea ? html`<textarea class=${`textarea ${rest.class || ''}`} ...${props}></textarea>` : html`<input class=${`input ${rest.class || ''}`} ...${props} />`;
+}
+
+function fmtDate(d) { if (!d) return ''; const [y, m, dd] = d.split('-'); return `${dd}.${m}.${y}`; }
+const WEEKDAY = (d) => d ? new Date(d + 'T00:00:00').toLocaleDateString('en-GB', { weekday: 'short' }) : '';
+
+function effortEstimate(session, summary, ws) {
+  const mins = session.settings.minutesPerActivity;
+  const streams = ws.stream === 'MD' ? null : [ws.stream.replace(/-.*$/, '')];
+  let noGap = 0, gap = 0;
+  for (const a of Object.values(session.assessments)) {
+    if (a.scope.outOfScope) continue;
+    if (streams && !streams.includes(a.stream)) continue;
+    if (ws.stream === 'MD' && !isMasterDataNode(session.processes[a.processId] || {})) continue;
+    if (a.asIs.gap === GAP.NO_GAP) noGap++; else gap++;
+  }
+  return { noGap, gap, minutes: Math.round(noGap * mins.NO_GAP + gap * mins.GAP), planned: ws.start && ws.end ? minutesBetween(ws.start, ws.end) : null };
+}
+
+function PlanView({ session, summary, updateSession, toast }) {
+  const st = session.settings;
+  const setS = (k, v) => updateSession(s => { s.settings[k] = v; });
+  const [pName, setPName] = useState(''), [pRole, setPRole] = useState(''), [pOrg, setPOrg] = useState('Local'), [pEnt, setPEnt] = useState('');
+  const [ws, setWs] = useState({ date: '', start: '', end: '', stream: 'R2R', participantIds: [], recording: '', note: '' });
+  const [plan, setPlan] = useState(null); const [planCountry, setPlanCountry] = useState('');
+  const entities = Object.values(session.entities);
+  const addParticipant = () => { if (!pName.trim()) return; updateSession(s => { s.participants.push({ id: newId('p'), name: pName.trim(), role: pRole.trim(), organisation: pOrg, entityCode: pEnt || null }); }); setPName(''); setPRole(''); };
+  const addSession = () => { if (!ws.date) { toast('Session needs a date'); return; } updateSession(s => { s.sessions.push({ id: newId('ws'), ...ws, startedAt: null, endedAt: null }); s.sessions.sort((a, b) => (a.date + a.start).localeCompare(b.date + b.start)); }); setWs({ ...ws, participantIds: [], recording: '', note: '' }); };
+  const onPlanFile = async (e) => {
+    const f = e.target.files[0]; if (!f) return; e.target.value = '';
+    try { const wb = XLSX.read(await f.arrayBuffer(), { type: 'array', cellDates: true }); const p = parsePlanningWorkbook(wb, { XLSX, fileName: f.name }); if (!p.ok) { toast(p.warnings[0].message); return; }
+      const guess = p.countries.find(c => similarity(c, st.country) > 0.6) || p.countries[0] || '';
+      setPlan({ ...p, sessions: p.sessions.map(s => ({ ...s, id: newId('ps'), include: true })) }); setPlanCountry(guess);
+    } catch (err) { toast(`Could not read ${f.name}: ${err.message}`); }
+  };
+  const planRows = plan ? plan.sessions.filter(s => !planCountry || s.country === planCountry) : [];
+  const patchPlan = (id, patch) => setPlan(p => ({ ...p, sessions: p.sessions.map(s => s.id === id ? { ...s, ...patch, incomplete: false } : s) }));
+  const addPlanned = () => { const rows = planRows.filter(s => s.include && s.date && s.stream); updateSession(s => { for (const r of rows) s.sessions.push({ id: newId('ws'), date: r.date, start: r.start, end: r.end, stream: r.stream, participantIds: [], recording: '', note: [r.process, r.responsible, r.comment, r.tz].filter(Boolean).join(' · '), startedAt: null, endedAt: null }); s.sessions.sort((a, b) => (a.date + a.start).localeCompare(b.date + b.start)); if (!s.settings.country && planCountry) s.settings.country = planCountry; }); toast(`${rows.length} sessions added`); setPlan(null); };
+  const streamOptions = ['R2R', 'A2R-FAA', 'A2R-IA', 'A2R', 'I2P', 'I2C', 'ICO', 'MD'];
+  const planDone = !!st.country && session.participants.length > 0 && session.sessions.length > 0;
+
+  return html`<div>
+    <${PageHead} eyebrow="1 · Plan" title=${st.country ? `${st.clientName || 'Client'} · ${st.country}` : 'Set up the country fit-gap'} lead="Country, entities, streams in scope, the people in the room and the session slots. Every workshop change is tagged with the active session, so set the sessions up before the first one starts." how=${html`<ol><li>Enter client, country and your initials (used in the audit trail).</li><li>Check the entities from the import and give them short display names.</li><li>Add participants – deviation owners and next-step owners are picked from this list.</li><li>Add sessions by hand or import the programme's planning workbook ("Fit Gap Workshops") and review the parsed rows.</li></ol>`} />
+    ${planDone && html`<div class="sg-row" style="margin-bottom:1rem"><span class="status status-CONFIRMED_FIT">Plan complete – ${session.sessions.length} sessions, ${session.participants.length} participants</span></div>`}
+    <div class="import-grid">
+      <div style="display:grid;gap:1rem">
+        <${Card} title="Country set-up">
+          <div class="fgrid">
+            <${Field} label="Client name" hint="Shown in headlines and slides"><${TextInput} value=${st.clientName} onCommit=${v => setS('clientName', v)} placeholder="e.g. Demo Group" /></${Field}>
+            <${Field} label="Country" required><${TextInput} value=${st.country} onCommit=${v => setS('country', v)} placeholder="e.g. France" /></${Field}>
+            <${Field} label="Your initials" required hint="Editor tag on every audit entry"><${TextInput} value=${st.editorInitials} onCommit=${v => setS('editorInitials', v.toUpperCase())} placeholder="MR" style="width:6rem" /></${Field}>
+            <${Field} label="Facilitators" hint="Comma-separated"><${TextInput} value=${(st.facilitators || []).join(', ')} onCommit=${v => setS('facilitators', v.split(',').map(x => x.trim()).filter(Boolean))} /></${Field}>
+            <${Field} label="Minutes per NO GAP activity" hint="Effort estimate per session"><${TextInput} class="num" value=${String(st.minutesPerActivity.NO_GAP)} onCommit=${v => updateSession(s => { s.settings.minutesPerActivity.NO_GAP = Number(v.replace(',', '.')) || 1.5; })} style="width:6rem" /></${Field}>
+            <${Field} label="Minutes per gap activity"><${TextInput} class="num" value=${String(st.minutesPerActivity.GAP)} onCommit=${v => updateSession(s => { s.settings.minutesPerActivity.GAP = Number(v.replace(',', '.')) || 5; })} style="width:6rem" /></${Field}>
+          </div>
+        </${Card}>
+        <${Card} title="Entities" stats=${[['from import', entities.length]]}>
+          ${entities.length ? html`<table class="matrix"><thead><tr><th>Code</th><th style="text-align:left">Imported name</th><th style="text-align:left">Display name</th><th style="text-align:left">Country</th><th class="num">Files</th></tr></thead><tbody>
+            ${entities.map(e => html`<tr key=${e.code}><td class="mono" style="text-align:left">${e.hasCode ? e.code : html`<span class="muted">no code</span>`}</td><td style="text-align:left">${e.name}</td><td style="text-align:left"><${TextInput} class="sm" value=${e.displayName || e.name} onCommit=${v => updateSession(s => { s.entities[e.code].displayName = v || e.name; })} /></td><td style="text-align:left"><${TextInput} class="sm" value=${e.country || st.country} onCommit=${v => updateSession(s => { s.entities[e.code].country = v; })} style="width:8rem" /></td><td class="num">${e.sources.length}</td></tr>`)}
+          </tbody></table>` : html`<p class="muted small">Entities appear here after the capture sheets are imported (3 · Run → Import & data).</p>`}
+        </${Card}>
+        <${Card} title="Streams and sub-streams in scope">
+          <div class="sg-row" style="gap:1rem">${SUB_STREAMS.map(s => html`<${Switch} key=${s} checked=${st.streamsInScope[s] !== false} onChange=${v => updateSession(x => { x.settings.streamsInScope[s] = v; })}>${s}${s.startsWith('A2R') || s === 'MD' ? '' : html`<span class="muted small"> · ${summary.activitiesByStream[s] || 0}</span>`}</${Switch}>`)}</div>
+          <p class="sg-note">A2R is split into FAA (asset accounting) and IA (inventory accounting) by the L1/L2 names; MD is the cross-stream master-data session.</p>
+        </${Card}>
+        <${Card} title="Gap type definitions" stats=${[['shown as tooltip and legend slide', '']]}>
+          <div style="display:grid;gap:.5rem">${['NO_GAP', 'HARMONIZATION', 'STANDARDIZATION', 'BOTH'].map(g => html`<div class="fgrid" style="grid-template-columns:11rem 1fr;align-items:start" key=${g}><${GapPill} value=${g} /><${TextInput} textarea class="sm" style="min-height:2.4rem" value=${st.gapDefinitions[g]} onCommit=${v => updateSession(s => { s.settings.gapDefinitions[g] = v; })} /></div>`)}</div>
+        </${Card}>
+      </div>
+      <div style="display:grid;gap:1rem">
+        <${Card} title="Participants" stats=${[['people', session.participants.length]]}>
+          ${session.participants.length > 0 && html`<table class="matrix" style="margin-bottom:.75rem"><thead><tr><th style="text-align:left">Name</th><th style="text-align:left">Role</th><th style="text-align:left">Organisation</th><th style="text-align:left">Entity</th><th></th></tr></thead><tbody>
+            ${session.participants.map(p => html`<tr key=${p.id}><td style="text-align:left"><b>${p.name}</b></td><td style="text-align:left">${p.role}</td><td style="text-align:left">${p.organisation}</td><td style="text-align:left" class="muted">${p.entityCode ? (session.entities[p.entityCode]?.displayName || p.entityCode) : ''}</td><td><${IconButton} icon="x" label="Remove" onClick=${() => updateSession(s => { s.participants = s.participants.filter(x => x.id !== p.id); })} /></td></tr>`)}
+          </tbody></table>`}
+          <div class="fgrid" style="grid-template-columns:1.3fr 1fr 1fr 1fr auto;align-items:end">
+            <${Field} label="Name"><input class="input sm" value=${pName} onInput=${e => setPName(e.target.value)} onKeyDown=${e => e.key === 'Enter' && addParticipant()} placeholder="Full name" /></${Field}>
+            <${Field} label="Role"><input class="input sm" value=${pRole} onInput=${e => setPRole(e.target.value)} placeholder="e.g. GL accountant" /></${Field}>
+            <${Field} label="Organisation"><select class="select sm" value=${pOrg} onChange=${e => setPOrg(e.target.value)}>${PARTICIPANT_ORG.map(o => html`<option value=${o}>${o}</option>`)}</select></${Field}>
+            <${Field} label="Entity"><select class="select sm" value=${pEnt} onChange=${e => setPEnt(e.target.value)}><option value="">–</option>${entities.map(e => html`<option value=${e.code}>${e.displayName || e.name}</option>`)}</select></${Field}>
+            <${Button} variant="outline" size="sm" onClick=${addParticipant}>Add</${Button}>
+          </div>
+        </${Card}>
+        <${Card} title="Sessions" stats=${[['planned', session.sessions.length]]} actions=${html`<label class="btn btn-outline btn-sm" style="cursor:pointer"><${Icon} name="upload" /> Import planning workbook<input type="file" accept=".xlsx,.xlsm" style="display:none" onChange=${onPlanFile} /></label>`}>
+          ${plan && html`<div class="card" style="margin-bottom:1rem;border-color:var(--accent)"><div class="card-head"><h3>Review parsed sessions · ${plan.fileName} / ${plan.sheetName}</h3><select class="select sm" style="width:auto" value=${planCountry} onChange=${e => setPlanCountry(e.target.value)}><option value="">All countries</option>${plan.countries.map(c => html`<option value=${c}>${c}</option>`)}</select></div><div class="card-body">
+            <table class="matrix"><thead><tr><th></th><th style="text-align:left">Country</th><th style="text-align:left">Process</th><th style="text-align:left">Stream</th><th style="text-align:left">Date</th><th style="text-align:left">Start</th><th style="text-align:left">End</th><th style="text-align:left">Status</th></tr></thead><tbody>
+              ${planRows.map(r => html`<tr key=${r.id} style=${r.incomplete ? 'background:var(--g-harm-soft)' : ''}><td><input type="checkbox" checked=${r.include} onChange=${e => patchPlan(r.id, { include: e.target.checked })} /></td><td style="text-align:left">${r.country}</td><td style="text-align:left">${r.process}<div class="muted small">${r.responsible}${r.tz ? ` · ${r.tz}` : ''}</div></td><td style="text-align:left"><select class="select sm" value=${r.stream} onChange=${e => patchPlan(r.id, { stream: e.target.value })}><option value="">?</option>${[...streamOptions, 'I2P T&E'].map(s => html`<option value=${s}>${s}</option>`)}</select></td><td style="text-align:left"><input class="input sm" type="date" value=${r.date} onChange=${e => patchPlan(r.id, { date: e.target.value })} /></td><td style="text-align:left"><input class="input sm" type="time" value=${r.start} onChange=${e => patchPlan(r.id, { start: e.target.value })} /></td><td style="text-align:left"><input class="input sm" type="time" value=${r.end} onChange=${e => patchPlan(r.id, { end: e.target.value })} /></td><td style="text-align:left" class="muted small">${r.status}</td></tr>`)}
+            </tbody></table>
+            <div class="sg-row" style="justify-content:flex-end;margin-top:.7rem"><span class="muted small">${planRows.filter(r => r.incomplete).length} row(s) need a fix (highlighted)</span><${Button} variant="text" size="sm" onClick=${() => setPlan(null)}>Discard</${Button}><${Button} variant="primary" size="sm" onClick=${addPlanned}>Add ${planRows.filter(r => r.include && r.date && r.stream).length} sessions</${Button}></div>
+          </div></div>`}
+          ${session.sessions.length > 0 && html`<table class="matrix" style="margin-bottom:.75rem"><thead><tr><th style="text-align:left">Date</th><th style="text-align:left">Time</th><th style="text-align:left">Stream</th><th style="text-align:left">Participants</th><th class="num">Est. min</th><th></th></tr></thead><tbody>
+            ${session.sessions.map(s => { const est = effortEstimate(session, summary, s); const over = est.planned !== null && est.minutes > est.planned; const active = s.id === session.activeSessionId; return html`<tr key=${s.id} style=${active ? 'background:var(--accent-soft)' : ''}><td style="text-align:left"><b>${fmtDate(s.date)}</b> <span class="muted small">${WEEKDAY(s.date)}</span>${s.note && html`<div class="muted small">${s.note}</div>`}</td><td style="text-align:left" class="mono">${s.start}${s.end ? `–${s.end}` : ''}</td><td style="text-align:left"><${Tag} kind="GBS">${s.stream}</${Tag}></td><td style="text-align:left"><div class="chips">${session.participants.map(p => html`<${Chip} key=${p.id} active=${s.participantIds.includes(p.id)} onClick=${() => updateSession(x => { const ss = x.sessions.find(y => y.id === s.id); ss.participantIds = ss.participantIds.includes(p.id) ? ss.participantIds.filter(i => i !== p.id) : [...ss.participantIds, p.id]; })}>${p.name}</${Chip}>`)}</div></td><td class=${`num${over ? ' miss' : ''}`} title=${`${est.noGap} NO GAP × ${st.minutesPerActivity.NO_GAP} min + ${est.gap} gaps × ${st.minutesPerActivity.GAP} min`}>${est.minutes}${est.planned !== null ? html`<span class="muted"> / ${est.planned}</span>` : ''}</td><td style="white-space:nowrap"><${Button} variant=${active ? 'primary' : 'outline'} size="sm" onClick=${() => updateSession(x => { x.activeSessionId = active ? null : s.id; })}>${active ? 'Active' : 'Set active'}</${Button}> <${IconButton} icon="x" label="Remove" onClick=${() => updateSession(x => { x.sessions = x.sessions.filter(y => y.id !== s.id); if (x.activeSessionId === s.id) x.activeSessionId = null; })} /></td></tr>`; })}
+          </tbody></table>`}
+          <div class="fgrid" style="grid-template-columns:1fr 1fr 1fr 1fr auto;align-items:end">
+            <${Field} label="Date"><input class="input sm" type="date" value=${ws.date} onChange=${e => setWs({ ...ws, date: e.target.value })} /></${Field}>
+            <${Field} label="Start"><input class="input sm" type="time" value=${ws.start} onChange=${e => setWs({ ...ws, start: e.target.value })} /></${Field}>
+            <${Field} label="End"><input class="input sm" type="time" value=${ws.end} onChange=${e => setWs({ ...ws, end: e.target.value })} /></${Field}>
+            <${Field} label="Stream"><select class="select sm" value=${ws.stream} onChange=${e => setWs({ ...ws, stream: e.target.value })}>${streamOptions.map(s => html`<option value=${s}>${s}</option>`)}</select></${Field}>
+            <${Button} variant="outline" size="sm" onClick=${addSession}>Add</${Button}>
+            <${Field} label="Recording reference" class="full"><input class="input sm" value=${ws.recording} onInput=${e => setWs({ ...ws, recording: e.target.value })} placeholder="Teams link or file name" /></${Field}>
+          </div>
+          <p class="sg-note">Estimated minutes = NO GAP activities × ${st.minutesPerActivity.NO_GAP} + gap activities × ${st.minutesPerActivity.GAP} (from the Ops pre-assessment, all entities, in-scope only). Red = slot too short.</p>
+        </${Card}>
+      </div>
+    </div>
+  </div>`;
+}
+
+
+/* ---- src/ui/workshop.js ---- */
+// Workshop mode: stream tabs, L1–L3 tree with progress, one row per L4 activity
+// with entity columns, inline expansion with Fit-Gap → Detailed Gap → Deviation,
+// bulk confirmation, keyboard-first entry, audit history per activity.
+
+const STATUS_KEYS = ['CONFIRMED_FIT', 'CHANGED_VS_OPS', 'GAP_CONFIRMED', 'OPEN_QUESTION', 'OUT_OF_SCOPE'];
+const GAP_CHOICES = ['NO_GAP', 'HARMONIZATION', 'STANDARDIZATION', 'BOTH', 'NA', 'UNCLEAR'];
+
+function splitValues(v) { return normText(v).split(/[\/,;+&]| and /i).map(x => x.trim()).filter(x => x && x.toLowerCase() !== 'n/a'); }
+function topValues(list, n = 6) { const c = new Map(); for (const v of list) c.set(v, (c.get(v) || 0) + 1); return [...c.entries()].sort((a, b) => b[1] - a[1]).slice(0, n).map(x => x[0]); }
+
+/** Frequent values per Detailed Gap field for the quick-pick chips (systems from the Ops As-Is, the rest from workshop entries). */
+function useQuickPicks(session, stream) {
+  return useMemo(() => {
+    const sys = [], wf = [], byField = Object.fromEntries(DETAILED_GAP_FIELDS.map(f => [f, []]));
+    for (const a of Object.values(session.assessments)) {
+      if (stream && a.stream !== stream) continue;
+      sys.push(...splitValues(a.asIs.systems));
+      if (session.processes[a.processId]?.toBe?.system) sys.push(...splitValues(session.processes[a.processId].toBe.system));
+      for (const f of DETAILED_GAP_FIELDS) if (a.detailedGap[f] && a.detailedGap[f] !== NA) byField[f].push(a.detailedGap[f].trim());
+    }
+    const picks = {};
+    for (const f of DETAILED_GAP_FIELDS) picks[f] = topValues([...(f === 'itSystems' ? sys : f === 'workflowTools' ? wf : []), ...byField[f]], 6);
+    return picks;
+  }, [session.assessments, stream]);
+}
+
+function laneTags(local, gbs, other) {
+  const t = []; if (local === true) t.push(['LOCAL', 'Local']); if (other === true) t.push(['OTHER', 'Other']); if (gbs === true) t.push(['GBS', 'GBS']);
+  if (!t.length) return html`<span class="muted small">${local === null && gbs === null ? '?' : 'none'}</span>`;
+  return t.map(([k, l]) => html`<${Tag} kind=${k} key=${k}>${l}</${Tag}>`);
+}
+const ynText = (v) => v === true ? 'Y' : v === false ? 'N' : v && v.text ? v.text : '–';
+
+function TreePanel({ tree, selectedId, onSelect, session, entityFilter, collapsed, toggle, pace }) {
+  const Node = ({ n, depth }) => {
+    const acts = activitiesOf(n); const s = nodeStats(session, acts, entityFilter);
+    const isLeaf = n.activities.length > 0; const open = !collapsed.has(n.id);
+    const pct = s.total ? Math.round(100 * s.assessed / s.total) : 0;
+    return html`<div>
+      <button class=${`tree-node${selectedId === n.id ? ' sel' : ''}`} style=${`padding-left:${0.5 + depth * 0.8}rem`} onClick=${() => isLeaf ? onSelect(n.id) : toggle(n.id)}>
+        ${!isLeaf && n.children.length ? html`<span class=${`tw${open ? ' open' : ''}`}><${Icon} name="chevron" size=${12} /></span>` : html`<span class="tw"></span>`}
+        <span class="tn"><span class="pid">${n.id}</span> ${n.name}</span>
+        <span class="tp"><span class="num">${s.assessed}/${s.total}</span>${s.openGaps ? html`<span class="og" title="open gaps">${s.openGaps}</span>` : null}</span>
+        <span class="tb"><i style=${`width:${pct}%`}></i></span>
+      </button>
+      ${open && n.children.map(c => html`<${Node} n=${c} depth=${depth + 1} key=${c.id} />`)}
+    </div>`;
+  };
+  return html`<aside class="tree"><div class="eyebrow" style="padding:.6rem .6rem .3rem">Process tree</div>${tree.map(n => html`<${Node} n=${n} depth=${0} key=${n.id} />`)}${!tree.length && html`<p class="muted small" style="padding:.6rem">No activities in scope.</p>`}</aside>`;
+}
+
+function HistoryList({ session, akey }) {
+  const entries = session.audit.filter(e => e.key === akey).slice().reverse();
+  if (!entries.length) return html`<p class="muted small">No changes yet.</p>`;
+  const who = (e) => `${e.editor || '–'}${e.sessionId ? ' · ' + (session.sessions.find(s => s.id === e.sessionId)?.date || e.sessionId) : ''}`;
+  return html`<table class="layout-table"><tbody>${entries.slice(0, 40).map((e, i) => html`<tr key=${i}><td class="mono">${new Date(e.ts).toLocaleString([], { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</td><td class="mono">${e.field}</td><td>${fmtVal(e.old)} → <b>${fmtVal(e.new)}</b>${e.bulkId ? html` <span class="muted">(bulk)</span>` : null}</td><td class="muted">${who(e)}</td></tr>`)}</tbody></table>`;
+}
+function fmtVal(v) { if (v === null || v === undefined || v === '') return '–'; if (typeof v === 'object') return JSON.stringify(v); return String(v); }
+
+function ExpandedCell({ session, a, process, updateSession, picks, participants, prevKey, toast, commentRef }) {
+  const key = a.key;
+  const set = (path, v) => updateSession(s => applyChange(s, key, path, v));
+  const c = completeness(a); const gap = effectiveGap(a); const delta = splitDelta(a, process); const suggestion = suggestGapType(a, process);
+  const tb = process?.toBe || {}; const dev = a.deviation || {};
+  const setDev = (patch) => updateSession(s => applyChange(s, key, 'deviation', { dimensions: [], resolution: '', justification: '', ownerId: '', targetDate: '', escalation: 'L1', approval: 'PROPOSED', initiativeCandidate: false, linkedInitiative: '', ...(s.assessments[key].deviation || {}), ...patch }));
+  const [showHist, setShowHist] = useState(false);
+  const owners = participants;
+  const ChipsField = ({ f, label }) => { const v = a.detailedGap[f] || ''; return html`<${Field} label=${label}>
+    <div class="chips" style="margin-bottom:.25rem">${picks[f].map(p => html`<${Chip} key=${p} active=${v === p || (v.includes(p) && v !== NA)} onClick=${() => set(`detailedGap.${f}`, v === p ? '' : p)}>${p}</${Chip}>`)}<${Chip} na active=${v === NA} onClick=${() => set(`detailedGap.${f}`, v === NA ? '' : NA)}>n/a</${Chip}></div>
+    <${TextInput} class="sm" value=${v === NA ? '' : v} onCommit=${x => set(`detailedGap.${f}`, x)} placeholder=${v === NA ? 'n/a' : 'Free text'} /></${Field}>`; };
+  return html`<div class="expand-inner">
+    <div class="block ctx">
+      <h4>Context · ${session.entities[a.entityCode]?.displayName || a.entityCode}</h4>
+      <dl class="kv">
+        <dt>To-Be</dt><dd>${laneTags(tb.le, tb.gbs, false)} ${tb.system && html`<span class="muted small">· ${tb.system}</span>`}</dd>
+        ${tb.initiative && html`<dt>Initiative</dt><dd><span class="mono small">${tb.initiative}</span></dd>`}
+        <dt>Ops as-is</dt><dd>${laneTags(a.asIs.le, a.asIs.gbs, false)} ${a.asIs.systems && html`<span class="muted small">· ${a.asIs.systems}</span>`}</dd>
+        <dt>Ops GAP</dt><dd><${GapPill} value=${a.asIs.gap || 'NOT_ASSESSED'} size="sm" definitions=${session.settings.gapDefinitions} /> ${a.asIs.gapRaw && a.asIs.gapRaw !== GAP_LABEL[a.asIs.gap] && html`<span class="muted small">"${a.asIs.gapRaw}"</span>`}</dd>
+        ${a.asIs.info && html`<dt>Ops note</dt><dd>${a.asIs.info}</dd>`}
+        ${process?.description && html`<dt>Description</dt><dd class="muted">${process.description}</dd>`}
+        ${a.notes.map((n, i) => html`<dt key=${i}>Note</dt><dd class="diff-note">${n.text} <span class="muted">(${n.field})</span></dd>`)}
+        ${process?.context && Object.entries(process.context).map(([k, ex]) => Object.entries(ex).map(([h, v]) => html`<dt key=${k + h}>${k.toLowerCase()} · ${h}</dt><dd class="muted">${v}</dd>`))}
+      </dl>
+      <div style="margin-top:.6rem" class="sg-row">
+        ${a.scope.outOfScope ? html`<${Button} variant="outline" size="sm" onClick=${() => { updateSession(s => { applyChange(s, key, 'scope', { outOfScope: false, source: 'workshop', reason: 'included in the workshop' }); applyChange(s, key, 'workshop.status', WORKSHOP_STATUS.NOT_ASSESSED); }); }}>Include in scope</${Button}>` : html`<${Button} variant="text" size="sm" onClick=${() => { updateSession(s => { applyChange(s, key, 'scope', { outOfScope: true, source: 'workshop', reason: 'set out of scope in the workshop' }); applyChange(s, key, 'workshop.status', WORKSHOP_STATUS.OUT_OF_SCOPE); }); }}>Mark out of scope</${Button}>`}
+        <${Button} variant="text" size="sm" onClick=${() => setShowHist(!showHist)}>History (${session.audit.filter(e => e.key === key).length})</${Button}>
+        <${Button} variant="text" size="sm" onClick=${() => { let n = 0; updateSession(s => { n = applyToAllEntities(s, key); }); toast(`Applied to the other entities (${n} fields)`); }}>Apply to all entities</${Button}>
+      </div>
+      ${showHist && html`<div style="margin-top:.5rem"><${HistoryList} session=${session} akey=${key} /></div>`}
+      ${!c.complete && !c.outOfScope && html`<div class="missing"><b>Missing:</b> ${c.missing.join(' · ')}</div>`}
+      ${c.complete && !c.outOfScope && html`<div class="missing ok">Complete</div>`}
+    </div>
+    ${a.scope.outOfScope ? html`<div class="block"><h4>Out of scope</h4><p class="muted small">${a.scope.source === 'workshop' ? a.scope.reason : 'Pre-set as out of scope in the capture sheet.'} Excluded from progress, time budget and analysis.</p></div>` : html`
+    <div class="block">
+      <h4><span class="step">1</span> Fit-Gap</h4>
+      <div class="fgrid">
+        <${Field} label="Local Accounting" required><${YN} value=${a.fitGap.local} onChange=${v => set('fitGap.local', v)} name="Local Accounting" /></${Field}>
+        <${Field} label="Other"><${YN} value=${a.fitGap.other} onChange=${v => set('fitGap.other', v)} name="Other" /></${Field}>
+        <${Field} label="GBS" required><${YN} value=${a.fitGap.gbs} onChange=${v => set('fitGap.gbs', v)} name="GBS" /></${Field}>
+        <${Field} label="FTE"><${TextInput} class="num sm" value=${a.fitGap.fte ?? ''} onCommit=${v => set('fitGap.fte', parseNumber(v))} placeholder="0.0" style="width:6rem" /></${Field}>
+        <${Field} label="Workshop gap type" required><select class="select sm" value=${a.workshop.gapType || ''} onChange=${e => set('workshop.gapType', e.target.value || null)}><option value="">${a.asIs.gap ? `(Ops: ${GAP_LABEL[a.asIs.gap]})` : '– choose –'}</option>${GAP_CHOICES.map(g => html`<option value=${g}>${GAP_LABEL[g]}</option>`)}</select></${Field}>
+        <${Field} label="Rationale" required=${c.missing.includes('Rationale')} error=${c.missing.includes('Rationale') ? 'Required for gap types other than NO GAP, or when differing from Ops' : null}><${TextInput} class=${`sm${c.missing.includes('Rationale') ? ' invalid' : ''}`} value=${a.workshop.rationale} onCommit=${v => set('workshop.rationale', v)} placeholder="Short reason" /></${Field}>
+      </div>
+      ${delta.known && delta.differs && html`<div class="diff-note" style="margin-top:.5rem">To-Be: ${delta.toBe} → Workshop: ${delta.workshop}${suggestion && suggestion !== gap ? html` — suggest <b>${GAP_LABEL[suggestion]}</b> <${Button} variant="text" size="sm" onClick=${() => set('workshop.gapType', suggestion)}>Apply</${Button}>` : ''}</div>`}
+      ${delta.known && !delta.differs && a.asIs.gap === GAP.HARMONIZATION && suggestion === GAP.NO_GAP && html`<div class="diff-note" style="margin-top:.5rem">Split matches To-Be – Ops HARMONIZATION not confirmed? <${Button} variant="text" size="sm" onClick=${() => set('workshop.gapType', GAP.NO_GAP)}>Set NO GAP</${Button}></div>`}
+      ${a.workshop.status !== WORKSHOP_STATUS.CONFIRMED_FIT && (a.asIs.gap === GAP.NO_GAP || gap === GAP.NO_GAP) && html`<div style="margin-top:.6rem"><${Button} variant="primary" size="sm" kbd="C" onClick=${() => { updateSession(s => confirmFit(s, key, process)); }}>Confirm as fit</${Button}><span class="muted small" style="margin-left:.5rem">fills the split from To-Be and sets Detailed Gap to n/a</span></div>`}
+    </div>
+    <div class="block">
+      <h4><span class="step">2</span> Detailed Gap ${gap === GAP.NO_GAP || gap === GAP.NA ? html`<span class="muted" style="text-transform:none;letter-spacing:0;font-weight:400">optional</span>` : html`<span class="req" style="color:var(--flag)">at least one field</span>`}</h4>
+      <div class="fgrid">${DETAILED_GAP_FIELDS.map(f => html`<${ChipsField} key=${f} f=${f} label=${DETAILED_GAP_LABEL[f]} />`)}</div>
+      <div class="sg-row" style="margin-top:.5rem">${prevKey && html`<${Button} variant="outline" size="sm" icon="copy" onClick=${() => { let n = 0; updateSession(s => { n = copyDetailedGap(s, prevKey, key); }); toast(n ? `${n} fields copied from the previous activity` : 'Previous activity has no Detailed Gap values'); }}>Copy from previous activity</${Button}>`}<${Button} variant="text" size="sm" onClick=${() => updateSession(s => { for (const f of DETAILED_GAP_FIELDS) if (!s.assessments[key].detailedGap[f]) applyChange(s, key, `detailedGap.${f}`, NA); })}>Mark empty fields n/a</${Button}></div>
+    </div>
+    ${GAP_TYPES_WITH_DEVIATION.has(gap) && html`<div class="block dev">
+      <h4><span class="step">3</span> Deviation</h4>
+      <div class="fgrid">
+        <${Field} label="Dimension" required><div class="chips">${Object.keys(DIMENSION).map(d => html`<${Chip} key=${d} active=${(dev.dimensions || []).includes(d)} onClick=${() => setDev({ dimensions: (dev.dimensions || []).includes(d) ? dev.dimensions.filter(x => x !== d) : [...(dev.dimensions || []), d] })}>${DIMENSION_LABEL[d]}</${Chip}>`)}</div></${Field}>
+        <${Field} label="Resolution approach" required><select class="select sm" value=${dev.resolution || ''} onChange=${e => setDev({ resolution: e.target.value })}><option value="">– choose –</option>${Object.keys(RESOLUTION).map(r => html`<option value=${r}>${RESOLUTION_LABEL[r]}</option>`)}</select></${Field}>
+        <${Field} label="Accountable owner" required hint=${owners.length ? null : 'Add participants in 1 · Plan'}><select class="select sm" value=${dev.ownerId || ''} onChange=${e => setDev({ ownerId: e.target.value })}><option value="">– choose –</option>${owners.map(p => html`<option value=${p.id}>${p.name} · ${p.organisation}</option>`)}</select></${Field}>
+        <${Field} label="Target date"><input class="input sm" type="date" value=${dev.targetDate || ''} onChange=${e => setDev({ targetDate: e.target.value })} /></${Field}>
+        <${Field} label="Escalation level"><select class="select sm" value=${dev.escalation || 'L1'} onChange=${e => setDev({ escalation: e.target.value })}>${ESCALATION.map(l => html`<option value=${l}>${ESCALATION_LABEL[l]}</option>`)}</select></${Field}>
+        <${Field} label="Approval status"><select class="select sm" value=${dev.approval || 'PROPOSED'} onChange=${e => setDev({ approval: e.target.value })}>${APPROVAL.map(l => html`<option value=${l}>${l[0] + l.slice(1).toLowerCase()}</option>`)}</select></${Field}>
+        <${Field} label="Justification" required=${dev.resolution === 'SEPARATE_VARIANT'} class="full" hint=${dev.resolution === 'SEPARATE_VARIANT' ? 'Mandatory for a separate variant: legal, tax or regulatory reason' : null}><${TextInput} textarea class="sm" style="min-height:2.6rem" value=${dev.justification || ''} onCommit=${v => setDev({ justification: v })} /></${Field}>
+        ${(gap === GAP.STANDARDIZATION || gap === GAP.BOTH) && html`<${Field} label="Initiative candidate (PE / WP3)" class="full"><div class="sg-row" style="margin:0"><${Switch} checked=${dev.initiativeCandidate !== false} onChange=${v => setDev({ initiativeCandidate: v })}>Initiative candidate</${Switch}>${tb.initiative && html`<${Chip} active=${dev.linkedInitiative === tb.initiative} onClick=${() => setDev({ linkedInitiative: dev.linkedInitiative === tb.initiative ? '' : tb.initiative })}>Link to existing: ${tb.initiative}</${Chip}>`}<${TextInput} class="sm" style="width:14rem" value=${dev.linkedInitiative || ''} onCommit=${v => setDev({ linkedInitiative: v })} placeholder="Existing initiative ID" /></div></${Field}>`}
+      </div>
+    </div>`}
+    <div class="block">
+      <h4><span class="step">4</span> Status & next step</h4>
+      <div class="fgrid">
+        <${Field} label="Workshop status" required hint="Keys 1–5"><select class="select sm" value=${a.workshop.status} onChange=${e => set('workshop.status', e.target.value)}><option value="NOT_ASSESSED">Not assessed</option>${STATUS_KEYS.map((s, i) => html`<option value=${s}>${i + 1} · ${WORKSHOP_STATUS_LABEL[s]}</option>`)}</select></${Field}>
+        <${Field} label="Comment" class="full"><${TextInput} textarea class="sm" style="min-height:2.6rem" value=${a.workshop.comment} onCommit=${v => set('workshop.comment', v)} ref=${commentRef} placeholder="Enter opens this field" /></${Field}>
+        <${Field} label="Next step"><${TextInput} class="sm" value=${a.workshop.nextStep} onCommit=${v => set('workshop.nextStep', v)} /></${Field}>
+        <${Field} label="Owner"><select class="select sm" value=${a.workshop.owner || ''} onChange=${e => set('workshop.owner', e.target.value)}><option value="">–</option>${owners.map(p => html`<option value=${p.id}>${p.name}</option>`)}</select></${Field}>
+        <${Field} label="Due"><input class="input sm" type="date" value=${a.workshop.due || ''} onChange=${e => set('workshop.due', e.target.value)} /></${Field}>
+      </div>
+    </div>`}
+  </div>`;
+}
+
+function EntityCell({ a, process, onOpen, open, updateSession }) {
+  if (!a) return html`<td class="ent"><span class="muted small">—</span></td>`;
+  const gap = effectiveGap(a); const c = completeness(a); const differs = gapDiffersFromOps(a);
+  const set = (path, v) => updateSession(s => applyChange(s, a.key, path, v));
+  if (a.scope.outOfScope) return html`<td class=${`ent${open ? ' open' : ''}`} onClick=${e => { e.stopPropagation(); onOpen(); }}><div class="cell"><${GapPill} value="OUT_OF_SCOPE" size="sm" /></div></td>`;
+  return html`<td class=${`ent${open ? ' open' : ''}`} onClick=${e => { e.stopPropagation(); if (!e.target.closest('.yn')) onOpen(); }}>
+    <div class="cell">
+      <div class="top"><${GapPill} value=${gap || 'NOT_ASSESSED'} size="sm" />${differs && html`<span class="diff-note">Ops: ${GAP_LABEL[a.asIs.gap] || '–'}</span>`}${c.complete ? html`<span class="complete" title="Complete"><${Icon} name="check" size=${13} /></span>` : c.touched ? html`<span class="incomplete" title=${c.missing.join(', ')}><${Icon} name="alert" size=${13} /></span>` : null}</div>
+      <div class="tri"><span class="lbl">LA</span><${YN} size="sm" value=${a.fitGap.local} onChange=${v => set('fitGap.local', v)} name="Local Accounting" /><span class="lbl">OT</span><${YN} size="sm" value=${a.fitGap.other} onChange=${v => set('fitGap.other', v)} name="Other" /><span class="lbl">GBS</span><${YN} size="sm" value=${a.fitGap.gbs} onChange=${v => set('fitGap.gbs', v)} name="GBS" /></div>
+      <${StatusDot} status=${a.workshop.status} />
+    </div></td>`;
+}
+
+function WorkshopView({ session, summary, updateSession, toast, ui, setUi }) {
+  const st = session.settings;
+  const streamsWithData = STREAMS.filter(s => summary.activitiesByStream[s]);
+  const tabs = [...streamsWithData.filter(s => s === 'A2R' ? (st.streamsInScope['A2R-FAA'] !== false || st.streamsInScope['A2R-IA'] !== false) : st.streamsInScope[s] !== false), ...(st.streamsInScope.MD !== false ? ['MD'] : [])];
+  const stream = tabs.includes(ui.stream) ? ui.stream : tabs[0];
+  const entityFilter = ui.entity && session.entities[ui.entity] ? ui.entity : null;
+  const entities = Object.values(session.entities).filter(e => !entityFilter || e.code === entityFilter);
+  const tree = useMemo(() => {
+    let t = buildTree(session, stream === 'MD' ? null : stream, { masterDataOnly: stream === 'MD' });
+    if (stream === 'A2R') { const dropFAA = st.streamsInScope['A2R-FAA'] === false, dropIA = st.streamsInScope['A2R-IA'] === false; const isIA = n => /inventor/i.test(n.name), isFAA = n => /asset|fixed/i.test(n.name) && !isIA(n); const prune = (ns) => ns.filter(n => !((dropFAA && isFAA(n)) || (dropIA && isIA(n)))).map(n => ({ ...n, children: prune(n.children) })); t = prune(t); }
+    return t;
+  }, [session.processes, stream, st.streamsInScope]);
+  const leaves = useMemo(() => { const out = []; const walk = (n) => { if (n.activities.length) out.push(n); n.children.forEach(walk); }; tree.forEach(walk); return out; }, [tree]);
+  const node = leaves.find(n => n.id === ui.l3) || leaves[0];
+  const picks = useQuickPicks(session, stream === 'MD' ? null : stream);
+  const [collapsed, setCollapsed] = useState(() => new Set());
+  const toggleNode = (id) => setCollapsed(c => { const n = new Set(c); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  const mode = ui.mode || (stream === 'R2R' ? 'walk' : 'exceptions');
+  const commentRef = useRef();
+  const setStream = (s) => setUi({ ...ui, stream: s, l3: null, expanded: null });
+
+  if (!node) return html`<div><div class="tabs">${tabs.map(s => html`<button class="tab" key=${s} aria-selected=${s === stream} onClick=${() => setStream(s)}>${s}</button>`)}</div><${EmptyState} icon="info" title="Nothing to assess in this stream" text="Either the stream is out of scope (1 · Plan) or the imported files hold no activities for it." /></div>`;
+
+  const acts = node.activities;
+  const stats = nodeStats(session, acts, entityFilter);
+  const keyOf = (e, p) => assessmentKey(e.code, p.id);
+  const rowFlagged = (p) => entities.some(e => { const a = session.assessments[keyOf(e, p)]; if (!a || a.scope.outOfScope) return false; return !(a.asIs.gap === GAP.NO_GAP && (a.workshop.status === WORKSHOP_STATUS.NOT_ASSESSED || a.workshop.status === WORKSHOP_STATUS.CONFIRMED_FIT) && !a.workshop.changedAt) || a.workshop.status === WORKSHOP_STATUS.OPEN_QUESTION; });
+  const rows = mode === 'exceptions' ? acts.filter(p => rowFlagged(p) || p.id === ui.expanded) : acts;
+  const hidden = acts.length - rows.length;
+  const expanded = ui.expanded && rows.find(p => p.id === ui.expanded) ? ui.expanded : null;
+  const expandedEntity = ui.expandedEntity && entities.some(e => e.code === ui.expandedEntity) ? ui.expandedEntity : (entities[0] && entities[0].code);
+  const selected = ui.selected && rows.find(p => p.id === ui.selected) ? ui.selected : (rows[0] && rows[0].id);
+  const open = (pid, ecode) => setUi({ ...ui, expanded: ui.expanded === pid && ui.expandedEntity === ecode ? null : pid, expandedEntity: ecode, selected: pid });
+  const bulk = () => { const keys = acts.flatMap(p => entities.map(e => keyOf(e, p))); let res; updateSession(s => { res = bulkConfirmNoGap(s, keys, s.processes); }); if (!res.count) { toast('No Ops NO GAP rows left to confirm'); return; } toast(`${res.count} activities confirmed as fit`, { actionLabel: 'Undo', onAction: () => { updateSession(s => undoBulk(s, res.bulkId)); toast('Bulk confirmation undone'); }, ttl: 8000 }); };
+  const leaveCheck = (nextId) => { const incomplete = acts.flatMap(p => entities.map(e => session.assessments[keyOf(e, p)])).filter(a => a && !a.scope.outOfScope && a.workshop.changedAt && !completeness(a).complete).length; if (incomplete) toast(`${node.id}: ${incomplete} assessment${incomplete > 1 ? 's' : ''} with missing fields`); setUi({ ...ui, l3: nextId, expanded: null, selected: null }); };
+
+  // Keyboard: ↑/↓ row, Enter expand + comment, 1–5 status, C confirm as fit, Esc collapse.
+  useEffect(() => {
+    const onKey = (e) => {
+      const tag = (e.target.tagName || '').toLowerCase(); if (['input', 'textarea', 'select'].includes(tag) || e.target.isContentEditable) return;
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      const idx = rows.findIndex(p => p.id === selected);
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); const n = rows[Math.min(rows.length - 1, Math.max(0, idx + (e.key === 'ArrowDown' ? 1 : -1)))]; if (n) setUi({ ...ui, selected: n.id, expanded: ui.expanded ? n.id : null }); return; }
+      if (e.key === 'Escape') { setUi({ ...ui, expanded: null }); return; }
+      if (!selected) return;
+      if (e.key === 'Enter') { e.preventDefault(); if (expanded === selected) { commentRef.current?.focus(); } else { setUi({ ...ui, expanded: selected, expandedEntity }); setTimeout(() => commentRef.current?.focus(), 50); } return; }
+      const targets = expanded === selected && entityFilter === null && ui.expandedEntity ? [ui.expandedEntity] : entities.map(x => x.code);
+      if (/^[1-5]$/.test(e.key)) { const status = STATUS_KEYS[Number(e.key) - 1]; updateSession(s => { for (const c of targets) applyChange(s, assessmentKey(c, selected), 'workshop.status', status); }); return; }
+      if (e.key.toLowerCase() === 'c') { let n = 0; updateSession(s => { for (const c of targets) { const a = s.assessments[assessmentKey(c, selected)]; if (a && (a.asIs.gap === GAP.NO_GAP || effectiveGap(a) === GAP.NO_GAP) && confirmFit(s, a.key, s.processes[selected])) n++; } }); toast(n ? `Confirmed as fit (${n})` : 'Confirm as fit applies to Ops NO GAP rows'); }
+    };
+    window.addEventListener('keydown', onKey); return () => window.removeEventListener('keydown', onKey);
+  }, [rows, selected, expanded, expandedEntity, entities, ui]);
+
+  const opsSummary = Object.entries(stats.ops).sort((a, b) => b[1] - a[1]).map(([g, n]) => `${n} ${GAP_LABEL[g] || 'not assessed'}`).join(', ');
+  const prevKeyFor = (p, ecode) => { const i = acts.findIndex(x => x.id === p.id); return i > 0 ? assessmentKey(ecode, acts[i - 1].id) : null; };
+  const crumbsNode = [...(function up(n) { const out = []; let cur = session.processes[n.parentId]; while (cur) { out.unshift(cur); cur = session.processes[cur.parentId]; } return out; })(node)];
+
+  return html`<div class="ws">
+    <div class="tabs" role="tablist" style="margin-bottom:.75rem">${tabs.map(s => html`<button class="tab" role="tab" key=${s} aria-selected=${s === stream} onClick=${() => setStream(s)}>${s}<span class="cnt">${s === 'MD' ? 'cross-stream' : summary.activitiesByStream[s]}</span></button>`)}
+      <span style="flex:1"></span>
+      <select class="select sm" style="width:auto;align-self:center" value=${entityFilter || ''} onChange=${e => setUi({ ...ui, entity: e.target.value || null, expanded: null })}><option value="">All entities</option>${Object.values(session.entities).map(e => html`<option value=${e.code}>${e.displayName || e.name}</option>`)}</select>
+      <div class="yn" style="align-self:center;margin-left:.5rem"><button aria-pressed=${mode === 'exceptions'} onClick=${() => setUi({ ...ui, mode: 'exceptions' })} style="font-family:var(--font-ui);padding:.22rem .6rem">Exceptions</button><button aria-pressed=${mode === 'walk'} onClick=${() => setUi({ ...ui, mode: 'walk' })} style="font-family:var(--font-ui);padding:.22rem .6rem">Walk all</button></div>
+    </div>
+    <div class="ws-grid">
+      <${TreePanel} tree=${tree} selectedId=${node.id} onSelect=${leaveCheck} session=${session} entityFilter=${entityFilter} collapsed=${collapsed} toggle=${toggleNode} />
+      <div style="min-width:0">
+        <div class="card l3head"><div class="card-body" style="display:grid;grid-template-columns:1fr auto;gap:1rem;align-items:center">
+          <div><div class="eyebrow">${crumbsNode.map(c => c.id + ' ' + c.name).join(' › ') || stream}</div><h2 style="font-family:var(--font-serif);font-weight:500;font-size:1.3rem;margin:.15rem 0"><span class="pid mono muted" style="font-size:.85rem">${node.id}</span> ${node.name}</h2>
+            <div class="muted small">${acts.length} activities${entityFilter ? '' : ` × ${entities.length} entities`} · Ops: ${opsSummary || '–'}${stats.outOfScope ? ` · ${stats.outOfScope} out of scope` : ''}</div>
+            <div style="max-width:22rem;margin-top:.4rem"><${MiniBar} segments=${[{ key: 'DONE', value: stats.assessed }, { key: 'OPEN', value: stats.total - stats.assessed }]} pct=${`${stats.assessed}/${stats.total} assessed · ${stats.openGaps} open gaps`} /></div></div>
+          <div style="display:flex;flex-direction:column;gap:.4rem;align-items:flex-end"><${Button} variant="primary" size="sm" disabled=${!stats.opsNoGap} onClick=${bulk}>Confirm Ops NO GAP for this L3 (${stats.opsNoGap})</${Button}><span class="muted small">${mode === 'exceptions' ? `${hidden} NO GAP row${hidden === 1 ? '' : 's'} hidden` : 'all rows shown'} · <a href="#" onClick=${e => { e.preventDefault(); setUi({ ...ui, mode: mode === 'exceptions' ? 'walk' : 'exceptions' }); }}>${mode === 'exceptions' ? 'show all' : 'exceptions only'}</a></span></div>
+        </div></div>
+        <table class="wtable sticky">
+          <thead><tr><th style="width:30%">Activity</th>${entities.map(e => html`<th class="ent" key=${e.code}>${e.displayName || e.name}<small>${e.hasCode ? e.code : ''}</small></th>`)}</tr></thead>
+          <tbody>
+            ${rows.map(p => html`<tr class="act" key=${p.id} aria-selected=${p.id === selected} onClick=${() => setUi({ ...ui, selected: p.id })}>
+              <td onClick=${e => { e.stopPropagation(); open(p.id, expandedEntity); }}><div class="pid">${p.id}</div><div class="aname">${p.name}</div><div class="ctx">To-Be: ${laneTags(p.toBe?.le, p.toBe?.gbs, false)}${p.toBe?.system && html` <span>· ${p.toBe.system}</span>`}</div></td>
+              ${entities.map(e => html`<${EntityCell} key=${e.code} a=${session.assessments[keyOf(e, p)]} process=${p} open=${expanded === p.id && expandedEntity === e.code} onOpen=${() => open(p.id, e.code)} updateSession=${updateSession} />`)}
+            </tr>${expanded === p.id && session.assessments[assessmentKey(expandedEntity, p.id)] && html`<tr class="expand" key=${p.id + ':x'}><td colspan=${entities.length + 1}>
+              ${entities.length > 1 && html`<div class="tabs" style="margin:0 1rem;padding-top:.4rem">${entities.map(e => html`<button class="tab" key=${e.code} aria-selected=${e.code === expandedEntity} onClick=${() => setUi({ ...ui, expandedEntity: e.code })}>${e.displayName || e.name}</button>`)}</div>`}
+              <${ExpandedCell} session=${session} a=${session.assessments[assessmentKey(expandedEntity, p.id)]} process=${p} updateSession=${updateSession} picks=${picks} participants=${session.participants} prevKey=${prevKeyFor(p, expandedEntity)} toast=${toast} commentRef=${commentRef} />
+            </td></tr>`}`)}
+            ${!rows.length && html`<tr><td colspan=${entities.length + 1}><div class="empty" style="border:0;padding:1.5rem"><h3>All ${acts.length} activities are Ops NO GAP and confirmed</h3><p>Nothing left to discuss in ${node.id}. Switch to "Walk all" to see every row.</p></div></td></tr>`}
+          </tbody>
+        </table>
+        <div class="muted small" style="margin-top:.6rem;font-family:var(--font-mono)">↑ ↓ activity · Enter expand / comment · 1–5 status (${STATUS_KEYS.map((s, i) => `${i + 1} ${WORKSHOP_STATUS_LABEL[s]}`).join(' · ')}) · C confirm as fit · Esc collapse</div>
+      </div>
+    </div>
+  </div>`;
+}
+
+/** Session control for the KPI strip: pick / start / end the active session and show the pace. */
+function SessionBar({ session, updateSession, toast }) {
+  const [, tickN] = useState(0);
+  useEffect(() => { const t = setInterval(() => tickN(n => n + 1), 30000); return () => clearInterval(t); }, []);
+  const pace = sessionPace(session);
+  const ws = pace?.session;
+  const label = (s) => `${fmtDateShort(s.date)} ${s.start || ''}${s.end ? '–' + s.end : ''} · ${s.stream}`;
+  return html`<div class="sessionbar">
+    <select class="select sm" style="width:auto" value=${session.activeSessionId || ''} onChange=${e => updateSession(s => { s.activeSessionId = e.target.value || null; })} title="Active session – every change is tagged with it"><option value="">No active session</option>${session.sessions.map(s => html`<option value=${s.id} key=${s.id}>${label(s)}</option>`)}</select>
+    ${ws && !pace.running && html`<${Button} variant="primary" size="sm" onClick=${() => updateSession(s => { const x = s.sessions.find(y => y.id === ws.id); x.startedAt = new Date().toISOString(); x.endedAt = null; })}>Start</${Button}>`}
+    ${ws && pace.running && html`<span class="pace"><b class="num">${pace.elapsed}${pace.planned !== null ? `/${pace.planned}` : ''} min</b> · <span class="num">${pace.remaining}</span> left${pace.secPerActivity !== null ? html` · need <b class="num">${pace.secPerActivity} s</b>/activity` : ''}</span><${Button} variant="outline" size="sm" onClick=${() => { updateSession(s => { const x = s.sessions.find(y => y.id === ws.id); x.endedAt = new Date().toISOString(); }); toast('Session ended – save a JSON backup (3 · Run → Import & data)'); }}>End</${Button}>`}
+    ${!session.activeSessionId && html`<span class="muted small" title="Changes are stored without a session tag">no session tag</span>`}
+  </div>`;
+}
+function fmtDateShort(d) { if (!d) return ''; const [, m, dd] = d.split('-'); return `${dd}.${m}.`; }
+
+
 /* ---- src/ui/app.js ---- */
 // App shell: sidebar (streams + six lifecycle phases), top bar, KPI strip, pages.
 const PHASES = [
@@ -1968,7 +2684,7 @@ function Sidebar({ phase, setPhase, summary, rail, setRail, session, page, setPa
     </div>
     <div class="side-section" style="padding-bottom:.25rem"><div class="eyebrow">Lifecycle</div></div>
     <nav class="side-nav" aria-label="Phases">
-      ${PHASES.map(p => html`<button class="side-nav-item" aria-current=${page === 'phase' && phase === p.key ? 'page' : 'false'} onClick=${() => { setPage('phase'); setPhase(p.key); }}><span class="n">${p.n}</span><span>${p.label}</span>${p.increment !== 1 ? html`<span class="state">next</span>` : html`<span class="state">build</span>`}</button>`)}
+      ${PHASES.map(p => { const done = p.key === 'plan' ? (!!session.settings.country && session.participants.length > 0 && session.sessions.length > 0) : p.key === 'run' ? (Object.keys(session.assessments).length > 0 && Object.values(session.assessments).every(a => a.scope.outOfScope || a.workshop.status !== 'NOT_ASSESSED')) : false; const built = ['plan', 'run'].includes(p.key); return html`<button class="side-nav-item" aria-current=${page === 'phase' && phase === p.key ? 'page' : 'false'} onClick=${() => { setPage('phase'); setPhase(p.key); }}><span class="n">${p.n}</span><span>${p.label}</span>${done ? html`<span class="state done"><${Icon} name="check" size=${13} /></span>` : built ? html`<span class="state"></span>` : html`<span class="state">next</span>`}</button>`; })}
     </nav>
     <div class="side-footer">
       <button class="side-nav-item" aria-current=${page === 'styleguide' ? 'page' : 'false'} onClick=${() => setPage('styleguide')}><${Icon} name="palette" /><span>Style sheet</span></button>
@@ -2001,13 +2717,17 @@ function TopBar({ crumbs, theme, setTheme, share, setShare, onPalette, onFeedbac
   </header>`;
 }
 
-function KpiStrip({ summary, session }) {
+function KpiStrip({ summary, session, updateSession, toast }) {
   const total = summary.assessments || 0;
-  if (!total) return html`<div class="kpi-strip"><div class="headline"><b>0</b> activities loaded</div><div class="muted small">Import the stream capture sheets to see the headline KPI and gap mix here.</div></div>`;
-  const g = {}; for (const s of Object.values(summary.gapByStream)) for (const [k, v] of Object.entries(s)) g[k] = (g[k] || 0) + v;
-  const segs = ['NO_GAP', 'HARMONIZATION', 'STANDARDIZATION', 'BOTH', 'NA', 'UNCLEAR', 'NOT_ASSESSED'].map(k => ({ key: k, value: g[k] || 0, label: GAP_LABEL[k] || 'Not assessed' }));
-  const pct = Math.round(100 * (g.NO_GAP || 0) / Math.max(1, total - summary.outOfScope));
-  return html`<div class="kpi-strip"><div class="headline"><b>${pct}%</b> Ops NO GAP · ${session.settings.clientName || summary.entities.length + ' entities'}</div><${Stack} segments=${segs} legend=${true} /></div>`;
+  if (!total) return html`<div class="kpi-strip"><div class="headline"><b>0</b> activities loaded</div><div class="muted small">Import the stream capture sheets to see the headline KPI and gap mix here.</div><${SessionBar} session=${session} updateSession=${updateSession} toast=${toast} /></div>`;
+  // Workshop progress: confirmed fit share and workshop gap mix (effective gap type), in-scope only.
+  const g = {}; let assessed = 0, fit = 0, inScope = 0;
+  for (const a of Object.values(session.assessments)) { if (a.scope.outOfScope) continue; inScope++; if (a.workshop.status !== 'NOT_ASSESSED') assessed++; if (a.workshop.status === 'CONFIRMED_FIT') fit++; const k = effectiveGap(a) || 'NOT_ASSESSED'; g[k] = (g[k] || 0) + 1; }
+  const SHORT = { NO_GAP: 'NO GAP', HARMONIZATION: 'HARM', STANDARDIZATION: 'STD', BOTH: 'BOTH', NA: 'N/A', UNCLEAR: 'UNCLEAR', NOT_ASSESSED: 'OPEN' };
+  const segs = ['NO_GAP', 'HARMONIZATION', 'STANDARDIZATION', 'BOTH', 'NA', 'UNCLEAR', 'NOT_ASSESSED'].map(k => ({ key: k, value: g[k] || 0, label: SHORT[k] }));
+  const pct = Math.round(100 * fit / Math.max(1, inScope));
+  const name = session.settings.clientName ? `${session.settings.clientName}${session.settings.country ? ' · ' + session.settings.country : ''}` : `${summary.entities.length} entities`;
+  return html`<div class="kpi-strip"><div class="headline"><b>${pct}%</b> confirmed fit · ${assessed}/${inScope} assessed · ${name}</div><${Stack} segments=${segs} legend=${true} /><${SessionBar} session=${session} updateSession=${updateSession} toast=${toast} /></div>`;
 }
 
 function ComingNext({ p }) {
@@ -2017,14 +2737,14 @@ function ComingNext({ p }) {
   </div>`;
 }
 
-function RunPage({ session, summary, updateSession, toast, onClearAll, tab, setTab }) {
+function RunPage({ session, summary, updateSession, toast, onClearAll, tab, setTab, ui, setUi }) {
   const hasData = session.files.length > 0;
   return html`<div>
     <div class="tabs" role="tablist">
       <button class="tab" role="tab" aria-selected=${tab === 'workshop'} onClick=${() => setTab('workshop')}>Workshop</button>
       <button class="tab" role="tab" aria-selected=${tab === 'import'} onClick=${() => setTab('import')}>Import & data${hasData && html`<span class="cnt">${session.files.length}</span>`}</button>
     </div>
-    ${tab === 'import' ? html`<${ImportView} session=${session} summary=${summary} updateSession=${updateSession} toast=${toast} onClearAll=${onClearAll} />` : hasData ? html`<${ComingNext} p=${PHASES[2]} />` : html`<${EmptyState} icon="upload" title="No capture sheets yet" text="Import the stream workbooks first – the workshop view is built from them." action=${html`<${Button} variant="primary" icon="upload" onClick=${() => setTab('import')}>Go to import</${Button}>`} />`}
+    ${tab === 'import' ? html`<${ImportView} session=${session} summary=${summary} updateSession=${updateSession} toast=${toast} onClearAll=${onClearAll} />` : hasData ? html`<${WorkshopView} session=${session} summary=${summary} updateSession=${updateSession} toast=${toast} ui=${ui} setUi=${setUi} />` : html`<${EmptyState} icon="upload" title="No capture sheets yet" text="Import the stream workbooks first – the workshop view is built from them." action=${html`<${Button} variant="primary" icon="upload" onClick=${() => setTab('import')}>Go to import</${Button}>`} />`}
   </div>`;
 }
 
@@ -2055,6 +2775,8 @@ function App() {
   const [session, setSession] = useState(null);
   const [save, setSave] = useState({ status: 'idle' });
   const [runTab, setRunTab] = useState(null);
+  const [wsUi, setWsUi] = useState(() => store.get('fg.ws', {}));
+  useEffect(() => { store.set('fg.ws', { stream: wsUi.stream, l3: wsUi.l3, mode: wsUi.mode, entity: wsUi.entity }); }, [wsUi.stream, wsUi.l3, wsUi.mode, wsUi.entity]);
   const dirty = useRef(false);
   const updateSession = useCallback((fn) => { setSession(s => { const n = { ...s }; fn(n); n.updatedAt = new Date().toISOString(); dirty.current = true; return n; }); }, []);
   useEffect(() => { (async () => { let loaded = null; try { loaded = await storageLoad(); } catch (e) { setSave({ status: 'unavailable', error: String(e) }); } if (loaded) setSave({ status: 'loaded', at: loaded.updatedAt ? new Date(loaded.updatedAt).toLocaleString([], { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '' }); setSession(loaded ? { ...createSession(), ...loaded } : createSession()); })(); }, []);
@@ -2088,15 +2810,16 @@ function App() {
   const viewName = page === 'styleguide' ? 'Style sheet' : `${current.n} ${current.label}`;
   const crumbs = page === 'styleguide' ? ['Design system', 'Style sheet'] : [`${current.n} ${current.label}`, phase === 'run' && tab === 'import' ? 'Import & data' : current.title];
   if (!session) return html`<div class="app"><aside class="sidebar"></aside><div class="content"><div class="main" style="display:grid;gap:.6rem;max-width:30rem"><div class="skeleton" style="width:40%"></div><div class="skeleton" style="width:80%"></div><div class="skeleton" style="width:60%"></div></div></div></div>`;
-  const paletteItems = [...Object.values(session.entities).map(e => ({ label: `${e.displayName || e.name} · ${e.code}`, kind: 'entity', icon: 'file', go: () => { setPage('phase'); setPhase('run'); setRunTab('import'); } })), ...PHASES.map(p => ({ label: `${p.n} ${p.label} – ${p.title}`, kind: 'phase', icon: p.icon, go: () => { setPage('phase'); setPhase(p.key); } })), { label: 'Style sheet', kind: 'design', icon: 'palette', go: () => setPage('styleguide') }, { label: theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme', kind: 'theme', icon: 'sun', go: () => setTheme(theme === 'dark' ? 'light' : 'dark') }];
+  const goActivity = (p) => { const l3 = p.level >= 4 ? p.parentId : p.id; setPage('phase'); setPhase('run'); setRunTab('workshop'); setWsUi(u => ({ ...u, stream: p.stream, l3, expanded: p.level >= 4 ? p.id : null, selected: p.level >= 4 ? p.id : null, entity: null })); };
+  const paletteItems = [...Object.values(session.entities).map(e => ({ label: `${e.displayName || e.name} · ${e.code}`, kind: 'entity', icon: 'file', go: () => { setPage('phase'); setPhase('run'); setRunTab('workshop'); setWsUi(u => ({ ...u, entity: e.code })); } })), ...STREAMS.filter(s => summary.activitiesByStream[s]).map(s => ({ label: `${s} · ${summary.activitiesByStream[s]} activities`, kind: 'stream', icon: 'run', go: () => { setPage('phase'); setPhase('run'); setRunTab('workshop'); setWsUi(u => ({ ...u, stream: s, l3: null })); } })), ...Object.values(session.processes).filter(p => p.level >= 2).map(p => ({ label: `${p.id} ${p.name}`, kind: `L${p.level}`, icon: 'file', go: () => goActivity(p) })), ...PHASES.map(p => ({ label: `${p.n} ${p.label} – ${p.title}`, kind: 'phase', icon: p.icon, go: () => { setPage('phase'); setPhase(p.key); } })), { label: 'Style sheet', kind: 'design', icon: 'palette', go: () => setPage('styleguide') }, { label: theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme', kind: 'theme', icon: 'sun', go: () => setTheme(theme === 'dark' ? 'light' : 'dark') }];
   const logFeedback = (note) => { updateSession(s => { s.feedback = [...s.feedback, { ts: new Date().toISOString(), view: viewName, note, sessionId: s.activeSessionId }]; }); toast('Feedback logged'); };
   const clearAll = async () => { try { await storageClear(); } catch { /* ignore */ } setSession(createSession()); dirty.current = true; setRunTab('import'); toast('All data cleared'); };
   return html`<div class="app" data-rail=${rail ? '1' : '0'}>
     <${Sidebar} phase=${phase} setPhase=${setPhase} summary=${summary} rail=${rail} setRail=${setRail} session=${session} page=${page} setPage=${setPage} />
     <div class="content">
       <${TopBar} crumbs=${crumbs} theme=${theme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')} setTheme=${setTheme} share=${share} setShare=${setShare} onPalette=${() => setPalette(true)} onFeedback=${() => setFeedback(f => !f)} save=${save} />
-      <${KpiStrip} summary=${summary} session=${session} />
-      <main class="main">${page === 'styleguide' ? html`<${StyleGuide} />` : phase === 'run' ? html`<${RunPage} session=${session} summary=${summary} updateSession=${updateSession} toast=${toast} onClearAll=${clearAll} tab=${tab} setTab=${setRunTab} />` : html`<${ComingNext} p=${current} />`}</main>
+      <${KpiStrip} summary=${summary} session=${session} updateSession=${updateSession} toast=${toast} />
+      <main class="main">${page === 'styleguide' ? html`<${StyleGuide} />` : phase === 'run' ? html`<${RunPage} session=${session} summary=${summary} updateSession=${updateSession} toast=${toast} onClearAll=${clearAll} tab=${tab} setTab=${setRunTab} ui=${wsUi} setUi=${setWsUi} />` : phase === 'plan' ? html`<${PlanView} session=${session} summary=${summary} updateSession=${updateSession} toast=${toast} />` : html`<${ComingNext} p=${current} />`}</main>
     </div>
     <${Palette} open=${palette} onClose=${() => setPalette(false)} items=${paletteItems} onPick=${i => { setPalette(false); i.go(); }} />
     <${Welcome} open=${welcome} onClose=${() => { setWelcome(false); store.set('fg.welcomed', true); }} onPrimary=${() => { setWelcome(false); store.set('fg.welcomed', true); setPage('styleguide'); }} />

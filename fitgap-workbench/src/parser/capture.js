@@ -309,6 +309,7 @@ export function parseCaptureWorkbook(wb, opts) {
   const processes = []; const assessments = []; const skipped = []; const notes = [];
   const unmappedGap = []; const stack = {}; let hierarchyMismatch = 0;
   const toBe = layout.blocks.find(b => b.kind === 'TOBE');
+  const shared = layout.blocks.filter(b => !profile.blocks[b.kind].perEntity && b.kind !== 'TOBE');
   const perEntity = layout.blocks.filter(b => profile.blocks[b.kind].perEntity);
   const entityOf = (b) => b.entity.code || fuzzyKey(b.entity.name);
   const activityLevels = new Set(profile.dataRow.activityLevels);
@@ -337,6 +338,7 @@ export function parseCaptureWorkbook(wb, opts) {
       const { out, extra } = readTextFields(grid, r, toBe);
       p.toBe = { le: parseYN(out.le), gbs: parseYN(out.gbs), system: out.system || '', initiative: out.initiative || '', extra };
     }
+    for (const b of shared) { const { extra } = readTextFields(grid, r, b); if (Object.keys(extra).length) { p.context = p.context || {}; p.context[b.kind] = extra; } }
     processes.push(p);
     if (!activityLevels.has(level)) continue;
 
