@@ -135,7 +135,7 @@ function DiffsCard({ session }) {
   </${Card}>`;
 }
 
-function ImportView({ session, summary, updateSession, toast, onClearAll }) {
+function ImportView({ session, summary, updateSession, toast, onClearAll, onReplaceSession }) {
   const q = useImportQueue(updateSession, (results, n) => {
     const ok = results.filter(r => r && !r.error); const added = ok.reduce((a, r) => a + r.assessments.added, 0), merged = ok.reduce((a, r) => a + r.assessments.merged, 0), changed = ok.reduce((a, r) => a + r.assessments.changedOps, 0);
     const pending = results.length - ok.length;
@@ -146,12 +146,13 @@ function ImportView({ session, summary, updateSession, toast, onClearAll }) {
   const onFiles = (files) => q.run(files);
   if (!hasData && !q.jobs.length) {
     return html`<div>
-      <${PageHead} eyebrow="3 · Run · Import & data" title="Import the capture sheets" lead="Start with the pre-filled workbooks from GBS Operations. The tool reads the main Fit-Gap sheet of each file, detects entities and blocks by their titles, and shows you exactly what it found before anything is assessed." how=${html`<ol><li>Drop all stream workbooks at once (or add them one by one).</li><li>Check the import summary: entities × streams, activity counts, gap distribution and warnings.</li><li>If a label without entity code looks like a known entity, confirm or reject the match.</li><li>Re-import a newer version at any time – Ops values are refreshed and listed, workshop results stay.</li></ol>`} />
+      <${PageHead} eyebrow="3 · Run · Data & exports" title="Import the capture sheets" lead="Start with the pre-filled workbooks from GBS Operations. The tool reads the main Fit-Gap sheet of each file, detects entities and blocks by their titles, and shows you exactly what it found before anything is assessed." how=${html`<ol><li>Drop all stream workbooks at once (or add them one by one).</li><li>Check the import summary: entities × streams, activity counts, gap distribution and warnings.</li><li>If a label without entity code looks like a known entity, confirm or reject the match.</li><li>Re-import a newer version at any time – Ops values are refreshed and listed, workshop results stay.</li></ol>`} />
       <${DropZone} onFiles=${onFiles} />
+      <div style="margin-top:1rem;max-width:46rem"><${ExportsCard} session=${session} summary=${summary} updateSession=${updateSession} toast=${toast} onReplaceSession=${onReplaceSession} /></div>
     </div>`;
   }
   return html`<div>
-    <${PageHead} eyebrow="3 · Run · Import & data" title=${hasData ? `${summary.entities.length} entities · ${summary.streams.length} streams · ${summary.assessments} assessments` : 'Importing…'} lead="What the parser found in the capture sheets. Verify the entities × streams matrix and the warnings before the first session." />
+    <${PageHead} eyebrow="3 · Run · Data & exports" title=${hasData ? `${summary.entities.length} entities · ${summary.streams.length} streams · ${summary.assessments} assessments` : 'Importing…'} lead="What the parser found in the capture sheets. Verify the entities × streams matrix and the warnings before the first session." />
     <${PendingEntities} session=${session} updateSession=${updateSession} />
     ${hasData && html`<div class="kpi-row"><${Kpi} value=${summary.entities.length} label="Entities" /><${Kpi} value=${Object.values(summary.activitiesByStream).reduce((a, b) => a + b, 0)} label="L4 activities" color="var(--gbs)" /><${Kpi} value=${summary.assessments} label="Entity × activity" color="var(--auto)" /><${Kpi} value=${summary.outOfScope} label="Out of scope" color="var(--g-oos)" /><${Kpi} value=${summary.warnings.filter(w => w.level !== 'info').length} label="Warnings" color=${summary.warnings.some(w => w.level === 'error') ? 'var(--flag)' : 'var(--g-harm)'} /></div>`}
     <div class="import-grid">
@@ -161,6 +162,7 @@ function ImportView({ session, summary, updateSession, toast, onClearAll }) {
         <${DiffsCard} session=${session} />
       </div>
       <div style="display:grid;gap:1rem">
+        <${ExportsCard} session=${session} summary=${summary} updateSession=${updateSession} toast=${toast} onReplaceSession=${onReplaceSession} />
         <${DropZone} onFiles=${onFiles} compact />
         ${q.jobs.length > 0 && html`<div class="filelist">${q.jobs.map(j => html`<${JobRow} key=${j.id} job=${j} onChoose=${q.choose} />`)}</div>`}
         ${hasData && html`<${FilesCard} session=${session} summary=${summary} />`}

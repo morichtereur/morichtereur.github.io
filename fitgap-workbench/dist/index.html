@@ -540,7 +540,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 </script>
 <script id="app">
 'use strict';
-const BUILD = { version: '0.1.0', builtAt: '2026-10-17T11:00:06.369Z' };
+const BUILD = { version: '0.1.0', builtAt: '2026-10-17T11:07:51.682Z' };
 
 /* ---- src/model/constants.js ---- */
 // Domain constants. Pure data – no client-specific values anywhere in here.
@@ -1696,6 +1696,120 @@ function sessionPace(session, now = Date.now()) {
 function minutesBetween(a, b) { const [h1, m1] = a.split(':').map(Number), [h2, m2] = b.split(':').map(Number); return (h2 * 60 + m2) - (h1 * 60 + m1); }
 
 
+/* ---- src/model/exports.js ---- */
+// Export builders: deviation log (primary workshop output), flat export, audit
+// trail. Pure: they return rows / SheetJS workbooks with XLSX injected.
+
+
+
+const yn = (v) => v === true ? 'Y' : v === false ? 'N' : v && v.text ? v.text : '';
+const ts = (s) => s ? s.replace('T', ' ').slice(0, 16) : '';
+
+function ancestors(session, p) { const out = []; let cur = session.processes[p?.parentId]; while (cur) { out.unshift(cur); cur = session.processes[cur.parentId]; } return out; }
+function levelName(session, p, level) { const a = ancestors(session, p).find(x => x.level === level); return a ? `${a.id} ${a.name}` : ''; }
+function sessionLabel(session, id) { const s = session.sessions.find(x => x.id === id); return s ? `${s.date} ${s.start || ''} ${s.stream}`.trim() : ''; }
+function lastChange(session, key) { for (let i = session.audit.length - 1; i >= 0; i--) if (session.audit[i].key === key) return session.audit[i]; return null; }
+function participant(session, id) { const p = session.participants.find(x => x.id === id); return p ? `${p.name} (${p.organisation})` : (id || ''); }
+function entityName(session, code) { const e = session.entities[code]; return e ? (e.displayName || e.name) : code; }
+function detailedFindings(a) { return DETAILED_GAP_FIELDS.filter(f => a.detailedGap[f] && a.detailedGap[f] !== NA).map(f => `${DETAILED_GAP_LABEL[f]}: ${a.detailedGap[f]}`).join(' | '); }
+
+function deviationRows(session) {
+  const rows = [];
+  for (const a of Object.values(session.assessments)) {
+    const gap = effectiveGap(a);
+    if (a.scope.outOfScope || !GAP_TYPES_WITH_DEVIATION.has(gap)) continue;
+    const p = session.processes[a.processId] || {}; const d = a.deviation || {}; const lc = lastChange(session, a.key);
+    rows.push({
+      'Entity code': session.entities[a.entityCode]?.hasCode ? a.entityCode : '', 'Entity': entityName(session, a.entityCode), 'Country': session.entities[a.entityCode]?.country || session.settings.country || '',
+      'Stream': a.stream, 'L2': levelName(session, p, 1), 'L3': levelName(session, p, 2), 'Process ID': a.processId, 'Process': p.name || '',
+      'Gap type (workshop)': GAP_LABEL[gap] || gap, 'Gap type (Ops)': GAP_LABEL[a.asIs.gap] || '', 'Dimension': (d.dimensions || []).map(x => DIMENSION_LABEL[x] || x).join(', '),
+      'Description': a.workshop.rationale || '', 'Detailed gap findings': detailedFindings(a), 'Resolution approach': RESOLUTION_LABEL[d.resolution] || '', 'Justification': d.justification || '',
+      'Accountable owner': participant(session, d.ownerId), 'Target date': d.targetDate || '', 'Escalation level': ESCALATION_LABEL[d.escalation] || '', 'Approval status': d.approval || 'PROPOSED',
+      'Initiative candidate': (gap === GAP.STANDARDIZATION || gap === GAP.BOTH) && d.initiativeCandidate !== false ? 'Y' : '', 'Linked initiative': d.linkedInitiative || '',
+      'Workshop status': WORKSHOP_STATUS_LABEL[a.workshop.status] || a.workshop.status, 'Comment': a.workshop.comment || '', 'Next step': a.workshop.nextStep || '', 'Next step owner': participant(session, a.workshop.owner), 'Due': a.workshop.due || '',
+      'Session': sessionLabel(session, lc?.sessionId), 'Last change': ts(a.workshop.changedAt), 'Changed by': lc?.editor || '',
+    });
+  }
+  return rows.sort((x, y) => (x['Stream'] + x['Process ID'] + x['Entity']).localeCompare(y['Stream'] + y['Process ID'] + y['Entity'], undefined, { numeric: true }));
+}
+
+function initiativeRows(session) {
+  return deviationRows(session).filter(r => r['Initiative candidate'] === 'Y').map(r => ({ 'Entity': r['Entity'], 'Stream': r['Stream'], 'Process ID': r['Process ID'], 'Process': r['Process'], 'Gap type': r['Gap type (workshop)'], 'Linked initiative': r['Linked initiative'], 'Description': r['Description'], 'Detailed gap findings': r['Detailed gap findings'], 'Owner': r['Accountable owner'], 'Approval status': r['Approval status'], 'Session': r['Session'] }));
+}
+
+function taxonomyRows(session) {
+  return session.taxonomyChangeRequests.map(t => ({ 'Process ID': t.processId, 'Process': session.processes[t.processId]?.name || '', 'Stream': session.processes[t.processId]?.stream || '', 'Proposed change': t.proposedChange, 'Reason': t.reason, 'Raised by': t.raisedBy || '', 'Session': sessionLabel(session, t.sessionId), 'Date': ts(t.ts) }));
+}
+
+function flatRows(session) {
+  const rows = [];
+  for (const a of Object.values(session.assessments)) {
+    const p = session.processes[a.processId] || {}; const d = a.deviation || {}; const gap = effectiveGap(a);
+    const r = {
+      'Entity code': session.entities[a.entityCode]?.hasCode ? a.entityCode : '', 'Entity': entityName(session, a.entityCode), 'Stream': a.stream, 'L1': levelName(session, p, 0), 'L2': levelName(session, p, 1), 'L3': levelName(session, p, 2), 'Level': p.level, 'Process ID': a.processId, 'Process': p.name || '', 'Activity description': p.description || '',
+      'To-Be LE': yn(p.toBe?.le), 'To-Be GBS': yn(p.toBe?.gbs), 'To-Be system': p.toBe?.system || '', 'Planned initiative': p.toBe?.initiative || '',
+      'Ops LE/Country/Other': yn(a.asIs.le), 'Ops GBS': yn(a.asIs.gbs), 'Ops used systems': a.asIs.systems || '', 'Ops GAP': GAP_LABEL[a.asIs.gap] || '', 'Ops GAP (raw)': a.asIs.gapRaw || '', 'Ops additional information': a.asIs.info || '',
+      'Scope': a.scope.outOfScope ? 'Out of scope' : 'In scope', 'Scope source': a.scope.source || '',
+      'Fit-Gap Local Accounting': yn(a.fitGap.local), 'Fit-Gap Other': yn(a.fitGap.other), 'Fit-Gap GBS': yn(a.fitGap.gbs), 'FTE': a.fitGap.fte ?? '',
+    };
+    for (const f of DETAILED_GAP_FIELDS) r[`DG ${DETAILED_GAP_LABEL[f]}`] = a.detailedGap[f] || '';
+    Object.assign(r, {
+      'Workshop gap type': GAP_LABEL[gap] || '', 'Rationale': a.workshop.rationale || '', 'Workshop status': WORKSHOP_STATUS_LABEL[a.workshop.status] || '', 'Comment': a.workshop.comment || '', 'Next step': a.workshop.nextStep || '', 'Next step owner': participant(session, a.workshop.owner), 'Due': a.workshop.due || '',
+      'Deviation dimension': (d.dimensions || []).map(x => DIMENSION_LABEL[x] || x).join(', '), 'Resolution approach': RESOLUTION_LABEL[d.resolution] || '', 'Justification': d.justification || '', 'Accountable owner': participant(session, d.ownerId), 'Target date': d.targetDate || '', 'Escalation level': ESCALATION_LABEL[d.escalation] || '', 'Approval status': d.resolution || d.dimensions?.length ? (d.approval || 'PROPOSED') : '', 'Linked initiative': d.linkedInitiative || '',
+      'Last change': ts(a.workshop.changedAt), 'Source files': a.sources.map(s => s.file).join('; '), 'Notes': a.notes.map(n => n.text).join(' | '),
+    });
+    rows.push(r);
+  }
+  return rows.sort((x, y) => (x['Stream'] + x['Process ID'] + x['Entity']).localeCompare(y['Stream'] + y['Process ID'] + y['Entity'], undefined, { numeric: true }));
+}
+
+function auditRows(session) {
+  return session.audit.map(e => { const a = session.assessments[e.key]; return { 'Timestamp': ts(e.ts), 'Entity': a ? entityName(session, a.entityCode) : '', 'Process ID': a ? a.processId : e.key, 'Field': e.field, 'Old': fmt(e.old), 'New': fmt(e.new), 'Session': sessionLabel(session, e.sessionId), 'Editor': e.editor || '', 'Bulk': e.bulkId || '', 'Note': e.note || '' }; });
+}
+function fmt(v) { if (v === null || v === undefined) return ''; if (typeof v === 'object') return JSON.stringify(v); return String(v); }
+
+function feedbackRows(session) { return session.feedback.map(f => ({ 'Timestamp': ts(f.ts), 'View': f.view, 'Note': f.note, 'Session': sessionLabel(session, f.sessionId) })); }
+
+function sheet(XLSX, rows, header) {
+  const ws = XLSX.utils.json_to_sheet(rows.length ? rows : [Object.fromEntries(header.map(h => [h, '']))], { header: rows.length ? undefined : header });
+  const cols = Object.keys(rows[0] || Object.fromEntries(header.map(h => [h, ''])));
+  ws['!cols'] = cols.map(c => ({ wch: Math.min(60, Math.max(10, c.length + 2, ...rows.slice(0, 200).map(r => String(r[c] ?? '').length + 2))) }));
+  ws['!autofilter'] = { ref: ws['!ref'] };
+  return ws;
+}
+
+function buildDeviationLogWorkbook(session, XLSX) {
+  const wb = XLSX.utils.book_new();
+  const dev = deviationRows(session);
+  XLSX.utils.book_append_sheet(wb, sheet(XLSX, dev, ['Entity', 'Stream', 'Process ID']), 'Deviation log');
+  XLSX.utils.book_append_sheet(wb, sheet(XLSX, initiativeRows(session), ['Entity', 'Stream', 'Process ID']), 'Initiative candidates');
+  XLSX.utils.book_append_sheet(wb, sheet(XLSX, taxonomyRows(session), ['Process ID', 'Proposed change', 'Reason']), 'Taxonomy change requests');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([['GBS Fit-Gap Workbench – deviation log'], ['Client', session.settings.clientName], ['Country', session.settings.country], ['Exported', new Date().toISOString().slice(0, 16).replace('T', ' ')], ['Deviations', dev.length], ['Entities', Object.keys(session.entities).length], ['Assessments', Object.keys(session.assessments).length]]), 'About');
+  return wb;
+}
+
+function buildFlatWorkbook(session, XLSX) {
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, sheet(XLSX, flatRows(session), ['Entity', 'Stream', 'Process ID']), 'Assessments');
+  XLSX.utils.book_append_sheet(wb, sheet(XLSX, auditRows(session), ['Timestamp', 'Field']), 'Audit log');
+  XLSX.utils.book_append_sheet(wb, sheet(XLSX, session.sessions.map(s => ({ 'Date': s.date, 'Start': s.start, 'End': s.end, 'Stream': s.stream, 'Participants': s.participantIds.map(id => participant(session, id)).join('; '), 'Recording': s.recording || '', 'Note': s.note || '', 'Started': ts(s.startedAt), 'Ended': ts(s.endedAt) })), ['Date', 'Stream']), 'Sessions');
+  XLSX.utils.book_append_sheet(wb, sheet(XLSX, session.participants.map(p => ({ 'Name': p.name, 'Role': p.role, 'Organisation': p.organisation, 'Entity': p.entityCode ? entityName(session, p.entityCode) : '' })), ['Name']), 'Participants');
+  XLSX.utils.book_append_sheet(wb, sheet(XLSX, feedbackRows(session), ['Timestamp', 'View', 'Note']), 'Feedback');
+  return wb;
+}
+
+function buildAuditWorkbook(session, XLSX) {
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, sheet(XLSX, auditRows(session), ['Timestamp', 'Field']), 'Audit log');
+  return wb;
+}
+
+function exportFileName(session, kind) {
+  const c = (session.settings.clientName || 'FitGap').replace(/[^\w-]+/g, '_'), k = (session.settings.country || '').replace(/[^\w-]+/g, '_');
+  return `${c}${k ? '_' + k : ''}_${kind}_${new Date().toISOString().slice(0, 16).replace(/[-:]/g, '').replace('T', '-')}`;
+}
+
+
 /* ---- src/parser/planning.js ---- */
 // Planning workbook ("Fit Gap Workshops"): Country | PROCESS | Responsible |
 // Comment | Workshop Date | Meeting time | Overall Duration | Status, several
@@ -2109,6 +2223,39 @@ function StyleGuide() {
 }
 
 
+/* ---- src/ui/exports.js ---- */
+// Session save/load (JSON) and the xlsx exports, plus the download helper.
+
+function downloadBlob(name, blob) {
+  const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 2000);
+}
+function downloadWorkbook(name, wb) { const out = XLSX.write(wb, { bookType: 'xlsx', type: 'array' }); downloadBlob(`${name}.xlsx`, new Blob([out], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })); }
+function downloadSessionJson(session) { downloadBlob(`${exportFileName(session, 'session')}.json`, new Blob([serializeSession(session)], { type: 'application/json' })); }
+
+function ExportsCard({ session, summary, updateSession, toast, onReplaceSession }) {
+  const inp = useRef(); const [confirmLoad, setConfirmLoad] = useState(null);
+  const devCount = deviationRows(session).length;
+  const onLoad = async (e) => { const f = e.target.files[0]; e.target.value = ''; if (!f) return; try { const loaded = deserializeSession(await f.text()); setConfirmLoad({ name: f.name, session: loaded }); } catch (err) { toast(`Not a session file: ${err.message}`); } };
+  const hasData = Object.keys(session.assessments).length > 0;
+  return html`<${Card} title="Session file & exports">
+    <div class="eyebrow" style="margin-bottom:.4rem">Session file (JSON)</div>
+    <p class="muted small">Autosave keeps the session in this browser. Download the JSON at the end of every session block and to continue on another laptop.</p>
+    <div class="sg-row"><${Button} variant="primary" icon="save" onClick=${() => { downloadSessionJson(session); toast('Session file downloaded'); }}>Save session</${Button}><${Button} variant="outline" icon="upload" onClick=${() => inp.current.click()}>Load session…</${Button}><input ref=${inp} type="file" accept=".json" style="display:none" onChange=${onLoad} /><span class="muted small">${session.updatedAt ? `last change ${new Date(session.updatedAt).toLocaleString()}` : ''}</span></div>
+    ${confirmLoad && html`<div class="entity-choice" style="margin:.6rem 0"><span><b>${confirmLoad.name}</b>: ${Object.keys(confirmLoad.session.entities).length} entities, ${Object.keys(confirmLoad.session.assessments).length} assessments, ${confirmLoad.session.audit.length} audit entries. Replace the current session in this browser?</span><span class="sg-row" style="margin:0"><${Button} variant="primary" size="sm" onClick=${() => { onReplaceSession(confirmLoad.session); setConfirmLoad(null); }}>Replace</${Button}><${Button} variant="text" size="sm" onClick=${() => setConfirmLoad(null)}>Cancel</${Button}></span></div>`}
+    <hr />
+    <div class="eyebrow" style="margin-bottom:.4rem">Workshop outputs (.xlsx)</div>
+    <div class="sg-row">
+      <${Button} variant="outline" icon="file" disabled=${!hasData} onClick=${() => { downloadWorkbook(exportFileName(session, 'deviation-log'), buildDeviationLogWorkbook(session, XLSX)); toast('Deviation log exported'); }}>Deviation log <span class="muted">(${devCount})</span></${Button}>
+      <${Button} variant="outline" icon="file" disabled=${!hasData} onClick=${() => { downloadWorkbook(exportFileName(session, 'flat-export'), buildFlatWorkbook(session, XLSX)); toast('Flat export downloaded'); }}>Flat export <span class="muted">(${Object.keys(session.assessments).length} rows)</span></${Button}>
+      <${Button} variant="outline" icon="file" disabled=${!session.audit.length} onClick=${() => { downloadWorkbook(exportFileName(session, 'audit-trail'), buildAuditWorkbook(session, XLSX)); toast('Audit trail exported'); }}>Audit trail <span class="muted">(${session.audit.length})</span></${Button}>
+      <${Button} variant="text" onClick=${() => window.print()}>Print summary</${Button}>
+    </div>
+    <p class="sg-note">Deviation log = one row per entity × activity with a harmonization, standardization or both gap (workshop gap type, else Ops), plus sheets "Initiative candidates" and "Taxonomy change requests". Flat export = every entity × activity with all fields, audit log, sessions, participants and feedback.</p>
+  </${Card}>`;
+}
+
+
 /* ---- src/ui/import.js ---- */
 // Import & data view: drag & drop of capture workbooks, per-file progress, sheet
 // choice, entity confirmation, import summary cards and per-file layout detail.
@@ -2247,7 +2394,7 @@ function DiffsCard({ session }) {
   </${Card}>`;
 }
 
-function ImportView({ session, summary, updateSession, toast, onClearAll }) {
+function ImportView({ session, summary, updateSession, toast, onClearAll, onReplaceSession }) {
   const q = useImportQueue(updateSession, (results, n) => {
     const ok = results.filter(r => r && !r.error); const added = ok.reduce((a, r) => a + r.assessments.added, 0), merged = ok.reduce((a, r) => a + r.assessments.merged, 0), changed = ok.reduce((a, r) => a + r.assessments.changedOps, 0);
     const pending = results.length - ok.length;
@@ -2258,12 +2405,13 @@ function ImportView({ session, summary, updateSession, toast, onClearAll }) {
   const onFiles = (files) => q.run(files);
   if (!hasData && !q.jobs.length) {
     return html`<div>
-      <${PageHead} eyebrow="3 · Run · Import & data" title="Import the capture sheets" lead="Start with the pre-filled workbooks from GBS Operations. The tool reads the main Fit-Gap sheet of each file, detects entities and blocks by their titles, and shows you exactly what it found before anything is assessed." how=${html`<ol><li>Drop all stream workbooks at once (or add them one by one).</li><li>Check the import summary: entities × streams, activity counts, gap distribution and warnings.</li><li>If a label without entity code looks like a known entity, confirm or reject the match.</li><li>Re-import a newer version at any time – Ops values are refreshed and listed, workshop results stay.</li></ol>`} />
+      <${PageHead} eyebrow="3 · Run · Data & exports" title="Import the capture sheets" lead="Start with the pre-filled workbooks from GBS Operations. The tool reads the main Fit-Gap sheet of each file, detects entities and blocks by their titles, and shows you exactly what it found before anything is assessed." how=${html`<ol><li>Drop all stream workbooks at once (or add them one by one).</li><li>Check the import summary: entities × streams, activity counts, gap distribution and warnings.</li><li>If a label without entity code looks like a known entity, confirm or reject the match.</li><li>Re-import a newer version at any time – Ops values are refreshed and listed, workshop results stay.</li></ol>`} />
       <${DropZone} onFiles=${onFiles} />
+      <div style="margin-top:1rem;max-width:46rem"><${ExportsCard} session=${session} summary=${summary} updateSession=${updateSession} toast=${toast} onReplaceSession=${onReplaceSession} /></div>
     </div>`;
   }
   return html`<div>
-    <${PageHead} eyebrow="3 · Run · Import & data" title=${hasData ? `${summary.entities.length} entities · ${summary.streams.length} streams · ${summary.assessments} assessments` : 'Importing…'} lead="What the parser found in the capture sheets. Verify the entities × streams matrix and the warnings before the first session." />
+    <${PageHead} eyebrow="3 · Run · Data & exports" title=${hasData ? `${summary.entities.length} entities · ${summary.streams.length} streams · ${summary.assessments} assessments` : 'Importing…'} lead="What the parser found in the capture sheets. Verify the entities × streams matrix and the warnings before the first session." />
     <${PendingEntities} session=${session} updateSession=${updateSession} />
     ${hasData && html`<div class="kpi-row"><${Kpi} value=${summary.entities.length} label="Entities" /><${Kpi} value=${Object.values(summary.activitiesByStream).reduce((a, b) => a + b, 0)} label="L4 activities" color="var(--gbs)" /><${Kpi} value=${summary.assessments} label="Entity × activity" color="var(--auto)" /><${Kpi} value=${summary.outOfScope} label="Out of scope" color="var(--g-oos)" /><${Kpi} value=${summary.warnings.filter(w => w.level !== 'info').length} label="Warnings" color=${summary.warnings.some(w => w.level === 'error') ? 'var(--flag)' : 'var(--g-harm)'} /></div>`}
     <div class="import-grid">
@@ -2273,6 +2421,7 @@ function ImportView({ session, summary, updateSession, toast, onClearAll }) {
         <${DiffsCard} session=${session} />
       </div>
       <div style="display:grid;gap:1rem">
+        <${ExportsCard} session=${session} summary=${summary} updateSession=${updateSession} toast=${toast} onReplaceSession=${onReplaceSession} />
         <${DropZone} onFiles=${onFiles} compact />
         ${q.jobs.length > 0 && html`<div class="filelist">${q.jobs.map(j => html`<${JobRow} key=${j.id} job=${j} onChoose=${q.choose} />`)}</div>`}
         ${hasData && html`<${FilesCard} session=${session} summary=${summary} />`}
@@ -2468,7 +2617,9 @@ function ExpandedCell({ session, a, process, updateSession, picks, participants,
   const tb = process?.toBe || {}; const dev = a.deviation || {};
   const setDev = (patch) => updateSession(s => applyChange(s, key, 'deviation', { dimensions: [], resolution: '', justification: '', ownerId: '', targetDate: '', escalation: 'L1', approval: 'PROPOSED', initiativeCandidate: false, linkedInitiative: '', ...(s.assessments[key].deviation || {}), ...patch }));
   const [showHist, setShowHist] = useState(false);
+  const [tcr, setTcr] = useState(null);
   const owners = participants;
+  const myTcrs = session.taxonomyChangeRequests.filter(t => t.processId === a.processId);
   const ChipsField = ({ f, label }) => { const v = a.detailedGap[f] || ''; return html`<${Field} label=${label}>
     <div class="chips" style="margin-bottom:.25rem">${picks[f].map(p => html`<${Chip} key=${p} active=${v === p || (v.includes(p) && v !== NA)} onClick=${() => set(`detailedGap.${f}`, v === p ? '' : p)}>${p}</${Chip}>`)}<${Chip} na active=${v === NA} onClick=${() => set(`detailedGap.${f}`, v === NA ? '' : NA)}>n/a</${Chip}></div>
     <${TextInput} class="sm" value=${v === NA ? '' : v} onCommit=${x => set(`detailedGap.${f}`, x)} placeholder=${v === NA ? 'n/a' : 'Free text'} /></${Field}>`; };
@@ -2489,7 +2640,10 @@ function ExpandedCell({ session, a, process, updateSession, picks, participants,
         ${a.scope.outOfScope ? html`<${Button} variant="outline" size="sm" onClick=${() => { updateSession(s => { applyChange(s, key, 'scope', { outOfScope: false, source: 'workshop', reason: 'included in the workshop' }); applyChange(s, key, 'workshop.status', WORKSHOP_STATUS.NOT_ASSESSED); }); }}>Include in scope</${Button}>` : html`<${Button} variant="text" size="sm" onClick=${() => { updateSession(s => { applyChange(s, key, 'scope', { outOfScope: true, source: 'workshop', reason: 'set out of scope in the workshop' }); applyChange(s, key, 'workshop.status', WORKSHOP_STATUS.OUT_OF_SCOPE); }); }}>Mark out of scope</${Button}>`}
         <${Button} variant="text" size="sm" onClick=${() => setShowHist(!showHist)}>History (${session.audit.filter(e => e.key === key).length})</${Button}>
         <${Button} variant="text" size="sm" onClick=${() => { let n = 0; updateSession(s => { n = applyToAllEntities(s, key); }); toast(`Applied to the other entities (${n} fields)`); }}>Apply to all entities</${Button}>
+        <${Button} variant="text" size="sm" onClick=${() => setTcr(tcr ? null : { proposedChange: '', reason: '' })}>Taxonomy change request${myTcrs.length ? ` (${myTcrs.length})` : ''}</${Button}>
       </div>
+      ${tcr && html`<div class="fgrid" style="margin-top:.5rem;grid-template-columns:1fr"><${Field} label="Proposed change" hint="The taxonomy is not edited – the request goes to the agreed change path"><input class="input sm" value=${tcr.proposedChange} onInput=${e => setTcr({ ...tcr, proposedChange: e.target.value })} placeholder="e.g. split into two activities / remove duplicate / rename" /></${Field}><${Field} label="Reason"><input class="input sm" value=${tcr.reason} onInput=${e => setTcr({ ...tcr, reason: e.target.value })} /></${Field}><div class="sg-row" style="margin:0"><${Button} variant="primary" size="sm" disabled=${!tcr.proposedChange.trim()} onClick=${() => { updateSession(s => { s.taxonomyChangeRequests.push({ id: newId('tcr'), processId: a.processId, proposedChange: tcr.proposedChange.trim(), reason: tcr.reason.trim(), raisedBy: s.settings.editorInitials, sessionId: s.activeSessionId, ts: new Date().toISOString() }); }); setTcr(null); toast('Taxonomy change request logged'); }}>Log request</${Button}><${Button} variant="text" size="sm" onClick=${() => setTcr(null)}>Cancel</${Button}></div></div>`}
+      ${myTcrs.length > 0 && html`<ul class="small muted" style="margin:.4rem 0 0;padding-left:1.1rem">${myTcrs.map(t => html`<li key=${t.id}>${t.proposedChange}${t.reason ? ` – ${t.reason}` : ''}</li>`)}</ul>`}
       ${showHist && html`<div style="margin-top:.5rem"><${HistoryList} session=${session} akey=${key} /></div>`}
       ${!c.complete && !c.outOfScope && html`<div class="missing"><b>Missing:</b> ${c.missing.join(' · ')}</div>`}
       ${c.complete && !c.outOfScope && html`<div class="missing ok">Complete</div>`}
@@ -2654,7 +2808,7 @@ function SessionBar({ session, updateSession, toast }) {
   return html`<div class="sessionbar">
     <select class="select sm" style="width:auto" value=${session.activeSessionId || ''} onChange=${e => updateSession(s => { s.activeSessionId = e.target.value || null; })} title="Active session – every change is tagged with it"><option value="">No active session</option>${session.sessions.map(s => html`<option value=${s.id} key=${s.id}>${label(s)}</option>`)}</select>
     ${ws && !pace.running && html`<${Button} variant="primary" size="sm" onClick=${() => updateSession(s => { const x = s.sessions.find(y => y.id === ws.id); x.startedAt = new Date().toISOString(); x.endedAt = null; })}>Start</${Button}>`}
-    ${ws && pace.running && html`<span class="pace" title="elapsed / planned minutes · activities left · required pace"><b class="num">${pace.elapsed}${pace.planned !== null ? `/${pace.planned}` : ''}</b> min · <b class="num">${pace.remaining}</b> left${pace.secPerActivity !== null ? html` · <b class="num">${pace.secPerActivity}</b> s/act` : ''}</span><${Button} variant="outline" size="sm" onClick=${() => { updateSession(s => { const x = s.sessions.find(y => y.id === ws.id); x.endedAt = new Date().toISOString(); }); toast('Session ended – save a JSON backup (3 · Run → Import & data)'); }}>End</${Button}>`}
+    ${ws && pace.running && html`<span class="pace" title="elapsed / planned minutes · activities left · required pace"><b class="num">${pace.elapsed}${pace.planned !== null ? `/${pace.planned}` : ''}</b> min · <b class="num">${pace.remaining}</b> left${pace.secPerActivity !== null ? html` · <b class="num">${pace.secPerActivity}</b> s/act` : ''}</span><${Button} variant="outline" size="sm" onClick=${() => { updateSession(s => { const x = s.sessions.find(y => y.id === ws.id); x.endedAt = new Date().toISOString(); }); toast('Session ended – download a JSON backup now', { actionLabel: 'Download backup', onAction: () => downloadSessionJson(session), ttl: 15000 }); }}>End</${Button}>`}
     ${!session.activeSessionId && html`<span class="muted small" title="Changes are stored without a session tag">no session tag</span>`}
   </div>`;
 }
@@ -2703,12 +2857,13 @@ function SavedIndicator({ save }) {
   return html`<span class="saved"><span class="dot" style="background:var(--line-strong)"></span>Not saved yet</span>`;
 }
 
-function TopBar({ crumbs, theme, setTheme, share, setShare, onPalette, onFeedback, save }) {
+function TopBar({ crumbs, theme, setTheme, share, setShare, onPalette, onFeedback, save, onSave }) {
   return html`<header class="topbar">
     <div class="crumb">${crumbs.map((c, i) => html`${i > 0 && html`<span class="sep">›</span>`}${i === crumbs.length - 1 ? html`<b>${c}</b>` : html`<span>${c}</span>`}`)}</div>
     <div class="search" role="button" tabindex="0" onClick=${onPalette} onKeyDown=${e => e.key === 'Enter' && onPalette()}><${Icon} name="search" size=${14} />Jump to entity, stream, process ID or activity<kbd>Ctrl K</kbd></div>
     <div class="actions">
       <${SavedIndicator} save=${save} />
+      <${IconButton} icon="save" label="Save session file (JSON)" onClick=${onSave} />
       <${IconButton} icon="feedback" label="Feedback" onClick=${onFeedback} />
       <${IconButton} icon="share" label=${share ? 'Screen-share mode on' : 'Screen-share mode'} onClick=${() => setShare(!share)} style=${share ? 'color:var(--accent)' : ''} />
       <${IconButton} icon="undo" label="Undo" disabled />
@@ -2738,14 +2893,14 @@ function ComingNext({ p }) {
   </div>`;
 }
 
-function RunPage({ session, summary, updateSession, toast, onClearAll, tab, setTab, ui, setUi }) {
+function RunPage({ session, summary, updateSession, toast, onClearAll, tab, setTab, ui, setUi, onReplaceSession }) {
   const hasData = session.files.length > 0;
   return html`<div>
     <div class="tabs" role="tablist">
       <button class="tab" role="tab" aria-selected=${tab === 'workshop'} onClick=${() => setTab('workshop')}>Workshop</button>
-      <button class="tab" role="tab" aria-selected=${tab === 'import'} onClick=${() => setTab('import')}>Import & data${hasData && html`<span class="cnt">${session.files.length}</span>`}</button>
+      <button class="tab" role="tab" aria-selected=${tab === 'import'} onClick=${() => setTab('import')}>Data & exports${hasData && html`<span class="cnt">${session.files.length}</span>`}</button>
     </div>
-    ${tab === 'import' ? html`<${ImportView} session=${session} summary=${summary} updateSession=${updateSession} toast=${toast} onClearAll=${onClearAll} />` : hasData ? html`<${WorkshopView} session=${session} summary=${summary} updateSession=${updateSession} toast=${toast} ui=${ui} setUi=${setUi} />` : html`<${EmptyState} icon="upload" title="No capture sheets yet" text="Import the stream workbooks first – the workshop view is built from them." action=${html`<${Button} variant="primary" icon="upload" onClick=${() => setTab('import')}>Go to import</${Button}>`} />`}
+    ${tab === 'import' ? html`<${ImportView} session=${session} summary=${summary} updateSession=${updateSession} toast=${toast} onClearAll=${onClearAll} onReplaceSession=${onReplaceSession} />` : hasData ? html`<${WorkshopView} session=${session} summary=${summary} updateSession=${updateSession} toast=${toast} ui=${ui} setUi=${setUi} />` : html`<${EmptyState} icon="upload" title="No capture sheets yet" text="Import the stream workbooks first – the workshop view is built from them." action=${html`<${Button} variant="primary" icon="upload" onClick=${() => setTab('import')}>Go to import</${Button}>`} />`}
   </div>`;
 }
 
@@ -2809,18 +2964,19 @@ function App() {
   const current = PHASES.find(p => p.key === phase) || PHASES[2];
   const tab = runTab || (session && session.files.length ? 'workshop' : 'import');
   const viewName = page === 'styleguide' ? 'Style sheet' : `${current.n} ${current.label}`;
-  const crumbs = page === 'styleguide' ? ['Design system', 'Style sheet'] : [`${current.n} ${current.label}`, phase === 'run' && tab === 'import' ? 'Import & data' : current.title];
+  const crumbs = page === 'styleguide' ? ['Design system', 'Style sheet'] : [`${current.n} ${current.label}`, phase === 'run' && tab === 'import' ? 'Data & exports' : current.title];
   if (!session) return html`<div class="app"><aside class="sidebar"></aside><div class="content"><div class="main" style="display:grid;gap:.6rem;max-width:30rem"><div class="skeleton" style="width:40%"></div><div class="skeleton" style="width:80%"></div><div class="skeleton" style="width:60%"></div></div></div></div>`;
   const goActivity = (p) => { const l3 = p.level >= 4 ? p.parentId : p.id; setPage('phase'); setPhase('run'); setRunTab('workshop'); setWsUi(u => ({ ...u, stream: p.stream, l3, expanded: p.level >= 4 ? p.id : null, selected: p.level >= 4 ? p.id : null, entity: null })); };
   const paletteItems = [...Object.values(session.entities).map(e => ({ label: `${e.displayName || e.name} · ${e.code}`, kind: 'entity', icon: 'file', go: () => { setPage('phase'); setPhase('run'); setRunTab('workshop'); setWsUi(u => ({ ...u, entity: e.code })); } })), ...STREAMS.filter(s => summary.activitiesByStream[s]).map(s => ({ label: `${s} · ${summary.activitiesByStream[s]} activities`, kind: 'stream', icon: 'run', go: () => { setPage('phase'); setPhase('run'); setRunTab('workshop'); setWsUi(u => ({ ...u, stream: s, l3: null })); } })), ...Object.values(session.processes).filter(p => p.level >= 2).map(p => ({ label: `${p.id} ${p.name}`, kind: `L${p.level}`, icon: 'file', go: () => goActivity(p) })), ...PHASES.map(p => ({ label: `${p.n} ${p.label} – ${p.title}`, kind: 'phase', icon: p.icon, go: () => { setPage('phase'); setPhase(p.key); } })), { label: 'Style sheet', kind: 'design', icon: 'palette', go: () => setPage('styleguide') }, { label: theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme', kind: 'theme', icon: 'sun', go: () => setTheme(theme === 'dark' ? 'light' : 'dark') }];
   const logFeedback = (note) => { updateSession(s => { s.feedback = [...s.feedback, { ts: new Date().toISOString(), view: viewName, note, sessionId: s.activeSessionId }]; }); toast('Feedback logged'); };
+  const replaceSession = (loaded) => { setSession({ ...createSession(), ...loaded }); dirty.current = true; setRunTab(loaded.files?.length ? 'workshop' : 'import'); toast('Session loaded from file'); };
   const clearAll = async () => { try { await storageClear(); } catch { /* ignore */ } setSession(createSession()); dirty.current = true; setRunTab('import'); toast('All data cleared'); };
   return html`<div class="app" data-rail=${rail ? '1' : '0'}>
     <${Sidebar} phase=${phase} setPhase=${setPhase} summary=${summary} rail=${rail} setRail=${setRail} session=${session} page=${page} setPage=${setPage} />
     <div class="content">
-      <${TopBar} crumbs=${crumbs} theme=${theme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')} setTheme=${setTheme} share=${share} setShare=${setShare} onPalette=${() => setPalette(true)} onFeedback=${() => setFeedback(f => !f)} save=${save} />
+      <${TopBar} crumbs=${crumbs} theme=${theme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')} setTheme=${setTheme} share=${share} setShare=${setShare} onPalette=${() => setPalette(true)} onFeedback=${() => setFeedback(f => !f)} save=${save} onSave=${() => { downloadSessionJson(session); toast('Session file downloaded'); }} />
       <${KpiStrip} summary=${summary} session=${session} updateSession=${updateSession} toast=${toast} />
-      <main class="main">${page === 'styleguide' ? html`<${StyleGuide} />` : phase === 'run' ? html`<${RunPage} session=${session} summary=${summary} updateSession=${updateSession} toast=${toast} onClearAll=${clearAll} tab=${tab} setTab=${setRunTab} ui=${wsUi} setUi=${setWsUi} />` : phase === 'plan' ? html`<${PlanView} session=${session} summary=${summary} updateSession=${updateSession} toast=${toast} />` : html`<${ComingNext} p=${current} />`}</main>
+      <main class="main">${page === 'styleguide' ? html`<${StyleGuide} />` : phase === 'run' ? html`<${RunPage} session=${session} summary=${summary} updateSession=${updateSession} toast=${toast} onClearAll=${clearAll} tab=${tab} setTab=${setRunTab} ui=${wsUi} setUi=${setWsUi} onReplaceSession=${replaceSession} />` : phase === 'plan' ? html`<${PlanView} session=${session} summary=${summary} updateSession=${updateSession} toast=${toast} />` : html`<${ComingNext} p=${current} />`}</main>
     </div>
     <${Palette} open=${palette} onClose=${() => setPalette(false)} items=${paletteItems} onPick=${i => { setPalette(false); i.go(); }} />
     <${Welcome} open=${welcome} onClose=${() => { setWelcome(false); store.set('fg.welcomed', true); }} onPrimary=${() => { setWelcome(false); store.set('fg.welcomed', true); setPage('styleguide'); }} />
