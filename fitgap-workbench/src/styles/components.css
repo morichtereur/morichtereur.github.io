@@ -436,3 +436,30 @@ dialog.agenda { max-width: 48rem; }
 .qbtn.gap { border-color: var(--g-harm); color: var(--g-harm); } .qbtn.gap:hover { background: var(--g-harm-soft); }
 .qbtn.q { min-width: 1.7rem; justify-content: center; color: var(--ink-2); }
 .lnk { background: none; border: 0; color: var(--accent); text-decoration: underline; text-underline-offset: 2px; font-size: .76rem; padding: 0 .2rem; }
+
+/* ---------- Process flow board (Splitfold pattern) ---------- */
+.board-wrap { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1rem; position: relative; outline: none; }
+.board-wrap.with-detail { grid-template-columns: minmax(0, 1fr) var(--detail); }
+.board-wrap:focus-visible { box-shadow: none; }
+.board { border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--panel); overflow: auto; }
+.board-grid { display: grid; gap: 1px; background: var(--line); min-width: max-content; }
+.board-grid > div { background: var(--panel); }
+.board-h { padding: .4rem .6rem; font-size: .68rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-2); background: var(--bg) !important; position: sticky; top: 0; z-index: 2; }
+.board-h.step-h { font-family: var(--font-mono); text-align: center; letter-spacing: 0; color: var(--ink-3); }
+.board-h.lane-h { position: sticky; left: 0; z-index: 3; }
+.board-h small, .board-lane small { display: block; font-weight: 400; text-transform: none; letter-spacing: 0; color: var(--ink-3); font-family: var(--font-mono); font-size: .66rem; }
+.board-lane { position: sticky; left: 0; z-index: 2; display: flex; align-items: center; gap: .5rem; padding: .5rem .6rem; font-size: .82rem; box-shadow: inset 3px 0 0 var(--lane-color); }
+.board-lane .lane-ico { width: 26px; height: 26px; border-radius: 6px; display: grid; place-items: center; background: color-mix(in srgb, var(--lane-color) 16%, transparent); color: var(--lane-color); flex: none; }
+.board-cell { padding: .35rem; min-height: 5.4rem; display: flex; }
+.board-cell.hatch { background: repeating-linear-gradient(135deg, var(--panel) 0 6px, var(--bg) 6px 8px) !important; }
+.board .stepcard { width: 100%; text-align: left; cursor: pointer; display: flex; flex-direction: column; gap: .15rem; border-top-width: 3px; transition: box-shadow var(--t-fast), transform var(--t-fast); }
+.board .stepcard:hover { box-shadow: var(--shadow-2); transform: translateY(-1px); }
+.board .stepcard.sel { outline: 2px solid var(--accent); outline-offset: 1px; }
+.board .stepcard .nm { font-weight: 500; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.board .stepcard .meta { display: flex; gap: .3rem; align-items: center; flex-wrap: wrap; margin-top: .15rem; }
+.board .stepcard .src { font-size: .62rem; color: var(--ink-3); font-family: var(--font-mono); }
+.board .stepcard.split { background: linear-gradient(90deg, var(--panel) 0 60%, var(--bg) 60%); }
+.board-legend { display: flex; flex-wrap: wrap; gap: .3rem 1rem; font-size: .72rem; color: var(--ink-2); margin-top: .45rem; }
+.board-legend i { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: .35rem; vertical-align: middle; }
+.board-detail { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: .9rem 1rem; box-shadow: var(--shadow-1); position: sticky; top: calc(var(--topbar) + 4rem); align-self: start; font-size: .84rem; }
+.present .board-cell { min-height: 6.5cqw; } .present .board .stepcard { font-size: 1cqw; } .present .board-lane { font-size: 1.1cqw; } .present .board-legend { font-size: .9cqw; }

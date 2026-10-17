@@ -98,11 +98,11 @@ if (!(audit2.audit > 20) || audit2.sessions !== 1 || audit2.participants !== 1 |
 await page.click('.yn button:has-text("Flow")'); await page.waitForSelector('.flow');
 const flowImg = await page.$('.flow-stage img'); console.log('flow image shown:', !!flowImg);
 await page.screenshot({ path: `${out}/11-flow.png` });
-await page.click('.yn button:has-text("Swimlane")'); await page.waitForSelector('.swim svg');
-await page.screenshot({ path: `${out}/12-swimlane.png` });
+await page.click('.yn button:has-text("Flow board")'); await page.waitForSelector('.board-grid .stepcard');
+await page.click('.board-grid .stepcard >> nth=1'); await page.waitForSelector('.board-detail');
+await page.screenshot({ path: `${out}/12-flowboard.png` });
 await page.click('.yn button:has-text("Table")');
-await page.click('button:has-text("Present")'); await page.waitForSelector('.present');
-await page.keyboard.press('ArrowRight'); await page.keyboard.press('ArrowRight'); await page.keyboard.press('ArrowRight');
+await page.click('button:has-text("Present")'); await page.waitForSelector('.present .board-grid');
 await page.waitForTimeout(300); await page.screenshot({ path: `${out}/13-present-l3.png` });
 await page.keyboard.press('ArrowRight'); await page.waitForTimeout(300); await page.screenshot({ path: `${out}/14-present-table.png` });
 await page.keyboard.press('End');

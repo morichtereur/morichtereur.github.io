@@ -578,6 +578,33 @@ dialog.agenda { max-width: 48rem; }
 .qbtn.q { min-width: 1.7rem; justify-content: center; color: var(--ink-2); }
 .lnk { background: none; border: 0; color: var(--accent); text-decoration: underline; text-underline-offset: 2px; font-size: .76rem; padding: 0 .2rem; }
 
+/* ---------- Process flow board (Splitfold pattern) ---------- */
+.board-wrap { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1rem; position: relative; outline: none; }
+.board-wrap.with-detail { grid-template-columns: minmax(0, 1fr) var(--detail); }
+.board-wrap:focus-visible { box-shadow: none; }
+.board { border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--panel); overflow: auto; }
+.board-grid { display: grid; gap: 1px; background: var(--line); min-width: max-content; }
+.board-grid > div { background: var(--panel); }
+.board-h { padding: .4rem .6rem; font-size: .68rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-2); background: var(--bg) !important; position: sticky; top: 0; z-index: 2; }
+.board-h.step-h { font-family: var(--font-mono); text-align: center; letter-spacing: 0; color: var(--ink-3); }
+.board-h.lane-h { position: sticky; left: 0; z-index: 3; }
+.board-h small, .board-lane small { display: block; font-weight: 400; text-transform: none; letter-spacing: 0; color: var(--ink-3); font-family: var(--font-mono); font-size: .66rem; }
+.board-lane { position: sticky; left: 0; z-index: 2; display: flex; align-items: center; gap: .5rem; padding: .5rem .6rem; font-size: .82rem; box-shadow: inset 3px 0 0 var(--lane-color); }
+.board-lane .lane-ico { width: 26px; height: 26px; border-radius: 6px; display: grid; place-items: center; background: color-mix(in srgb, var(--lane-color) 16%, transparent); color: var(--lane-color); flex: none; }
+.board-cell { padding: .35rem; min-height: 5.4rem; display: flex; }
+.board-cell.hatch { background: repeating-linear-gradient(135deg, var(--panel) 0 6px, var(--bg) 6px 8px) !important; }
+.board .stepcard { width: 100%; text-align: left; cursor: pointer; display: flex; flex-direction: column; gap: .15rem; border-top-width: 3px; transition: box-shadow var(--t-fast), transform var(--t-fast); }
+.board .stepcard:hover { box-shadow: var(--shadow-2); transform: translateY(-1px); }
+.board .stepcard.sel { outline: 2px solid var(--accent); outline-offset: 1px; }
+.board .stepcard .nm { font-weight: 500; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.board .stepcard .meta { display: flex; gap: .3rem; align-items: center; flex-wrap: wrap; margin-top: .15rem; }
+.board .stepcard .src { font-size: .62rem; color: var(--ink-3); font-family: var(--font-mono); }
+.board .stepcard.split { background: linear-gradient(90deg, var(--panel) 0 60%, var(--bg) 60%); }
+.board-legend { display: flex; flex-wrap: wrap; gap: .3rem 1rem; font-size: .72rem; color: var(--ink-2); margin-top: .45rem; }
+.board-legend i { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: .35rem; vertical-align: middle; }
+.board-detail { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: .9rem 1rem; box-shadow: var(--shadow-1); position: sticky; top: calc(var(--topbar) + 4rem); align-self: start; font-size: .84rem; }
+.present .board-cell { min-height: 6.5cqw; } .present .board .stepcard { font-size: 1cqw; } .present .board-lane { font-size: 1.1cqw; } .present .board-legend { font-size: .9cqw; }
+
 </style>
 </head>
 <body>
@@ -623,7 +650,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 </script>
 <script id="app">
 'use strict';
-const BUILD = { version: '0.1.0', builtAt: '2026-10-17T15:08:42.789Z' };
+const BUILD = { version: '0.1.0', builtAt: '2026-10-17T15:15:05.660Z' };
 
 /* ---- src/model/constants.js ---- */
 // Domain constants. Pure data – no client-specific values anywhere in here.
@@ -2634,6 +2661,9 @@ const ICON_PATHS = {
   copy: 'M20 9h-9a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2zM5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1',
   save: 'M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2zM17 21v-8H7v8M7 3v5h8',
   keyboard: 'M2 6h20v12H2zM6 10h.01M10 10h.01M14 10h.01M18 10h.01M8 14h8',
+  home: 'M3 11 12 3l9 8M5 10v10h5v-6h4v6h5V10',
+  globe: 'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM2 12h20M12 2a15 15 0 0 1 0 20M12 2a15 15 0 0 0 0 20',
+  users: 'M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM23 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8',
 };
 
 function Icon({ name, size = 16, stroke = 1.9 }) {
@@ -2870,6 +2900,77 @@ function Swimlane({ session, entityCode, node, activities, large }) {
 }
 
 
+/* ---- src/ui/flowboard.js ---- */
+// Process flow board (Splitfold pattern): lanes as rows with icon + name + step
+// count, steps as numbered columns, step cards with a coloured top border by lane
+// and a tag, hatched empty cells, hand-off markers, legend footer with keyboard
+// hints, right detail panel for the selected activity. HTML/CSS grid, no library.
+
+const BOARD_LANES = [['LOCAL', 'Local Accounting', 'local', 'home'], ['OTHER', 'Other party', 'coe', 'users'], ['GBS', 'GBS', 'gbs', 'globe']];
+const CONTROL_RX = /approv|review|validat|reconcil|check|monitor|verif|control|confirm|audit/i;
+const stepTag = (p) => CONTROL_RX.test(p.name || '') ? '◆ CONTROL' : '● CORE';
+
+function FlowBoard({ session, entityCode, node, activities, updateSession, toast, readOnly, onOpenRow, large }) {
+  const { steps, handoffs } = useMemo(() => swimlaneModel(session, entityCode, activities), [session.assessments, entityCode, activities]);
+  const [sel, setSel] = useState(null);
+  const selected = steps.find(s => s.p.id === sel) || null;
+  const ent = session.entities[entityCode];
+  const svgRef = useRef();
+  useEffect(() => {
+    if (readOnly) return;
+    const onKey = (e) => { if (['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName)) return; if (!steps.length) return; const i = steps.findIndex(s => s.p.id === sel); if (e.key === 'ArrowRight' && e.shiftKey === false && e.altKey === false && document.activeElement?.closest('.board-wrap')) { e.preventDefault(); setSel(steps[Math.min(steps.length - 1, i + 1)].p.id); } if (e.key === 'ArrowLeft' && document.activeElement?.closest('.board-wrap')) { e.preventDefault(); setSel(steps[Math.max(0, i - 1)].p.id); } };
+    window.addEventListener('keydown', onKey); return () => window.removeEventListener('keydown', onKey);
+  }, [steps, sel, readOnly]);
+  const exportPng = () => { const b = svgRef.current?.querySelector('.swim .btn-text'); if (b) b.click(); };
+  const laneCount = (k) => steps.filter(s => s.lanes.includes(k)).length;
+  const cols = `11rem repeat(${Math.max(1, steps.length)}, ${large ? 12 : 9.5}rem)`;
+  const card = (s, k, idx) => {
+    const prev = steps[s.i - 1]; const handoff = prev && prev.lanes[0] && s.lanes[0] && prev.lanes[0] !== s.lanes[0] && k === s.lanes[0];
+    const toBeLane = s.toBe[0]; const mismatch = s.differsToBe && toBeLane && toBeLane !== k;
+    return html`<button class=${`stepcard${s.lanes.length > 1 ? ' split' : ''}${sel === s.p.id ? ' sel' : ''}`} style=${`--lane-color:var(--${BOARD_LANES.find(l => l[0] === k)[2]})`} onClick=${() => !readOnly && setSel(sel === s.p.id ? null : s.p.id)} onDblClick=${() => onOpenRow && onOpenRow(s.p.id)} title=${`${s.p.id} ${s.p.name}`}>
+      <div class="tg">${stepTag(s.p)}${s.lanes.length > 1 ? ` · ${idx + 1}/${s.lanes.length}` : ''}</div>
+      <div class="nm">${s.p.name}</div>
+      <div class="meta"><${GapPill} value=${s.gap || (s.source === 'tobe' ? 'NOT_ASSESSED' : 'NOT_ASSESSED')} size="sm" />${s.source !== 'workshop' && html`<span class="src">${s.source === 'ops' ? 'Ops as-is' : 'To-Be'}</span>`}</div>
+      ${handoff && html`<div class="handoff">↳ hand-off from ${BOARD_LANES.find(l => l[0] === prev.lanes[0])?.[1]}</div>`}
+      ${mismatch && html`<div class="handoff" style="color:var(--flag)">⚑ To-Be: ${BOARD_LANES.find(l => l[0] === toBeLane)?.[1]}</div>`}
+      ${s.differsOps && html`<div class="handoff" style="color:var(--accent)">● differs from Ops as-is</div>`}
+    </button>`;
+  };
+  const a = selected?.a; const set = (path, v) => updateSession(s => applyChange(s, a.key, path, v));
+  return html`<div class=${`board-wrap${selected && !readOnly ? ' with-detail' : ''}`} tabindex="0">
+    <div>
+      <div class="sg-row" style="justify-content:space-between;margin:0 0 .4rem"><span class="eyebrow">Process flow · ${ent?.displayName || entityCode} · ${node.id} ${node.name}</span><span class="sg-row" style="margin:0;gap:.6rem"><span class="muted small">${steps.length} steps · ${handoffs} hand-off${handoffs === 1 ? '' : 's'}</span>${!readOnly && html`<${Button} variant="text" size="sm" onClick=${exportPng}>PNG</${Button}>`}</span></div>
+      <div class="board">
+        <div class="board-grid" style=${`grid-template-columns:${cols}`}>
+          <div class="board-h lane-h"><b>Lane</b><small>${handoffs} hand-offs</small></div>
+          ${steps.map(s => html`<div class="board-h step-h" key=${'h' + s.p.id}>${String(s.i + 1).padStart(2, '0')}</div>`)}
+          ${BOARD_LANES.map(([k, label, color, icon]) => html`<${Fragment} key=${k}>
+            <div class="board-lane" style=${`--lane-color:var(--${color})`}><span class="lane-ico"><${Icon} name=${icon} size=${15} /></span><div><b>${label}</b><small>${laneCount(k)} step${laneCount(k) === 1 ? '' : 's'}</small></div></div>
+            ${steps.map(s => s.lanes.includes(k) ? html`<div class="board-cell" key=${s.p.id + k}>${card(s, k, s.lanes.indexOf(k))}</div>` : html`<div class="board-cell hatch" key=${s.p.id + k}></div>`)}
+          </${Fragment}>`)}
+        </div>
+      </div>
+      <div class="board-legend">${BOARD_LANES.map(([k, label, color]) => html`<span key=${k}><i style=${`background:var(--${color})`}></i>${label}</span>`)}<span>● CORE / ◆ CONTROL = activity type</span><span>↳ hand-off between lanes</span><span style="color:var(--flag)">⚑ placed in a different lane than To-Be</span><span>split card = performed in two lanes</span>${!readOnly && html`<span class="mono">← → select step · double-click = open row</span>`}</div>
+      <div style="position:absolute;left:-9999px;top:0" ref=${svgRef} aria-hidden="true"><${Swimlane} session=${session} entityCode=${entityCode} node=${node} activities=${activities} /></div>
+    </div>
+    ${selected && !readOnly && html`<aside class="board-detail">
+      <div class="eyebrow">Selected activity</div>
+      <div class="mono small muted">${a.processId}</div><h3 style="margin:.1rem 0 .4rem">${selected.p.name}</h3>
+      ${selected.p.description && html`<p class="small muted">${selected.p.description}</p>`}
+      <dl class="kv"><dt>To-Be</dt><dd>${selected.toBe.map(l => html`<${Tag} kind=${l} key=${l} />`)}${!selected.toBe.length && '–'} ${selected.p.toBe?.system && html`<span class="muted small">· ${selected.p.toBe.system}</span>`}</dd><dt>Ops as-is</dt><dd>${selected.ops.map(l => html`<${Tag} kind=${l} key=${l} />`)}${!selected.ops.length && '–'}</dd><dt>Workshop</dt><dd>${selected.source === 'workshop' ? selected.lanes.map(l => html`<${Tag} kind=${l} key=${l} />`) : html`<span class="muted">not yet assessed</span>`}</dd></dl>
+      <div class="fgrid" style="grid-template-columns:1fr;margin-top:.6rem">
+        <${Field} label="Who performs it today?"><div class="sg-row" style="margin:0;gap:.5rem"><span class="small">Local</span><${YN} size="sm" value=${a.fitGap.local} onChange=${v => set('fitGap.local', v)} name="Local" /><span class="small">GBS</span><${YN} size="sm" value=${a.fitGap.gbs} onChange=${v => set('fitGap.gbs', v)} name="GBS" /><span class="small">Other</span><${YN} size="sm" value=${a.fitGap.other} onChange=${v => set('fitGap.other', v)} name="Other" /></div></${Field}>
+        <${Field} label="Gap type"><select class="select sm" value=${a.workshop.gapType || ''} onChange=${e => set('workshop.gapType', e.target.value || null)}><option value="">${a.asIs.gap ? `(Ops: ${GAP_LABEL[a.asIs.gap]})` : '– choose –'}</option>${['NO_GAP', 'HARMONIZATION', 'STANDARDIZATION', 'BOTH', 'NA'].map(g => html`<option value=${g}>${GAP_LABEL[g]}</option>`)}</select></${Field}>
+        <${Field} label="Why?"><${TextInput} class="sm" value=${a.workshop.rationale} onCommit=${v => set('workshop.rationale', v)} placeholder="Short reason" /></${Field}>
+        <${Field} label="Status"><select class="select sm" value=${a.workshop.status} onChange=${e => set('workshop.status', e.target.value)}><option value="NOT_ASSESSED">Not assessed</option>${Object.keys(WORKSHOP_STATUS_LABEL).filter(k => k !== 'NOT_ASSESSED').map(k => html`<option value=${k}>${WORKSHOP_STATUS_LABEL[k]}</option>`)}</select></${Field}>
+      </div>
+      <div class="sg-row" style="margin-top:.6rem">${a.workshop.status !== WORKSHOP_STATUS.CONFIRMED_FIT && html`<${Button} variant="primary" size="sm" onClick=${() => { updateSession(s => confirmFit(s, a.key, selected.p)); toast('Confirmed as fit'); }}>✓ Fit</${Button}>`}<${Button} variant="outline" size="sm" onClick=${() => onOpenRow && onOpenRow(a.processId)}>Open full form</${Button}><${IconButton} icon="x" label="Close" onClick=${() => setSel(null)} /></div>
+      ${!completeness(a).complete && !a.scope.outOfScope && html`<div class="missing" style="margin-top:.6rem"><b>Missing:</b> ${completeness(a).missing.join(' · ')}</div>`}
+    </aside>`}
+  </div>`;
+}
+
+
 /* ---- src/ui/present.js ---- */
 // Present mode: full-bleed slides per stream, ←/→ and Esc, progress bar, live edits.
 
@@ -2899,7 +3000,7 @@ function PresentMode({ session, updateSession, stream: initialStream, entityFilt
       case 'cover': return html`<div class="slide-center">${st.logoDataUrl && html`<img src=${st.logoDataUrl} style="max-height:12cqw;margin-bottom:2cqw" alt="logo" />`}<div class="eyebrow">Fit-gap workshop · ${stream}</div><h2 style="font-size:5cqw">${st.clientName || 'Client'} · ${st.country || 'Country'}</h2><p style="font-size:1.6cqw;color:var(--ink-2)">${entities.map(e => e.displayName || e.name).join(' · ')}</p><p style="font-size:1.3cqw;color:var(--ink-3)">${(st.workshopDates || []).join(', ') || session.sessions.filter(x => x.stream.startsWith(stream)).map(x => x.date).join(', ') || new Date().toLocaleDateString()}${st.facilitators?.length ? ' · ' + st.facilitators.join(', ') : ''}</p></div>`;
       case 'scope': return html`${title('Scope', 'Streams and activities in scope')}<div class="slide-grid">${STREAMS.filter(x => Object.values(session.processes).some(p => p.stream === x)).map(x => { const n = Object.values(session.processes).filter(p => p.stream === x && p.level >= 4).length; const oos = Object.values(session.assessments).filter(a => a.stream === x && a.scope.outOfScope).length; return html`<div class="slide-kpi" key=${x}><div class="big" style="font-size:4cqw">${n}</div><div class="eyebrow">${x} · L4 activities${oos ? ` · ${oos} entity-rows out of scope` : ''}</div></div>`; })}</div>`;
       case 'legend': return html`${title('Gap types', 'How we classify every activity')}<div class="slide-legend">${['NO_GAP', 'HARMONIZATION', 'STANDARDIZATION', 'BOTH'].map(g => html`<div key=${g}><${GapPill} value=${g} size="lg" /><p>${st.gapDefinitions[g]}</p></div>`)}<div><span class="eyebrow">Resolution approaches</span><p><b>Separate variant</b> – cannot be closed; separate process variant for substantiated legal, tax or regulatory reasons.<br /><b>Close before go-live</b> – close the gap in the current as-is process before transition go-live.<br /><b>Lift & shift</b> – adopt the global standard after transition; deviation closed after migration.</p></div></div>`;
-      case 'l3flow': { const flow = flowForNode(session, s.node.id); return html`${title(`${stream} · ${s.node.id}`, s.node.name)}<div class="slide-two">${flow ? html`<div class="flow-stage" style="height:100%"><img src=${flow.dataUrl} alt="flow" style="max-height:100%;max-width:100%;transform:none" /></div>` : html`<div class="empty" style="padding:2cqw"><p>No flow image for this L3</p></div>`}<div><div class="sg-row" style="margin:0 0 .4cqw">${entities.map(e => html`<${Chip} key=${e.code} active=${swimEntity === e.code} onClick=${() => setSwimEntity(e.code)}>${e.displayName || e.name}</${Chip}>`)}</div>${swimEntity && html`<${Swimlane} session=${session} entityCode=${swimEntity} node=${s.node} activities=${s.node.activities} />`}</div></div>`; }
+      case 'l3flow': { const flow = flowForNode(session, s.node.id); return html`${title(`${stream} · ${s.node.id}`, s.node.name)}<div class="slide-two">${flow ? html`<div class="flow-stage" style="height:100%"><img src=${flow.dataUrl} alt="flow" style="max-height:100%;max-width:100%;transform:none" /></div>` : html`<div class="empty" style="padding:2cqw"><p>No flow image for this L3</p></div>`}<div><div class="sg-row" style="margin:0 0 .4cqw">${entities.map(e => html`<${Chip} key=${e.code} active=${swimEntity === e.code} onClick=${() => setSwimEntity(e.code)}>${e.displayName || e.name}</${Chip}>`)}</div>${swimEntity && html`<${FlowBoard} session=${session} entityCode=${swimEntity} node=${s.node} activities=${s.node.activities} readOnly large />`}</div></div>`; }
       case 'l3table': return html`${title(`${stream} · ${s.node.id}`, `${s.node.name} · ${s.node.activities.length} activities`)}<table class="slide-table"><thead><tr><th>Activity</th>${entities.map(e => html`<th key=${e.code}>${e.displayName || e.name}</th>`)}</tr></thead><tbody>${s.node.activities.map(p => html`<tr key=${p.id}><td><span class="mono muted">${p.id}</span> ${p.name}</td>${entities.map(e => { const a = session.assessments[assessmentKey(e.code, p.id)]; if (!a) return html`<td key=${e.code}>—</td>`; if (a.scope.outOfScope) return html`<td key=${e.code}><${GapPill} value="OUT_OF_SCOPE" size="sm" /></td>`; const l = lanesOf(a, p); const findings = ['legalRegulatory', 'languageRequirements', 'externalParty', 'internalControls'].filter(f => a.detailedGap[f] && a.detailedGap[f] !== NA).map(f => DETAILED_GAP_LABEL[f].split(' ')[0]); return html`<td key=${e.code}><div class="sg-row" style="margin:0;gap:.3cqw"><select class="select sm present-select" value=${a.workshop.gapType || ''} onChange=${ev => updateSession(x => applyChange(x, a.key, 'workshop.gapType', ev.target.value || null))}><option value="">${a.asIs.gap ? 'Ops: ' + GAP_LABEL[a.asIs.gap] : '–'}</option>${['NO_GAP', 'HARMONIZATION', 'STANDARDIZATION', 'BOTH', 'NA'].map(g => html`<option value=${g}>${GAP_LABEL[g]}</option>`)}</select><${GapPill} value=${effectiveGap(a) || 'NOT_ASSESSED'} size="sm" />${gapDiffersFromOps(a) && html`<span class="diff-note">Ops: ${GAP_LABEL[a.asIs.gap] || '–'}</span>`}</div><div class="muted small">${l.workshop ? html`<${Tag} kind=${l.workshop} />` : 'split: –'} ${findings.length ? '· ' + findings.join(', ') : ''}</div></td>`; })}</tr>`)}</tbody></table>`;
       case 'stream': return html`${title(stream, 'Stream summary')}<div class="slide-two"><div><div class="eyebrow">Activity split (workshop vs. plan)</div>${SPLIT_CLASS_KEYS.map(k => html`<div class="bar-row" key=${k}><span>${SPLIT_CLASS[k]}</span><span class="bar"><i style=${`width:${100 * (streamStats.cls[k] || 0) / Math.max(1, Object.values(streamStats.cls).reduce((a, b) => a + b, 0))}%;background:var(--${k === 'NOT_ASSESSED' ? 'none' : k.includes('GBS') && !k.startsWith('PLANNED_GBS') ? 'gbs' : k === 'OTHER_PARTY' ? 'coe' : k === 'STAYS_LOCAL' ? 'local' : 'flag'})`}></i></span><b class="num">${streamStats.cls[k] || 0}</b></div>`)}</div><div><div class="eyebrow">Gap distribution · Ops pre-assessment vs. workshop</div><${OpsVsWorkshopChart} dist=${streamStats.g.dist} /></div></div>`;
       case 'cross': { const g = gapAnalysis(session, { entityCode: entityFilter }); return html`${title(st.country || 'Country', 'Cross-entity view')}<div class="slide-two"><div><div class="eyebrow">Gap in all entities (likely global-standard issue) · ${g.cross.all.length}</div><ul class="slide-list">${g.cross.all.slice(0, 12).map(b => html`<li key=${b.processId}><span class="mono muted">${b.processId}</span> ${b.name}</li>`)}</ul></div><div><div class="eyebrow">Gap in one entity only (entity-specific) · ${g.cross.one.length}</div><ul class="slide-list">${g.cross.one.slice(0, 12).map(b => html`<li key=${b.processId}><span class="mono muted">${b.processId}</span> ${b.name} <span class="muted">· ${session.entities[b.gaps[0]]?.displayName || b.gaps[0]}</span></li>`)}</ul></div></div>`; }
@@ -3732,10 +3833,10 @@ function WorkshopView({ session, summary, updateSession, toast, ui, setUi, onPre
           <div><div class="eyebrow">${crumbsNode.map(c => c.id + ' ' + c.name).join(' › ') || stream}</div><h2 style="font-family:var(--font-serif);font-weight:500;font-size:1.3rem;margin:.15rem 0"><span class="pid mono muted" style="font-size:.85rem">${node.id}</span> ${node.name}</h2>
             <div class="muted small">${acts.length} activities${entityFilter ? '' : ` × ${entities.length} entities`} · pre-assessed by Ops as: ${opsSummary || '–'}${stats.outOfScope ? ` · ${stats.outOfScope} out of scope` : ''}</div>
             <div style="max-width:22rem;margin-top:.4rem"><${MiniBar} segments=${[{ key: 'DONE', value: stats.assessed }, { key: 'OPEN', value: stats.total - stats.assessed }]} pct=${`${stats.assessed}/${stats.total} assessed · ${stats.openGaps} open gaps`} /></div></div>
-          <div style="display:flex;flex-direction:column;gap:.4rem;align-items:flex-end"><div class="sg-row" style="margin:0"><div class="yn"><button aria-pressed=${panel === 'none'} onClick=${() => choosePanel('none')} style="font-family:var(--font-ui);padding:.22rem .5rem">Table</button><button aria-pressed=${panel === 'flow'} onClick=${() => choosePanel('flow')} style="font-family:var(--font-ui);padding:.22rem .5rem">Flow</button><button aria-pressed=${panel === 'swim'} onClick=${() => choosePanel('swim')} style="font-family:var(--font-ui);padding:.22rem .5rem">Swimlane</button></div><${Button} variant="outline" size="sm" icon="share" onClick=${() => onPresent({ stream, entityFilter, l3: node.id })}>Present</${Button}><${Button} variant="primary" size="sm" disabled=${!stats.opsNoGap} onClick=${bulk} title="Marks every row the Ops team pre-assessed as NO GAP as confirmed fit – you can undo">Accept all "no gap" pre-assessments (${stats.opsNoGap})</${Button}></div><span class="muted small">${mode === 'exceptions' ? `${hidden} "no gap" row${hidden === 1 ? '' : 's'} hidden` : 'all rows shown'} · <a href="#" onClick=${e => { e.preventDefault(); setUi({ ...ui, mode: mode === 'exceptions' ? 'walk' : 'exceptions' }); }}>${mode === 'exceptions' ? 'show all rows' : 'show only flagged rows'}</a></span></div>
+          <div style="display:flex;flex-direction:column;gap:.4rem;align-items:flex-end"><div class="sg-row" style="margin:0"><div class="yn"><button aria-pressed=${panel === 'none'} onClick=${() => choosePanel('none')} style="font-family:var(--font-ui);padding:.22rem .5rem">Table</button><button aria-pressed=${panel === 'flow'} onClick=${() => choosePanel('flow')} style="font-family:var(--font-ui);padding:.22rem .5rem">Flow</button><button aria-pressed=${panel === 'swim'} onClick=${() => choosePanel('swim')} style="font-family:var(--font-ui);padding:.22rem .5rem">Flow board</button></div><${Button} variant="outline" size="sm" icon="share" onClick=${() => onPresent({ stream, entityFilter, l3: node.id })}>Present</${Button}><${Button} variant="primary" size="sm" disabled=${!stats.opsNoGap} onClick=${bulk} title="Marks every row the Ops team pre-assessed as NO GAP as confirmed fit – you can undo">Accept all "no gap" pre-assessments (${stats.opsNoGap})</${Button}></div><span class="muted small">${mode === 'exceptions' ? `${hidden} "no gap" row${hidden === 1 ? '' : 's'} hidden` : 'all rows shown'} · <a href="#" onClick=${e => { e.preventDefault(); setUi({ ...ui, mode: mode === 'exceptions' ? 'walk' : 'exceptions' }); }}>${mode === 'exceptions' ? 'show all rows' : 'show only flagged rows'}</a></span></div>
         </div></div>
         ${panel === 'flow' && html`<div class="card" style="margin-bottom:.75rem"><div class="card-body"><${FlowViewer} session=${session} node=${node} updateSession=${updateSession} toast=${toast} compact /></div></div>`}
-        ${panel === 'swim' && html`<div class="card" style="margin-bottom:.75rem"><div class="card-body"><div class="sg-row" style="margin:0 0 .4rem">${entities.map(e => html`<${Chip} key=${e.code} active=${(ui.swimEntity || expandedEntity) === e.code} onClick=${() => setUi({ ...ui, swimEntity: e.code })}>${e.displayName || e.name}</${Chip}>`)}</div><${Swimlane} session=${session} entityCode=${entities.some(e => e.code === ui.swimEntity) ? ui.swimEntity : expandedEntity} node=${node} activities=${acts} /></div></div>`}
+        ${panel === 'swim' && html`<div class="card" style="margin-bottom:.75rem"><div class="card-body"><div class="sg-row" style="margin:0 0 .4rem">${entities.map(e => html`<${Chip} key=${e.code} active=${(ui.swimEntity || expandedEntity) === e.code} onClick=${() => setUi({ ...ui, swimEntity: e.code })}>${e.displayName || e.name}</${Chip}>`)}</div><${FlowBoard} session=${session} entityCode=${entities.some(e => e.code === ui.swimEntity) ? ui.swimEntity : expandedEntity} node=${node} activities=${acts} updateSession=${updateSession} toast=${toast} onOpenRow=${pid => { setUi({ ...ui, mode: 'walk', expanded: pid, expandedEntity: entities.some(e => e.code === ui.swimEntity) ? ui.swimEntity : expandedEntity, selected: pid }); }} /></div></div>`}
         <table class="wtable sticky">
           <thead><tr><th style="width:30%">Activity</th>${entities.map(e => html`<th class="ent" key=${e.code}>${e.displayName || e.name}<small>${e.hasCode ? e.code : ''}</small></th>`)}</tr></thead>
           <tbody>
