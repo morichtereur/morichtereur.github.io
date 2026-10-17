@@ -37,7 +37,7 @@ const waitSaved = (page) => page.waitForFunction(() => /Saved/.test(document.que
 
 // 1 Import with network blocked
 let { ctx, page } = await open(profile);
-await page.click('.side-nav > .side-nav-item:has-text("Run")'); await page.click('.tab:nth-child(2)');
+await page.click('.side-nav > .side-nav-item:has-text("Workshop")');
 await page.setInputFiles('.dropzone input[type=file]', demoFiles);
 await page.waitForFunction(n => document.querySelectorAll('.filerow .st.ok, .filerow .st.warn, .filerow .st.err').length === n, demoFiles.length, { timeout: 90000 });
 const failed = await page.$$eval('.filerow .st.err', e => e.length);
@@ -53,7 +53,7 @@ await page.click('button.btn-outline:has-text("Add") >> nth=1'); await page.clic
 step('PLAN-lite: client, country, initials, participant, session', (await page.$$eval('.sessions tr, table.matrix tbody tr', r => r.length)) > 0);
 
 // 3 Simulated R2R session
-await page.click('.side-nav > .side-nav-item:has-text("Run")'); await page.click('.tab:nth-child(1)'); await page.waitForSelector('.ws');
+await page.click('.side-nav > .side-nav-item:has-text("Workshop")'); { const back = await page.$('button:has-text("Back to the workshop")'); if (back) await back.click(); } await page.waitForSelector('.ws');
 await page.click('.sessionbar .btn-primary');
 await page.click('.l3head .btn-primary'); await page.waitForSelector('.toast:has-text("confirmed")');
 const bulkText = (await page.textContent('.toast:has-text("confirmed")')).trim();
@@ -93,7 +93,7 @@ const jsonPath = resolve(dl, download.suggestedFilename()); await download.saveA
 const json = JSON.parse(readFileSync(jsonPath, 'utf8'));
 const profile2 = mkdtempSync(resolve(tmpdir(), 'fg-acc-profile2-'));
 const b2 = await open(profile2);
-await b2.page.click('.side-nav > .side-nav-item:has-text("Run")'); await b2.page.click('.tab:nth-child(2)');
+await b2.page.click('.side-nav > .side-nav-item:has-text("Workshop")');
 await b2.page.setInputFiles('input[type=file][accept=".json"]', jsonPath);
 await b2.page.click('button:has-text("Replace")');
 await b2.page.waitForFunction(() => /Saved/.test(document.querySelector('.saved')?.textContent || ''), null, { timeout: 15000 });
@@ -102,7 +102,7 @@ step('JSON save on laptop A, load on laptop B (fresh browser)', JSON.stringify(c
 await b2.ctx.close();
 
 // 6 Deviation log export
-await page.click('.tab:nth-child(2)'); await page.waitForSelector('button:has-text("Deviation log")');
+await page.click('button:has-text("Files & exports")'); await page.waitForSelector('button:has-text("Deviation log")');
 const [dl2] = await Promise.all([page.waitForEvent('download'), page.click('button:has-text("Deviation log")')]);
 const xlsxPath = resolve(dl, dl2.suggestedFilename()); await dl2.saveAs(xlsxPath);
 const buf = readFileSync(xlsxPath);

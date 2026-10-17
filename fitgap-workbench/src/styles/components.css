@@ -463,3 +463,5 @@ dialog.agenda { max-width: 48rem; }
 .board-legend i { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: .35rem; vertical-align: middle; }
 .board-detail { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: .9rem 1rem; box-shadow: var(--shadow-1); position: sticky; top: calc(var(--topbar) + 4rem); align-self: start; font-size: .84rem; }
 .present .board-cell { min-height: 6.5cqw; } .present .board .stepcard { font-size: 1cqw; } .present .board-lane { font-size: 1.1cqw; } .present .board-legend { font-size: .9cqw; }
+.ws-toolbar { display: flex; align-items: center; gap: .5rem; margin-bottom: .75rem; padding: .4rem .6rem; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius-lg); }
+.tree-node.root { font-weight: 600; }

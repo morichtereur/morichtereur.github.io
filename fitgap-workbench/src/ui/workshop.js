@@ -1,4 +1,4 @@
-// Workshop mode: stream tabs, L1–L3 tree with progress, one row per L4 activity
+// Workshop mode: one process tree over all streams, L1–L3 progress, one row per L4 activity
 // with entity columns, inline expansion with Fit-Gap → Detailed Gap → Deviation,
 // bulk confirmation, keyboard-first entry, audit history per activity.
 
@@ -37,7 +37,7 @@ function TreePanel({ tree, selectedId, onSelect, session, entityFilter, collapse
     const isLeaf = n.activities.length > 0; const open = !collapsed.has(n.id);
     const pct = s.total ? Math.round(100 * s.assessed / s.total) : 0;
     return html`<div>
-      <button class=${`tree-node${selectedId === n.id ? ' sel' : ''}`} style=${`padding-left:${0.5 + depth * 0.8}rem`} onClick=${() => isLeaf ? onSelect(n.id) : toggle(n.id)}>
+      <button class=${`tree-node${selectedId === n.id ? ' sel' : ''}${n.level === 0 ? ' root' : ''}`} style=${`padding-left:${0.5 + depth * 0.8}rem`} onClick=${() => isLeaf ? onSelect(n.id) : toggle(n.id)}>
         ${!isLeaf && n.children.length ? html`<span class=${`tw${open ? ' open' : ''}`}><${Icon} name="chevron" size=${12} /></span>` : html`<span class="tw"></span>`}
         <span class="tn"><span class="pid">${n.id}</span> ${n.name}</span>
         <span class="tp"><span class="num">${s.assessed}/${s.total}</span>${s.openGaps ? html`<span class="og" title="open gaps">${s.openGaps}</span>` : null}</span>
@@ -167,28 +167,33 @@ function WorkshopView({ session, summary, updateSession, toast, ui, setUi, onPre
   const rawUpdate = updateSession;
   // Every workshop change is tagged with a session; start one automatically when none is active.
   const autoStarted = useRef(false);
-  updateSession = (fn) => rawUpdate(s => { if (!s.activeSessionId) { const today = new Date().toISOString().slice(0, 10); let ws = s.sessions.find(x => x.date === today && x.stream === (ui.stream || 'R2R')); if (!ws) { const now = new Date(); const hm = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`; ws = { id: newId('ws'), date: today, start: hm, end: '', stream: ui.stream || 'R2R', participantIds: [], recording: '', note: 'started automatically', startedAt: now.toISOString(), endedAt: null }; s.sessions.push(ws); } s.activeSessionId = ws.id; if (!ws.startedAt) ws.startedAt = new Date().toISOString(); if (!autoStarted.current) { autoStarted.current = true; setTimeout(() => toast(`Session ${ws.date} · ${ws.stream} started automatically – change it in the top bar`), 0); } } fn(s); });
+  updateSession = (fn) => rawUpdate(s => { if (!s.activeSessionId) { const today = new Date().toISOString().slice(0, 10); let ws = s.sessions.find(x => x.date === today && x.stream === stream); if (!ws) { const now = new Date(); const hm = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`; ws = { id: newId('ws'), date: today, start: hm, end: '', stream, participantIds: [], recording: '', note: 'started automatically', startedAt: now.toISOString(), endedAt: null }; s.sessions.push(ws); } s.activeSessionId = ws.id; if (!ws.startedAt) ws.startedAt = new Date().toISOString(); if (!autoStarted.current) { autoStarted.current = true; setTimeout(() => toast(`Session ${ws.date} · ${ws.stream} started automatically – change it in the top bar`), 0); } } fn(s); });
   const st = session.settings;
   const streamsWithData = STREAMS.filter(s => summary.activitiesByStream[s]);
-  const tabs = [...streamsWithData.filter(s => s === 'A2R' ? (st.streamsInScope['A2R-FAA'] !== false || st.streamsInScope['A2R-IA'] !== false) : st.streamsInScope[s] !== false), ...(st.streamsInScope.MD !== false ? ['MD'] : [])];
-  const stream = tabs.includes(ui.stream) ? ui.stream : tabs[0];
+  const inScope = streamsWithData.filter(s => s === 'A2R' ? (st.streamsInScope['A2R-FAA'] !== false || st.streamsInScope['A2R-IA'] !== false) : st.streamsInScope[s] !== false);
+  const mdOnly = !!ui.md;
   const entityFilter = ui.entity && session.entities[ui.entity] ? ui.entity : null;
   const entities = Object.values(session.entities).filter(e => !entityFilter || e.code === entityFilter);
+  // One tree over every stream in scope (roots = streams); "master data only" filters across streams.
   const tree = useMemo(() => {
-    let t = buildTree(session, stream === 'MD' ? null : stream, { masterDataOnly: stream === 'MD' });
-    if (stream === 'A2R') { const dropFAA = st.streamsInScope['A2R-FAA'] === false, dropIA = st.streamsInScope['A2R-IA'] === false; const isIA = n => /inventor/i.test(n.name), isFAA = n => /asset|fixed/i.test(n.name) && !isIA(n); const prune = (ns) => ns.filter(n => !((dropFAA && isFAA(n)) || (dropIA && isIA(n)))).map(n => ({ ...n, children: prune(n.children) })); t = prune(t); }
-    return t;
-  }, [session.processes, stream, st.streamsInScope]);
+    if (mdOnly) return buildTree(session, null, { masterDataOnly: true });
+    return inScope.flatMap(sName => {
+      let t = buildTree(session, sName);
+      if (sName === 'A2R') { const dropFAA = st.streamsInScope['A2R-FAA'] === false, dropIA = st.streamsInScope['A2R-IA'] === false; const isIA = n => /inventor/i.test(n.name), isFAA = n => /asset|fixed/i.test(n.name) && !isIA(n); const prune = (ns) => ns.filter(n => !((dropFAA && isFAA(n)) || (dropIA && isIA(n)))).map(n => ({ ...n, children: prune(n.children) })); t = prune(t); }
+      return t;
+    });
+  }, [session.processes, inScope.join(), st.streamsInScope, mdOnly]);
   const leaves = useMemo(() => { const out = []; const walk = (n) => { if (n.activities.length) out.push(n); n.children.forEach(walk); }; tree.forEach(walk); return out; }, [tree]);
   const node = leaves.find(n => n.id === ui.l3) || leaves[0];
+  const stream = node ? node.stream : (inScope[0] || 'R2R');
   const picks = useQuickPicks(session, stream === 'MD' ? null : stream);
+  // Collapse every stream root except the one holding the selected node.
   const [collapsed, setCollapsed] = useState(() => new Set());
+  useEffect(() => { if (!node) return; setCollapsed(c => { const n = new Set(c); for (const r of tree) if (r.level === 0 && !activitiesOf(r).some(p => p.parentId === node.id)) n.add(r.id); if (node) { let cur = session.processes[node.id]; while (cur) { n.delete(cur.id); cur = session.processes[cur.parentId]; } } return n; }); }, [tree, node?.id]);
   const toggleNode = (id) => setCollapsed(c => { const n = new Set(c); n.has(id) ? n.delete(id) : n.add(id); return n; });
   const mode = ui.mode || (stream === 'R2R' ? 'walk' : 'exceptions');
   const commentRef = useRef();
-  const setStream = (s) => setUi({ ...ui, stream: s, l3: null, expanded: null });
-
-  if (!node) return html`<div><div class="tabs">${tabs.map(s => html`<button class="tab" key=${s} aria-selected=${s === stream} onClick=${() => setStream(s)}>${s}</button>`)}</div><${EmptyState} icon="info" title="Nothing to assess in this stream" text="Either the stream is out of scope (1 · Plan) or the imported files hold no activities for it." /></div>`;
+  if (!node) return html`<div><${EmptyState} icon="info" title="Nothing to assess" text="Either every stream is out of scope (1 · Plan & prepare) or the imported files hold no activities." /></div>`;
 
   const acts = node.activities;
   const stats = nodeStats(session, acts, entityFilter);
@@ -225,7 +230,8 @@ function WorkshopView({ session, summary, updateSession, toast, ui, setUi, onPre
   const crumbsNode = [...(function up(n) { const out = []; let cur = session.processes[n.parentId]; while (cur) { out.unshift(cur); cur = session.processes[cur.parentId]; } return out; })(node)];
 
   return html`<div class="ws">
-    <div class="tabs" role="tablist" style="margin-bottom:.75rem">${tabs.map(s => html`<button class="tab" role="tab" key=${s} aria-selected=${s === stream} onClick=${() => setStream(s)}>${s}<span class="cnt">${s === 'MD' ? 'cross-stream' : summary.activitiesByStream[s]}</span></button>`)}
+    <div class="ws-toolbar">
+      <${Switch} checked=${mdOnly} onChange=${v => setUi({ ...ui, md: v, l3: null, expanded: null })}>Master data only</${Switch}>
       <span style="flex:1"></span>
       <select class="select sm" style="width:auto;align-self:center" value=${entityFilter || ''} onChange=${e => setUi({ ...ui, entity: e.target.value || null, expanded: null })}><option value="">All entities</option>${Object.values(session.entities).map(e => html`<option value=${e.code}>${e.displayName || e.name}</option>`)}</select>
       <div class="yn" style="align-self:center;margin-left:.5rem"><button aria-pressed=${mode === 'exceptions'} onClick=${() => setUi({ ...ui, mode: 'exceptions' })} style="font-family:var(--font-ui);padding:.22rem .6rem" title="Hide rows pre-assessed as NO GAP">Only flagged</button><button aria-pressed=${mode === 'walk'} onClick=${() => setUi({ ...ui, mode: 'walk' })} style="font-family:var(--font-ui);padding:.22rem .6rem">All rows</button></div>

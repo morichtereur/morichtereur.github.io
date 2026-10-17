@@ -604,6 +604,8 @@ dialog.agenda { max-width: 48rem; }
 .board-legend i { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: .35rem; vertical-align: middle; }
 .board-detail { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: .9rem 1rem; box-shadow: var(--shadow-1); position: sticky; top: calc(var(--topbar) + 4rem); align-self: start; font-size: .84rem; }
 .present .board-cell { min-height: 6.5cqw; } .present .board .stepcard { font-size: 1cqw; } .present .board-lane { font-size: 1.1cqw; } .present .board-legend { font-size: .9cqw; }
+.ws-toolbar { display: flex; align-items: center; gap: .5rem; margin-bottom: .75rem; padding: .4rem .6rem; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius-lg); }
+.tree-node.root { font-weight: 600; }
 
 </style>
 </head>
@@ -650,7 +652,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 </script>
 <script id="app">
 'use strict';
-const BUILD = { version: '0.1.0', builtAt: '2026-10-17T15:15:05.660Z' };
+const BUILD = { version: '0.1.0', builtAt: '2026-10-17T16:12:17.855Z' };
 
 /* ---- src/model/constants.js ---- */
 // Domain constants. Pure data – no client-specific values anywhere in here.
@@ -3383,13 +3385,13 @@ function ImportView({ session, summary, updateSession, toast, onClearAll, onRepl
   const onFiles = (files) => q.run(files);
   if (!hasData && !q.jobs.length) {
     return html`<div>
-      <${PageHead} eyebrow="3 · Run · Data & exports" title="Import the capture sheets" lead="Start with the pre-filled workbooks from GBS Operations. The tool reads the main Fit-Gap sheet of each file, detects entities and blocks by their titles, and shows you exactly what it found before anything is assessed." how=${html`<ol><li>Drop all stream workbooks at once (or add them one by one).</li><li>Check the import summary: entities × streams, activity counts, gap distribution and warnings.</li><li>If a label without entity code looks like a known entity, confirm or reject the match.</li><li>Re-import a newer version at any time – Ops values are refreshed and listed, workshop results stay.</li></ol>`} />
+      <${PageHead} eyebrow="2 · Workshop · files & exports" title="Import the capture sheets" lead="Start with the pre-filled workbooks from GBS Operations. The tool reads the main Fit-Gap sheet of each file, detects entities and blocks by their titles, and shows you exactly what it found before anything is assessed." how=${html`<ol><li>Drop all stream workbooks at once (or add them one by one).</li><li>Check the import summary: entities × streams, activity counts, gap distribution and warnings.</li><li>If a label without entity code looks like a known entity, confirm or reject the match.</li><li>Re-import a newer version at any time – Ops values are refreshed and listed, workshop results stay.</li></ol>`} />
       <${DropZone} onFiles=${onFiles} ...${dz} />
       <div style="margin-top:1rem;max-width:46rem"><${ExportsCard} session=${session} summary=${summary} updateSession=${updateSession} toast=${toast} onReplaceSession=${onReplaceSession} /></div>
     </div>`;
   }
   return html`<div>
-    <${PageHead} eyebrow="3 · Run · Data & exports" title=${hasData ? `${summary.entities.length} entities · ${summary.streams.length} streams · ${summary.assessments} assessments` : 'Importing…'} lead="What was read from the capture sheets. Check that every entity appears in every stream, then go to the workshop." />
+    <${PageHead} eyebrow="2 · Workshop · files & exports" title=${hasData ? `${summary.entities.length} entities · ${summary.streams.length} streams · ${summary.assessments} assessments` : 'Importing…'} lead="What was read from the capture sheets. Check that every entity appears in every stream, then go to the workshop." />
     <${PendingEntities} session=${session} updateSession=${updateSession} />
     ${hasData && html`<div class="kpi-row"><${Kpi} value=${summary.entities.length} label="Entities" /><${Kpi} value=${Object.values(summary.activitiesByStream).reduce((a, b) => a + b, 0)} label="L4 activities" color="var(--gbs)" /><${Kpi} value=${summary.assessments} label="Entity × activity" color="var(--auto)" /><${Kpi} value=${summary.outOfScope} label="Out of scope" color="var(--g-oos)" /><${Kpi} value=${summary.warnings.filter(w => w.level !== 'info').length} label="Warnings" color=${summary.warnings.some(w => w.level === 'error') ? 'var(--flag)' : 'var(--g-harm)'} /></div>`}
     <div class="import-grid">
@@ -3511,7 +3513,7 @@ function PlanView({ session, summary, updateSession, toast }) {
   const planDone = !!st.country && session.participants.length > 0 && session.sessions.length > 0;
 
   return html`<div>
-    <${PageHead} eyebrow="1 · Plan" title=${st.country ? `${st.clientName || 'Client'} · ${st.country}` : 'Set up the country fit-gap'} lead="Country, entities, streams in scope, the people in the room and the session slots. Every workshop change is tagged with the active session, so set the sessions up before the first one starts." how=${html`<ol><li>Enter client, country and your initials (used in the audit trail).</li><li>Check the entities from the import and give them short display names.</li><li>Add participants – deviation owners and next-step owners are picked from this list.</li><li>Add sessions by hand or import the programme's planning workbook ("Fit Gap Workshops") and review the parsed rows.</li></ol>`} />
+    <${PageHead} eyebrow="1 · Plan & prepare" title=${st.country ? `${st.clientName || 'Client'} · ${st.country}` : 'Set up the country fit-gap'} lead="Country, entities, streams in scope, the people in the room and the session slots. Every workshop change is tagged with the active session, so set the sessions up before the first one starts." how=${html`<ol><li>Enter client, country and your initials (used in the audit trail).</li><li>Check the entities from the import and give them short display names.</li><li>Add participants – deviation owners and next-step owners are picked from this list.</li><li>Add sessions by hand or import the programme's planning workbook ("Fit Gap Workshops") and review the parsed rows.</li></ol>`} />
     ${planDone && html`<div class="sg-row" style="margin-bottom:1rem"><span class="status status-CONFIRMED_FIT">Plan complete – ${session.sessions.length} sessions, ${session.participants.length} participants</span></div>`}
     <div class="import-grid">
       <div style="display:grid;gap:1rem">
@@ -3594,7 +3596,7 @@ function AgendaDialog({ session, summary, which, onClose }) {
 
 
 /* ---- src/ui/workshop.js ---- */
-// Workshop mode: stream tabs, L1–L3 tree with progress, one row per L4 activity
+// Workshop mode: one process tree over all streams, L1–L3 progress, one row per L4 activity
 // with entity columns, inline expansion with Fit-Gap → Detailed Gap → Deviation,
 // bulk confirmation, keyboard-first entry, audit history per activity.
 
@@ -3633,7 +3635,7 @@ function TreePanel({ tree, selectedId, onSelect, session, entityFilter, collapse
     const isLeaf = n.activities.length > 0; const open = !collapsed.has(n.id);
     const pct = s.total ? Math.round(100 * s.assessed / s.total) : 0;
     return html`<div>
-      <button class=${`tree-node${selectedId === n.id ? ' sel' : ''}`} style=${`padding-left:${0.5 + depth * 0.8}rem`} onClick=${() => isLeaf ? onSelect(n.id) : toggle(n.id)}>
+      <button class=${`tree-node${selectedId === n.id ? ' sel' : ''}${n.level === 0 ? ' root' : ''}`} style=${`padding-left:${0.5 + depth * 0.8}rem`} onClick=${() => isLeaf ? onSelect(n.id) : toggle(n.id)}>
         ${!isLeaf && n.children.length ? html`<span class=${`tw${open ? ' open' : ''}`}><${Icon} name="chevron" size=${12} /></span>` : html`<span class="tw"></span>`}
         <span class="tn"><span class="pid">${n.id}</span> ${n.name}</span>
         <span class="tp"><span class="num">${s.assessed}/${s.total}</span>${s.openGaps ? html`<span class="og" title="open gaps">${s.openGaps}</span>` : null}</span>
@@ -3763,28 +3765,33 @@ function WorkshopView({ session, summary, updateSession, toast, ui, setUi, onPre
   const rawUpdate = updateSession;
   // Every workshop change is tagged with a session; start one automatically when none is active.
   const autoStarted = useRef(false);
-  updateSession = (fn) => rawUpdate(s => { if (!s.activeSessionId) { const today = new Date().toISOString().slice(0, 10); let ws = s.sessions.find(x => x.date === today && x.stream === (ui.stream || 'R2R')); if (!ws) { const now = new Date(); const hm = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`; ws = { id: newId('ws'), date: today, start: hm, end: '', stream: ui.stream || 'R2R', participantIds: [], recording: '', note: 'started automatically', startedAt: now.toISOString(), endedAt: null }; s.sessions.push(ws); } s.activeSessionId = ws.id; if (!ws.startedAt) ws.startedAt = new Date().toISOString(); if (!autoStarted.current) { autoStarted.current = true; setTimeout(() => toast(`Session ${ws.date} · ${ws.stream} started automatically – change it in the top bar`), 0); } } fn(s); });
+  updateSession = (fn) => rawUpdate(s => { if (!s.activeSessionId) { const today = new Date().toISOString().slice(0, 10); let ws = s.sessions.find(x => x.date === today && x.stream === stream); if (!ws) { const now = new Date(); const hm = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`; ws = { id: newId('ws'), date: today, start: hm, end: '', stream, participantIds: [], recording: '', note: 'started automatically', startedAt: now.toISOString(), endedAt: null }; s.sessions.push(ws); } s.activeSessionId = ws.id; if (!ws.startedAt) ws.startedAt = new Date().toISOString(); if (!autoStarted.current) { autoStarted.current = true; setTimeout(() => toast(`Session ${ws.date} · ${ws.stream} started automatically – change it in the top bar`), 0); } } fn(s); });
   const st = session.settings;
   const streamsWithData = STREAMS.filter(s => summary.activitiesByStream[s]);
-  const tabs = [...streamsWithData.filter(s => s === 'A2R' ? (st.streamsInScope['A2R-FAA'] !== false || st.streamsInScope['A2R-IA'] !== false) : st.streamsInScope[s] !== false), ...(st.streamsInScope.MD !== false ? ['MD'] : [])];
-  const stream = tabs.includes(ui.stream) ? ui.stream : tabs[0];
+  const inScope = streamsWithData.filter(s => s === 'A2R' ? (st.streamsInScope['A2R-FAA'] !== false || st.streamsInScope['A2R-IA'] !== false) : st.streamsInScope[s] !== false);
+  const mdOnly = !!ui.md;
   const entityFilter = ui.entity && session.entities[ui.entity] ? ui.entity : null;
   const entities = Object.values(session.entities).filter(e => !entityFilter || e.code === entityFilter);
+  // One tree over every stream in scope (roots = streams); "master data only" filters across streams.
   const tree = useMemo(() => {
-    let t = buildTree(session, stream === 'MD' ? null : stream, { masterDataOnly: stream === 'MD' });
-    if (stream === 'A2R') { const dropFAA = st.streamsInScope['A2R-FAA'] === false, dropIA = st.streamsInScope['A2R-IA'] === false; const isIA = n => /inventor/i.test(n.name), isFAA = n => /asset|fixed/i.test(n.name) && !isIA(n); const prune = (ns) => ns.filter(n => !((dropFAA && isFAA(n)) || (dropIA && isIA(n)))).map(n => ({ ...n, children: prune(n.children) })); t = prune(t); }
-    return t;
-  }, [session.processes, stream, st.streamsInScope]);
+    if (mdOnly) return buildTree(session, null, { masterDataOnly: true });
+    return inScope.flatMap(sName => {
+      let t = buildTree(session, sName);
+      if (sName === 'A2R') { const dropFAA = st.streamsInScope['A2R-FAA'] === false, dropIA = st.streamsInScope['A2R-IA'] === false; const isIA = n => /inventor/i.test(n.name), isFAA = n => /asset|fixed/i.test(n.name) && !isIA(n); const prune = (ns) => ns.filter(n => !((dropFAA && isFAA(n)) || (dropIA && isIA(n)))).map(n => ({ ...n, children: prune(n.children) })); t = prune(t); }
+      return t;
+    });
+  }, [session.processes, inScope.join(), st.streamsInScope, mdOnly]);
   const leaves = useMemo(() => { const out = []; const walk = (n) => { if (n.activities.length) out.push(n); n.children.forEach(walk); }; tree.forEach(walk); return out; }, [tree]);
   const node = leaves.find(n => n.id === ui.l3) || leaves[0];
+  const stream = node ? node.stream : (inScope[0] || 'R2R');
   const picks = useQuickPicks(session, stream === 'MD' ? null : stream);
+  // Collapse every stream root except the one holding the selected node.
   const [collapsed, setCollapsed] = useState(() => new Set());
+  useEffect(() => { if (!node) return; setCollapsed(c => { const n = new Set(c); for (const r of tree) if (r.level === 0 && !activitiesOf(r).some(p => p.parentId === node.id)) n.add(r.id); if (node) { let cur = session.processes[node.id]; while (cur) { n.delete(cur.id); cur = session.processes[cur.parentId]; } } return n; }); }, [tree, node?.id]);
   const toggleNode = (id) => setCollapsed(c => { const n = new Set(c); n.has(id) ? n.delete(id) : n.add(id); return n; });
   const mode = ui.mode || (stream === 'R2R' ? 'walk' : 'exceptions');
   const commentRef = useRef();
-  const setStream = (s) => setUi({ ...ui, stream: s, l3: null, expanded: null });
-
-  if (!node) return html`<div><div class="tabs">${tabs.map(s => html`<button class="tab" key=${s} aria-selected=${s === stream} onClick=${() => setStream(s)}>${s}</button>`)}</div><${EmptyState} icon="info" title="Nothing to assess in this stream" text="Either the stream is out of scope (1 · Plan) or the imported files hold no activities for it." /></div>`;
+  if (!node) return html`<div><${EmptyState} icon="info" title="Nothing to assess" text="Either every stream is out of scope (1 · Plan & prepare) or the imported files hold no activities." /></div>`;
 
   const acts = node.activities;
   const stats = nodeStats(session, acts, entityFilter);
@@ -3821,7 +3828,8 @@ function WorkshopView({ session, summary, updateSession, toast, ui, setUi, onPre
   const crumbsNode = [...(function up(n) { const out = []; let cur = session.processes[n.parentId]; while (cur) { out.unshift(cur); cur = session.processes[cur.parentId]; } return out; })(node)];
 
   return html`<div class="ws">
-    <div class="tabs" role="tablist" style="margin-bottom:.75rem">${tabs.map(s => html`<button class="tab" role="tab" key=${s} aria-selected=${s === stream} onClick=${() => setStream(s)}>${s}<span class="cnt">${s === 'MD' ? 'cross-stream' : summary.activitiesByStream[s]}</span></button>`)}
+    <div class="ws-toolbar">
+      <${Switch} checked=${mdOnly} onChange=${v => setUi({ ...ui, md: v, l3: null, expanded: null })}>Master data only</${Switch}>
       <span style="flex:1"></span>
       <select class="select sm" style="width:auto;align-self:center" value=${entityFilter || ''} onChange=${e => setUi({ ...ui, entity: e.target.value || null, expanded: null })}><option value="">All entities</option>${Object.values(session.entities).map(e => html`<option value=${e.code}>${e.displayName || e.name}</option>`)}</select>
       <div class="yn" style="align-self:center;margin-left:.5rem"><button aria-pressed=${mode === 'exceptions'} onClick=${() => setUi({ ...ui, mode: 'exceptions' })} style="font-family:var(--font-ui);padding:.22rem .6rem" title="Hide rows pre-assessed as NO GAP">Only flagged</button><button aria-pressed=${mode === 'walk'} onClick=${() => setUi({ ...ui, mode: 'walk' })} style="font-family:var(--font-ui);padding:.22rem .6rem">All rows</button></div>
@@ -3951,13 +3959,17 @@ function GapAnalysisView({ session, goActivity }) {
 }
 
 function EvaluatePage({ session, updateSession, toast, goActivity }) {
-  const [tab, setTab] = useState('board');
   const hasData = Object.keys(session.assessments).length > 0;
-  if (!hasData) return html`<${PageHead} eyebrow="4 · Evaluate" title="Evaluate outcomes & decide gap treatment" /><${EmptyState} icon="evaluate" title="No assessments yet" text="Import the capture sheets and run the workshops first." />`;
+  if (!hasData) return html`<${PageHead} eyebrow="3 · Results" title="Results" /><${EmptyState} icon="evaluate" title="No assessments yet" text="Import the capture sheets and run the workshops first." />`;
+  const [open, setOpen] = useState({ board: true, split: false, analysis: true });
+  const tog = (k) => setOpen(o => ({ ...o, [k]: !o[k] }));
   return html`<div>
-    <${PageHead} eyebrow="4 · Evaluate" title="Evaluate outcomes & decide gap treatment" lead="All deviations across entities and streams on one board, the activity split against the plan, and where the gaps cluster." how=${html`<p>Board: move each deviation to a resolution approach, set the escalation level and walk it through Proposed → Aligned → Approved (or reject). Activity split: what moves to GBS as planned, what stays local, and where the plan is contradicted. Gap analysis: Ops vs. workshop, change matrix, heatmap, cross-entity patterns, drivers and open points.</p>`} />
-    <div class="tabs"><button class="tab" aria-selected=${tab === 'board'} onClick=${() => setTab('board')}>Deviation board<span class="cnt">${deviationList(session).length}</span></button><button class="tab" aria-selected=${tab === 'split'} onClick=${() => setTab('split')}>Activity split</button><button class="tab" aria-selected=${tab === 'analysis'} onClick=${() => setTab('analysis')}>Gap analysis</button></div>
-    ${tab === 'board' ? html`<${DeviationBoard} session=${session} updateSession=${updateSession} toast=${toast} goActivity=${goActivity} />` : tab === 'split' ? html`<${ActivitySplitView} session=${session} goActivity=${goActivity} />` : html`<${GapAnalysisView} session=${session} goActivity=${goActivity} />`}
+    <${PageHead} eyebrow="3 · Results" title="Deviations, activity split and gap analysis" lead="Decide every deviation on the board (approach, owner, approval). Below: where the gaps cluster and what moves to GBS as planned." />
+    <div style="display:grid;gap:1.25rem">
+      <${Card} title="Deviation board" stats=${[['deviations', deviationList(session).length]]} open=${open.board} onToggle=${() => tog('board')}><${DeviationBoard} session=${session} updateSession=${updateSession} toast=${toast} goActivity=${goActivity} /></${Card}>
+      <${Card} title="Gap analysis" open=${open.analysis} onToggle=${() => tog('analysis')}><${GapAnalysisView} session=${session} goActivity=${goActivity} /></${Card}>
+      <${Card} title="Activity split · what moves to GBS as planned" open=${open.split} onToggle=${() => tog('split')}><${ActivitySplitView} session=${session} goActivity=${goActivity} /></${Card}>
+    </div>
   </div>`;
 }
 
@@ -3968,11 +3980,11 @@ function EvaluatePage({ session, updateSession, toast, goActivity }) {
 function Qg2Page({ session, updateSession, toast }) {
   const q = useMemo(() => qg2Readiness(session), [session]);
   const ents = Object.values(session.entities);
-  if (!q.streams.length) return html`<${PageHead} eyebrow="5 · QG2 sign-off" title="Quality Gate 2 readiness" /><${EmptyState} icon="qg2" title="Nothing to sign off yet" text="QG2 readiness is computed from the workshop results." />`;
+  if (!q.streams.length) return html`<${PageHead} eyebrow="4 · Sign-off & hand-over" title="Quality Gate 2 readiness" /><${EmptyState} icon="qg2" title="Nothing to sign off yet" text="QG2 readiness is computed from the workshop results." />`;
   const setSign = (stream, who, field, value) => updateSession(s => { s.signoff = s.signoff || {}; s.signoff[stream] = s.signoff[stream] || { pe: { name: '', date: '' }, ops: { name: '', date: '' } }; s.signoff[stream][who][field] = value; s.audit.push({ ts: new Date().toISOString(), key: `signoff:${stream}`, field: `${who}.${field}`, old: null, new: value, sessionId: s.activeSessionId, editor: s.settings.editorInitials }); });
   const pct = (a, b) => b ? `${Math.round(100 * a / b)} %` : '–';
   return html`<div>
-    <${PageHead} eyebrow="5 · QG2 sign-off" title="Quality Gate 2 readiness" lead="A stream is QG2-ready only when every in-scope activity is assessed and every deviation has an accountable owner, a resolution approach and a decided approval status (aligned, approved or rejected)." />
+    <${PageHead} eyebrow="4 · Sign-off & hand-over" title="Quality Gate 2 readiness" lead="A stream is QG2-ready only when every in-scope activity is assessed and every deviation has an accountable owner, a resolution approach and a decided approval status (aligned, approved or rejected)." />
     <div class="kpi-row">${q.streams.map(s => html`<${Kpi} key=${s} value=${pct(q.perStream[s].assessed, q.perStream[s].total)} label=${`${s} assessed · ${q.perStream[s].ready ? 'QG2-ready' : 'not ready'}`} color=${q.perStream[s].ready ? 'var(--ok)' : 'var(--g-harm)'} />`)}</div>
     <${Card} title="Per entity × stream"><div style="overflow:auto"><table class="matrix"><thead><tr><th style="text-align:left">Entity</th>${q.streams.map(s => html`<th key=${s} class="num">${s}</th>`)}</tr></thead><tbody>
       ${ents.map(e => html`<tr key=${e.code}><td style="text-align:left">${e.displayName || e.name}</td>${q.streams.map(s => { const c = q.cells.find(x => x.entityCode === e.code && x.stream === s); if (!c) return html`<td key=${s} class="num zero">·</td>`; const miss = c.noOwner + c.undecided + c.noApproval + c.noJustification; return html`<td key=${s} class="num" style="text-align:left"><div><b>${pct(c.assessed, c.total)}</b> <span class="muted">assessed</span></div><div class="small">${c.deviations} dev · ${Object.entries(c.byResolution).map(([r, n]) => `${(RESOLUTION_LABEL[r] || 'undecided').split(' ')[0]} ${n}`).join(', ') || '–'}</div><div class=${`small${miss ? ' incomplete' : ' complete'}`}>${miss ? `${c.noOwner} no owner · ${c.undecided} no approach · ${c.noApproval} no approval${c.noJustification ? ` · ${c.noJustification} no justification` : ''}` : 'complete'}</div>${c.openQuestions ? html`<div class="small" style="color:var(--g-unclear)">${c.openQuestions} open question${c.openQuestions > 1 ? 's' : ''}</div>` : null}</td>`; })}</tr>`)}
@@ -3990,10 +4002,10 @@ function Qg2Page({ session, updateSession, toast }) {
 function PreparePage({ session, updateSession, toast }) {
   const fbn = useMemo(() => flowsByNode(session), [session.flows]);
   const [open, setOpen] = useState(null);
-  if (!session.sessions.length) return html`<${PageHead} eyebrow="2 · Prepare" title="Readiness per session" /><${EmptyState} icon="prepare" title="No sessions planned" text="Add sessions in 1 · Plan – readiness is checked per session." />`;
+  if (!session.sessions.length) return html`<${PageHead} eyebrow="1 · Plan & prepare · readiness" title="Readiness per session" /><${EmptyState} icon="prepare" title="No sessions planned" text="Add sessions in 1 · Plan – readiness is checked per session." />`;
   const lightColor = { green: 'var(--ok)', amber: 'var(--g-harm)', red: 'var(--flag)' };
   return html`<div>
-    <${PageHead} eyebrow="2 · Prepare" title="Readiness per session" lead="Capture sheet received, Ops pre-assessment complete, flows available, participants nominated, room or link sent. The list of missing pre-fills is what to chase with GBS Operations before the session." />
+    <${PageHead} eyebrow="1 · Plan & prepare · readiness" title="Readiness per session" lead="Capture sheet received, Ops pre-assessment complete, flows available, participants nominated, room or link sent. The list of missing pre-fills is what to chase with GBS Operations before the session." />
     <div style="display:grid;gap:1rem">${session.sessions.map(ws => { const r = prepareReadiness(session, ws, fbn); return html`<div class="card" key=${ws.id}><div class="card-head"><span class="light" style=${`background:${lightColor[r.light]}`}></span><h3>${ws.date} ${ws.start}${ws.end ? '–' + ws.end : ''} · ${ws.stream}</h3><span class="muted small">${r.activities} activities in scope</span></div><div class="card-body">
       <div class="checks">${r.checks.map(c => html`<div class=${`check ${c.ok ? 'ok' : c.warn ? 'warn' : 'bad'}`} key=${c.key}><${Icon} name=${c.ok ? 'check' : 'alert'} size=${14} /><span>${c.label}</span><span class="muted small">${c.detail}</span>${c.key === 'room' && html`<label class="toggle" style="margin-left:auto"><input type="checkbox" checked=${!!ws.roomSent} onChange=${e => updateSession(s => { s.sessions.find(x => x.id === ws.id).roomSent = e.target.checked; })} /><i></i>sent</label>`}</div>`)}</div>
       ${r.missing.length > 0 && html`<div style="margin-top:.6rem"><${Button} variant="text" size="sm" onClick=${() => setOpen(open === ws.id ? null : ws.id)}>${open === ws.id ? 'Hide' : 'Show'} ${r.missing.length} missing Ops pre-fills</${Button}> <${Button} variant="text" size="sm" onClick=${() => { navigator.clipboard?.writeText(r.missing.map(m => `${m.processId}\t${m.name}\t${session.entities[m.entityCode]?.displayName || m.entityCode}`).join('\n')).then(() => toast('Chase list copied')); }}>Copy chase list</${Button}>
@@ -4057,7 +4069,7 @@ function HandoverPage({ session, toast }) {
   const dev = deviationRows(session); const q = qg2Readiness(session);
   const items = [['Approved deviation log', dev.filter(r => r['Approval status'] === 'APPROVED').length, dev.length], ['Separate-variant list (input for DTPs)', dev.filter(r => r['Resolution approach'] === 'Separate variant').length], ['Initiative candidates (PE / WP3)', initiativeRows(session).length], ['Taxonomy change requests', taxonomyRows(session).length], ['QG2 sign-off summary', q.streams.filter(s => q.perStream[s].ready).length, q.streams.length]];
   return html`<div>
-    <${PageHead} eyebrow="6 · Hand-over" title="Hand-over package" lead="Everything knowledge transfer needs in one zip: approved deviation log, separate-variant list for the DTPs, initiative candidates, taxonomy change requests, QG2 sign-off summary, the full flat export, the audit trail and the session file." />
+    <${PageHead} eyebrow="4 · Sign-off & hand-over · package" title="Hand-over package" lead="Everything knowledge transfer needs in one zip: approved deviation log, separate-variant list for the DTPs, initiative candidates, taxonomy change requests, QG2 sign-off summary, the full flat export, the audit trail and the session file." />
     <div class="import-grid">
       <${Card} title="Package contents"><table class="matrix"><tbody>${items.map(([l, n, of]) => html`<tr key=${l}><td style="text-align:left">${l}</td><td class="num"><b>${n}</b>${of !== undefined ? html`<span class="muted"> / ${of}</span>` : ''}</td></tr>`)}</tbody></table>
         <div class="sg-row" style="margin-top:.8rem"><${Button} variant="primary" icon="file" disabled=${busy || !Object.keys(session.assessments).length} onClick=${async () => { setBusy(true); try { const p = await buildHandoverPackage(session); downloadBlob(p.name, p.blob); toast(`Hand-over package downloaded (${p.counts.deviations} deviations, ${p.counts.approved} approved)`); } finally { setBusy(false); } }}>${busy ? 'Building…' : 'Download hand-over package (.zip)'}</${Button}></div>
@@ -4108,8 +4120,8 @@ function HomePage({ session, summary, updateSession, toast, go, onReplaceSession
     { n: 1, title: 'Import the capture sheets', text: 'Drop the pre-filled workbooks from GBS Operations (R2R, A2R, I2P, I2C, ICO, I2C_CMD). The tool reads entities, activities and the Ops pre-assessment.', status: hasData ? `${session.files.length} files · ${summary.assessments} entity × activity rows` : 'Nothing imported yet', state: hasData ? 'done' : 'todo', action: hasData ? 'Add or re-import files' : 'Import files', go: () => go('run', 'import') },
     { n: 2, title: 'Set up country, people and sessions', text: 'Client, country, your initials for the audit trail, the people in the room (owners are picked from this list) and the session slots.', status: planOk ? `${st.clientName || 'Client'} · ${st.country} · ${session.participants.length} people · ${session.sessions.length} sessions` : [st.country ? null : 'country', session.participants.length ? null : 'participants', session.sessions.length ? null : 'sessions'].filter(Boolean).join(', ') + ' missing', state: planOk ? 'done' : hasData ? 'next' : 'todo', action: planOk ? 'Edit set-up' : 'Set up', go: () => go('plan') },
     { n: 3, title: 'Run the workshops', text: 'One row per activity, the entities side by side. Accept the "no gap" pre-assessments in bulk, then discuss only the flagged rows. Every change is logged.', status: hasData ? `${assessed} of ${inScope.length} assessed (${Math.round(100 * assessed / Math.max(1, inScope.length))} %)` : 'Needs imported files', state: !hasData ? 'todo' : assessed === inScope.length ? 'done' : assessed ? 'progress' : 'next', action: 'Open workshop', go: () => go('run', 'workshop'), disabled: !hasData },
-    { n: 4, title: 'Evaluate and decide gap treatment', text: 'All deviations on one board: resolution approach, accountable owner, approval. Plus activity split and gap analysis.', status: hasData ? `${decided} of ${devs.length} deviations have approach and owner` : '–', state: !hasData ? 'todo' : devs.length && decided === devs.length ? 'done' : decided ? 'progress' : assessed ? 'next' : 'todo', action: 'Open board', go: () => go('evaluate'), disabled: !hasData },
-    { n: 5, title: 'Sign off QG2 and hand over', text: 'Readiness per entity and stream, sign-off fields, then the hand-over package and the write-back into the original workbooks.', status: hasData ? `${ready} of ${q.streams.length} streams QG2-ready` : '–', state: !hasData ? 'todo' : ready === q.streams.length && q.streams.length ? 'done' : decided ? 'next' : 'todo', action: 'QG2 & hand-over', go: () => go('qg2'), disabled: !hasData },
+    { n: 4, title: 'Evaluate and decide gap treatment', text: 'All deviations on one board: resolution approach, accountable owner, approval. Plus activity split and gap analysis.', status: hasData ? `${decided} of ${devs.length} deviations have approach and owner` : '–', state: !hasData ? 'todo' : devs.length && decided === devs.length ? 'done' : decided ? 'progress' : assessed ? 'next' : 'todo', action: 'Open board', go: () => go('results'), disabled: !hasData },
+    { n: 5, title: 'Sign off QG2 and hand over', text: 'Readiness per entity and stream, sign-off fields, then the hand-over package and the write-back into the original workbooks.', status: hasData ? `${ready} of ${q.streams.length} streams QG2-ready` : '–', state: !hasData ? 'todo' : ready === q.streams.length && q.streams.length ? 'done' : decided ? 'next' : 'todo', action: 'QG2 & hand-over', go: () => go('signoff'), disabled: !hasData },
   ];
   const next = steps.find(s => s.state === 'next' || s.state === 'progress') || steps.find(s => s.state === 'todo');
   const onLoad = async (e) => { const f = e.target.files[0]; e.target.value = ''; if (!f) return; try { const loaded = deserializeSession(await f.text()); onReplaceSession(loaded); } catch (err) { toast(`Not a session file: ${err.message}`); } };
@@ -4134,6 +4146,12 @@ function HomePage({ session, summary, updateSession, toast, go, onReplaceSession
 
 /* ---- src/ui/app.js ---- */
 // App shell: sidebar (streams + six lifecycle phases), top bar, KPI strip, pages.
+const NAV = [
+  { n: 1, key: 'plan', label: 'Plan & prepare', icon: 'plan' },
+  { n: 2, key: 'run', label: 'Workshop', icon: 'run' },
+  { n: 3, key: 'results', label: 'Results', icon: 'evaluate' },
+  { n: 4, key: 'signoff', label: 'Sign-off & hand-over', icon: 'qg2' },
+];
 const PHASES = [
   { n: 1, key: 'plan', label: 'Plan', icon: 'plan', increment: 2, title: 'Plan the country fit-gap', what: ['Portfolio of countries from the planning workbook ("Fit Gap Workshops"), one country active at a time', 'Country set-up: entities, streams and sub-streams in scope (R2R, A2R-FAA, A2R-IA, I2P, I2C, ICO, MD)', 'Participant list (Local, GBS Ops, Transition, Process Expert) – owner fields pick from it', 'Session list: date, time slot, stream or MD, participants, recording – every change in RUN is tagged with the active session', 'Later: week calendar grid, effort estimate per session, agenda / .ics export, milestones'] },
   { n: 2, key: 'prepare', label: 'Prepare', icon: 'prepare', increment: 10, title: 'Readiness per session', what: ['Checklist per session: capture sheet received, Ops pre-assessment complete (% As-Is filled), flows available, participants nominated, room / link sent', 'Traffic light per session and a list of missing pre-fills to chase with GBS Ops'] },
@@ -4145,7 +4163,7 @@ const PHASES = [
 
 function applyTheme(theme) { if (theme) document.documentElement.setAttribute('data-theme', theme); else document.documentElement.removeAttribute('data-theme'); }
 
-function Sidebar({ phase, setPhase, summary, rail, setRail, session, page, setPage }) {
+function Sidebar({ phase, setPhase, summary, rail, setRail, session, page, setPage, onPresent }) {
   const counts = summary.activitiesByStream || {};
   const hasData = Object.keys(session.processes).length > 0;
   return html`<aside class="sidebar">
@@ -4155,12 +4173,12 @@ function Sidebar({ phase, setPhase, summary, rail, setRail, session, page, setPa
         return html`<button class=${`side-stream${inScope ? '' : ' off'}`} key=${s}><div class="row"><span>${s}</span><span class="num">${hasData ? (counts[s] || 0) : '—'}</span></div><div class="bar">${segs.filter(x => x.value).map(x => html`<i class=${`c-${x.key}`} style=${`width:${100 * x.value / tot}%`}></i>`)}</div></button>`; })}
     </div>
     <div class="side-section" style="padding-bottom:.25rem"><div class="eyebrow">Steps</div></div>
-    <nav class="side-nav" aria-label="Phases">
+    <nav class="side-nav" aria-label="Pages">
       <button class="side-nav-item" aria-current=${page === 'home' ? 'page' : 'false'} onClick=${() => setPage('home')}><span class="n"><${Icon} name="info" size=${14} /></span><span>Start here</span><span class="state"></span></button>
-      ${PHASES.map(p => { const q = p.key === 'qg2' || p.key === 'handover' ? qg2Readiness(session) : null; const done = p.key === 'plan' ? (!!session.settings.country && session.participants.length > 0 && session.sessions.length > 0) : p.key === 'run' ? (Object.keys(session.assessments).length > 0 && Object.values(session.assessments).every(a => a.scope.outOfScope || a.workshop.status !== 'NOT_ASSESSED')) : p.key === 'prepare' ? (session.sessions.length > 0 && session.sessions.every(ws => ws.roomSent)) : p.key === 'qg2' ? (q.streams.length > 0 && q.streams.every(st => q.perStream[st].ready)) : false; const built = true; return html`<button class="side-nav-item" aria-current=${page === 'phase' && phase === p.key ? 'page' : 'false'} onClick=${() => { setPage('phase'); setPhase(p.key); }}><span class="n">${p.n}</span><span>${p.label}</span>${done ? html`<span class="state done"><${Icon} name="check" size=${13} /></span>` : built ? html`<span class="state"></span>` : html`<span class="state">next</span>`}</button>`; })}
+      ${NAV.map(p => { const q = p.key === 'signoff' ? qg2Readiness(session) : null; const done = p.key === 'plan' ? (!!session.settings.country && session.participants.length > 0 && session.sessions.length > 0) : p.key === 'run' ? (Object.keys(session.assessments).length > 0 && Object.values(session.assessments).every(a => a.scope.outOfScope || a.workshop.status !== 'NOT_ASSESSED')) : p.key === 'signoff' ? (q.streams.length > 0 && q.streams.every(st => q.perStream[st].ready)) : false; return html`<button class="side-nav-item" key=${p.key} aria-current=${page === 'phase' && phase === p.key ? 'page' : 'false'} onClick=${() => { setPage('phase'); setPhase(p.key); }}><span class="n">${p.n}</span><span>${p.label}</span>${done ? html`<span class="state done"><${Icon} name="check" size=${13} /></span>` : html`<span class="state"></span>`}</button>`; })}
     </nav>
+    <div class="side-section"><button class="btn btn-primary" style="width:100%;justify-content:center" disabled=${!Object.keys(session.assessments).length} onClick=${onPresent}><${Icon} name="share" /> Present</button></div>
     <div class="side-footer">
-      <button class="side-nav-item" aria-current=${page === 'styleguide' ? 'page' : 'false'} onClick=${() => setPage('styleguide')}><${Icon} name="palette" /><span>Style sheet</span></button>
       <button class="side-nav-item" onClick=${() => setRail(!rail)}><${Icon} name="sidebar" /><span>Collapse</span></button>
       <div class="side-version">v${BUILD.version} · ${BUILD.builtAt.slice(0, 10)} · offline</div>
     </div>
@@ -4213,12 +4231,14 @@ function ComingNext({ p }) {
 
 function RunPage({ session, summary, updateSession, toast, onClearAll, tab, setTab, ui, setUi, onReplaceSession, onPresent }) {
   const hasData = session.files.length > 0;
+  useEffect(() => { if (!hasData) setTab('import'); }, [hasData]);
+  if (tab === 'import' || !hasData) return html`<div>
+    ${hasData && html`<div class="sg-row" style="margin:0 0 .6rem"><${Button} variant="text" size="sm" onClick=${() => setTab('workshop')}>← Back to the workshop</${Button}></div>`}
+    <${ImportView} session=${session} summary=${summary} updateSession=${updateSession} toast=${toast} onClearAll=${onClearAll} onReplaceSession=${onReplaceSession} />
+  </div>`;
   return html`<div>
-    <div class="tabs" role="tablist">
-      <button class="tab" role="tab" aria-selected=${tab === 'workshop'} onClick=${() => setTab('workshop')}>Workshop</button>
-      <button class="tab" role="tab" aria-selected=${tab === 'import'} onClick=${() => setTab('import')}>Data & exports${hasData && html`<span class="cnt">${session.files.length}</span>`}</button>
-    </div>
-    ${tab === 'import' ? html`<${ImportView} session=${session} summary=${summary} updateSession=${updateSession} toast=${toast} onClearAll=${onClearAll} onReplaceSession=${onReplaceSession} />` : hasData ? html`<${WorkshopView} session=${session} summary=${summary} updateSession=${updateSession} toast=${toast} ui=${ui} setUi=${setUi} onPresent=${onPresent} />` : html`<${EmptyState} icon="upload" title="No capture sheets yet" text="Import the stream workbooks first – the workshop view is built from them." action=${html`<${Button} variant="primary" icon="upload" onClick=${() => setTab('import')}>Go to import</${Button}>`} />`}
+    <div class="sg-row" style="justify-content:flex-end;margin:-.5rem 0 .4rem"><${Button} variant="text" size="sm" icon="file" onClick=${() => setTab('import')}>Files & exports (${session.files.length})</${Button}></div>
+    <${WorkshopView} session=${session} summary=${summary} updateSession=${updateSession} toast=${toast} ui=${ui} setUi=${setUi} onPresent=${onPresent} />
   </div>`;
 }
 
@@ -4262,7 +4282,7 @@ function App() {
     return () => clearTimeout(t);
   }, [session]);
   const [page, setPage] = useState(() => store.get('fg.page', 'home'));
-  const [phase, setPhase] = useState(() => store.get('fg.phase', 'run'));
+  const [phase, setPhase] = useState(() => { const v = store.get('fg.phase', 'run'); return ({ plan: 'plan', prepare: 'plan', run: 'run', evaluate: 'results', results: 'results', qg2: 'signoff', handover: 'signoff', signoff: 'signoff' })[v] || 'run'; });
   const [theme, setThemeState] = useState(() => store.get('fg.theme', null));
   const [share, setShareState] = useState(false);
   const [rail, setRail] = useState(false);
@@ -4281,23 +4301,24 @@ function App() {
     window.addEventListener('keydown', onKey); document.addEventListener('fg:go', onGo); return () => { window.removeEventListener('keydown', onKey); document.removeEventListener('fg:go', onGo); };
   }, []);
   const toast = (text, opts = {}) => { const id = newId('t'); setToasts(t => [...t, { id, text, ...opts }]); setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), opts.ttl || 4000); };
-  const current = PHASES.find(p => p.key === phase) || PHASES[2];
+  const current = NAV.find(p => p.key === phase) || NAV[1];
   const tab = runTab || (session && session.files.length ? 'workshop' : 'import');
   const viewName = page === 'styleguide' ? 'Style sheet' : page === 'home' ? 'Start here' : `${current.n} ${current.label}`;
-  const goStep = (ph, tab) => { setPage('phase'); setPhase(ph); if (tab) setRunTab(tab); };
-  const crumbs = page === 'styleguide' ? ['Design system', 'Style sheet'] : page === 'home' ? ['Start here'] : [`${current.n} ${current.label}`, phase === 'run' && tab === 'import' ? 'Data & exports' : current.title];
+  const PAGE_OF = { plan: 'plan', prepare: 'plan', run: 'run', evaluate: 'results', results: 'results', qg2: 'signoff', handover: 'signoff', signoff: 'signoff' };
+  const goStep = (ph, tab) => { setPage('phase'); setPhase(PAGE_OF[ph] || ph); if (tab) setRunTab(tab); };
+  const crumbs = page === 'styleguide' ? ['Design system', 'Style sheet'] : page === 'home' ? ['Start here'] : [`${current.n} ${current.label}`, phase === 'run' ? (tab === 'import' ? 'Files & exports' : 'Workshop mode') : ''].filter(Boolean);
   if (!session) return html`<div class="app"><aside class="sidebar"></aside><div class="content"><div class="main" style="display:grid;gap:.6rem;max-width:30rem"><div class="skeleton" style="width:40%"></div><div class="skeleton" style="width:80%"></div><div class="skeleton" style="width:60%"></div></div></div></div>`;
   const goActivity = (p) => { const l3 = p.level >= 4 ? p.parentId : p.id; setPage('phase'); setPhase('run'); setRunTab('workshop'); setWsUi(u => ({ ...u, stream: p.stream, l3, expanded: p.level >= 4 ? p.id : null, selected: p.level >= 4 ? p.id : null, entity: null })); };
-  const paletteItems = [...Object.values(session.entities).map(e => ({ label: `${e.displayName || e.name} · ${e.code}`, kind: 'entity', icon: 'file', go: () => { setPage('phase'); setPhase('run'); setRunTab('workshop'); setWsUi(u => ({ ...u, entity: e.code })); } })), ...STREAMS.filter(s => summary.activitiesByStream[s]).map(s => ({ label: `${s} · ${summary.activitiesByStream[s]} activities`, kind: 'stream', icon: 'run', go: () => { setPage('phase'); setPhase('run'); setRunTab('workshop'); setWsUi(u => ({ ...u, stream: s, l3: null })); } })), ...Object.values(session.processes).filter(p => p.level >= 2).map(p => ({ label: `${p.id} ${p.name}`, kind: `L${p.level}`, icon: 'file', go: () => goActivity(p) })), ...PHASES.map(p => ({ label: `${p.n} ${p.label} – ${p.title}`, kind: 'phase', icon: p.icon, go: () => { setPage('phase'); setPhase(p.key); } })), { label: 'Start here', kind: 'home', icon: 'info', go: () => setPage('home') }, { label: 'Style sheet', kind: 'design', icon: 'palette', go: () => setPage('styleguide') }, { label: 'Present mode', kind: 'present', icon: 'share', go: () => setPresent({ stream: wsUi.stream || 'R2R', entityFilter: null, l3: wsUi.l3 }) }, { label: theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme', kind: 'theme', icon: 'sun', go: () => setTheme(theme === 'dark' ? 'light' : 'dark') }];
+  const paletteItems = [...Object.values(session.entities).map(e => ({ label: `${e.displayName || e.name} · ${e.code}`, kind: 'entity', icon: 'file', go: () => { setPage('phase'); setPhase('run'); setRunTab('workshop'); setWsUi(u => ({ ...u, entity: e.code })); } })), ...STREAMS.filter(s => summary.activitiesByStream[s]).map(s => ({ label: `${s} · ${summary.activitiesByStream[s]} activities`, kind: 'stream', icon: 'run', go: () => { setPage('phase'); setPhase('run'); setRunTab('workshop'); setWsUi(u => ({ ...u, stream: s, l3: null })); } })), ...Object.values(session.processes).filter(p => p.level >= 2).map(p => ({ label: `${p.id} ${p.name}`, kind: `L${p.level}`, icon: 'file', go: () => goActivity(p) })), ...NAV.map(p => ({ label: `${p.n} ${p.label}`, kind: 'page', icon: p.icon, go: () => { setPage('phase'); setPhase(p.key); } })), { label: 'Start here', kind: 'home', icon: 'info', go: () => setPage('home') }, { label: 'Style sheet', kind: 'design', icon: 'palette', go: () => setPage('styleguide') }, { label: 'Present', kind: 'present', icon: 'share', go: () => setPresent({ stream: session.processes[wsUi.l3]?.stream || 'R2R', entityFilter: null, l3: wsUi.l3 }) }, { label: theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme', kind: 'theme', icon: 'sun', go: () => setTheme(theme === 'dark' ? 'light' : 'dark') }];
   const logFeedback = (note) => { updateSession(s => { s.feedback = [...s.feedback, { ts: new Date().toISOString(), view: viewName, note, sessionId: s.activeSessionId }]; }); toast('Feedback logged'); };
   const replaceSession = (loaded) => { setSession({ ...createSession(), ...loaded }); dirty.current = true; setRunTab(loaded.files?.length ? 'workshop' : 'import'); toast('Session loaded from file'); };
   const clearAll = async () => { try { await storageClear(); } catch { /* ignore */ } setSession(createSession()); dirty.current = true; setRunTab('import'); toast('All data cleared'); };
   return html`<div class="app" data-rail=${rail ? '1' : '0'}>
-    <${Sidebar} phase=${phase} setPhase=${setPhase} summary=${summary} rail=${rail} setRail=${setRail} session=${session} page=${page} setPage=${setPage} />
+    <${Sidebar} phase=${phase} setPhase=${setPhase} summary=${summary} rail=${rail} setRail=${setRail} session=${session} page=${page} setPage=${setPage} onPresent=${() => setPresent({ stream: session.processes[wsUi.l3]?.stream || 'R2R', entityFilter: null, l3: wsUi.l3 })} />
     <div class="content">
       <${TopBar} crumbs=${crumbs} theme=${theme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')} setTheme=${setTheme} share=${share} setShare=${setShare} onPalette=${() => setPalette(true)} onFeedback=${() => setFeedback(f => !f)} save=${save} onSave=${() => { downloadSessionJson(session); toast('Session file downloaded'); }} />
       <${KpiStrip} summary=${summary} session=${session} updateSession=${updateSession} toast=${toast} />
-      <main class="main">${page === 'home' ? html`<${HomePage} session=${session} summary=${summary} updateSession=${updateSession} toast=${toast} go=${goStep} onReplaceSession=${replaceSession} />` : page === 'styleguide' ? html`<${StyleGuide} />` : phase === 'run' ? html`<${RunPage} session=${session} summary=${summary} updateSession=${updateSession} toast=${toast} onClearAll=${clearAll} tab=${tab} setTab=${setRunTab} ui=${wsUi} setUi=${setWsUi} onReplaceSession=${replaceSession} onPresent=${p => setPresent(p)} />` : phase === 'plan' ? html`<${PlanView} session=${session} summary=${summary} updateSession=${updateSession} toast=${toast} />` : phase === 'prepare' ? html`<${PreparePage} session=${session} updateSession=${updateSession} toast=${toast} />` : phase === 'evaluate' ? html`<${EvaluatePage} session=${session} updateSession=${updateSession} toast=${toast} goActivity=${goActivity} />` : phase === 'qg2' ? html`<${Qg2Page} session=${session} updateSession=${updateSession} toast=${toast} />` : phase === 'handover' ? html`<${HandoverPage} session=${session} toast=${toast} />` : html`<${ComingNext} p=${current} />`}</main>
+      <main class="main">${page === 'home' ? html`<${HomePage} session=${session} summary=${summary} updateSession=${updateSession} toast=${toast} go=${goStep} onReplaceSession=${replaceSession} />` : page === 'styleguide' ? html`<${StyleGuide} />` : phase === 'run' ? html`<${RunPage} session=${session} summary=${summary} updateSession=${updateSession} toast=${toast} onClearAll=${clearAll} tab=${tab} setTab=${setRunTab} ui=${wsUi} setUi=${setWsUi} onReplaceSession=${replaceSession} onPresent=${p => setPresent(p)} />` : phase === 'plan' ? html`<${PlanView} session=${session} summary=${summary} updateSession=${updateSession} toast=${toast} /><div style="margin-top:2rem"><${PreparePage} session=${session} updateSession=${updateSession} toast=${toast} /></div>` : phase === 'results' ? html`<${EvaluatePage} session=${session} updateSession=${updateSession} toast=${toast} goActivity=${goActivity} />` : phase === 'signoff' ? html`<${Qg2Page} session=${session} updateSession=${updateSession} toast=${toast} /><div style="margin-top:2rem"><${HandoverPage} session=${session} toast=${toast} /></div>` : html`<${ComingNext} p=${current} />`}</main>
     </div>
     <${Palette} open=${palette} onClose=${() => setPalette(false)} items=${paletteItems} onPick=${i => { setPalette(false); i.go(); }} />
     <${Welcome} open=${welcome} onClose=${() => { setWelcome(false); store.set('fg.welcomed', true); }} onPrimary=${() => { setWelcome(false); store.set('fg.welcomed', true); setPage('phase'); setPhase('run'); setRunTab('import'); }} onDemo=${async () => { setWelcome(false); store.set('fg.welcomed', true); setPage('home'); await loadDemoData(updateSession, toast, () => goStep('run', 'workshop')); }} />

@@ -75,12 +75,16 @@ function GapAnalysisView({ session, goActivity }) {
 }
 
 function EvaluatePage({ session, updateSession, toast, goActivity }) {
-  const [tab, setTab] = useState('board');
   const hasData = Object.keys(session.assessments).length > 0;
-  if (!hasData) return html`<${PageHead} eyebrow="4 · Evaluate" title="Evaluate outcomes & decide gap treatment" /><${EmptyState} icon="evaluate" title="No assessments yet" text="Import the capture sheets and run the workshops first." />`;
+  if (!hasData) return html`<${PageHead} eyebrow="3 · Results" title="Results" /><${EmptyState} icon="evaluate" title="No assessments yet" text="Import the capture sheets and run the workshops first." />`;
+  const [open, setOpen] = useState({ board: true, split: false, analysis: true });
+  const tog = (k) => setOpen(o => ({ ...o, [k]: !o[k] }));
   return html`<div>
-    <${PageHead} eyebrow="4 · Evaluate" title="Evaluate outcomes & decide gap treatment" lead="All deviations across entities and streams on one board, the activity split against the plan, and where the gaps cluster." how=${html`<p>Board: move each deviation to a resolution approach, set the escalation level and walk it through Proposed → Aligned → Approved (or reject). Activity split: what moves to GBS as planned, what stays local, and where the plan is contradicted. Gap analysis: Ops vs. workshop, change matrix, heatmap, cross-entity patterns, drivers and open points.</p>`} />
-    <div class="tabs"><button class="tab" aria-selected=${tab === 'board'} onClick=${() => setTab('board')}>Deviation board<span class="cnt">${deviationList(session).length}</span></button><button class="tab" aria-selected=${tab === 'split'} onClick=${() => setTab('split')}>Activity split</button><button class="tab" aria-selected=${tab === 'analysis'} onClick=${() => setTab('analysis')}>Gap analysis</button></div>
-    ${tab === 'board' ? html`<${DeviationBoard} session=${session} updateSession=${updateSession} toast=${toast} goActivity=${goActivity} />` : tab === 'split' ? html`<${ActivitySplitView} session=${session} goActivity=${goActivity} />` : html`<${GapAnalysisView} session=${session} goActivity=${goActivity} />`}
+    <${PageHead} eyebrow="3 · Results" title="Deviations, activity split and gap analysis" lead="Decide every deviation on the board (approach, owner, approval). Below: where the gaps cluster and what moves to GBS as planned." />
+    <div style="display:grid;gap:1.25rem">
+      <${Card} title="Deviation board" stats=${[['deviations', deviationList(session).length]]} open=${open.board} onToggle=${() => tog('board')}><${DeviationBoard} session=${session} updateSession=${updateSession} toast=${toast} goActivity=${goActivity} /></${Card}>
+      <${Card} title="Gap analysis" open=${open.analysis} onToggle=${() => tog('analysis')}><${GapAnalysisView} session=${session} goActivity=${goActivity} /></${Card}>
+      <${Card} title="Activity split · what moves to GBS as planned" open=${open.split} onToggle=${() => tog('split')}><${ActivitySplitView} session=${session} goActivity=${goActivity} /></${Card}>
+    </div>
   </div>`;
 }

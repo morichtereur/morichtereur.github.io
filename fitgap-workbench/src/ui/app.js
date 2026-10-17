@@ -1,4 +1,10 @@
 // App shell: sidebar (streams + six lifecycle phases), top bar, KPI strip, pages.
+const NAV = [
+  { n: 1, key: 'plan', label: 'Plan & prepare', icon: 'plan' },
+  { n: 2, key: 'run', label: 'Workshop', icon: 'run' },
+  { n: 3, key: 'results', label: 'Results', icon: 'evaluate' },
+  { n: 4, key: 'signoff', label: 'Sign-off & hand-over', icon: 'qg2' },
+];
 const PHASES = [
   { n: 1, key: 'plan', label: 'Plan', icon: 'plan', increment: 2, title: 'Plan the country fit-gap', what: ['Portfolio of countries from the planning workbook ("Fit Gap Workshops"), one country active at a time', 'Country set-up: entities, streams and sub-streams in scope (R2R, A2R-FAA, A2R-IA, I2P, I2C, ICO, MD)', 'Participant list (Local, GBS Ops, Transition, Process Expert) – owner fields pick from it', 'Session list: date, time slot, stream or MD, participants, recording – every change in RUN is tagged with the active session', 'Later: week calendar grid, effort estimate per session, agenda / .ics export, milestones'] },
   { n: 2, key: 'prepare', label: 'Prepare', icon: 'prepare', increment: 10, title: 'Readiness per session', what: ['Checklist per session: capture sheet received, Ops pre-assessment complete (% As-Is filled), flows available, participants nominated, room / link sent', 'Traffic light per session and a list of missing pre-fills to chase with GBS Ops'] },
@@ -10,7 +16,7 @@ const PHASES = [
 
 function applyTheme(theme) { if (theme) document.documentElement.setAttribute('data-theme', theme); else document.documentElement.removeAttribute('data-theme'); }
 
-function Sidebar({ phase, setPhase, summary, rail, setRail, session, page, setPage }) {
+function Sidebar({ phase, setPhase, summary, rail, setRail, session, page, setPage, onPresent }) {
   const counts = summary.activitiesByStream || {};
   const hasData = Object.keys(session.processes).length > 0;
   return html`<aside class="sidebar">
@@ -20,12 +26,12 @@ function Sidebar({ phase, setPhase, summary, rail, setRail, session, page, setPa
         return html`<button class=${`side-stream${inScope ? '' : ' off'}`} key=${s}><div class="row"><span>${s}</span><span class="num">${hasData ? (counts[s] || 0) : '—'}</span></div><div class="bar">${segs.filter(x => x.value).map(x => html`<i class=${`c-${x.key}`} style=${`width:${100 * x.value / tot}%`}></i>`)}</div></button>`; })}
     </div>
     <div class="side-section" style="padding-bottom:.25rem"><div class="eyebrow">Steps</div></div>
-    <nav class="side-nav" aria-label="Phases">
+    <nav class="side-nav" aria-label="Pages">
       <button class="side-nav-item" aria-current=${page === 'home' ? 'page' : 'false'} onClick=${() => setPage('home')}><span class="n"><${Icon} name="info" size=${14} /></span><span>Start here</span><span class="state"></span></button>
-      ${PHASES.map(p => { const q = p.key === 'qg2' || p.key === 'handover' ? qg2Readiness(session) : null; const done = p.key === 'plan' ? (!!session.settings.country && session.participants.length > 0 && session.sessions.length > 0) : p.key === 'run' ? (Object.keys(session.assessments).length > 0 && Object.values(session.assessments).every(a => a.scope.outOfScope || a.workshop.status !== 'NOT_ASSESSED')) : p.key === 'prepare' ? (session.sessions.length > 0 && session.sessions.every(ws => ws.roomSent)) : p.key === 'qg2' ? (q.streams.length > 0 && q.streams.every(st => q.perStream[st].ready)) : false; const built = true; return html`<button class="side-nav-item" aria-current=${page === 'phase' && phase === p.key ? 'page' : 'false'} onClick=${() => { setPage('phase'); setPhase(p.key); }}><span class="n">${p.n}</span><span>${p.label}</span>${done ? html`<span class="state done"><${Icon} name="check" size=${13} /></span>` : built ? html`<span class="state"></span>` : html`<span class="state">next</span>`}</button>`; })}
+      ${NAV.map(p => { const q = p.key === 'signoff' ? qg2Readiness(session) : null; const done = p.key === 'plan' ? (!!session.settings.country && session.participants.length > 0 && session.sessions.length > 0) : p.key === 'run' ? (Object.keys(session.assessments).length > 0 && Object.values(session.assessments).every(a => a.scope.outOfScope || a.workshop.status !== 'NOT_ASSESSED')) : p.key === 'signoff' ? (q.streams.length > 0 && q.streams.every(st => q.perStream[st].ready)) : false; return html`<button class="side-nav-item" key=${p.key} aria-current=${page === 'phase' && phase === p.key ? 'page' : 'false'} onClick=${() => { setPage('phase'); setPhase(p.key); }}><span class="n">${p.n}</span><span>${p.label}</span>${done ? html`<span class="state done"><${Icon} name="check" size=${13} /></span>` : html`<span class="state"></span>`}</button>`; })}
     </nav>
+    <div class="side-section"><button class="btn btn-primary" style="width:100%;justify-content:center" disabled=${!Object.keys(session.assessments).length} onClick=${onPresent}><${Icon} name="share" /> Present</button></div>
     <div class="side-footer">
-      <button class="side-nav-item" aria-current=${page === 'styleguide' ? 'page' : 'false'} onClick=${() => setPage('styleguide')}><${Icon} name="palette" /><span>Style sheet</span></button>
       <button class="side-nav-item" onClick=${() => setRail(!rail)}><${Icon} name="sidebar" /><span>Collapse</span></button>
       <div class="side-version">v${BUILD.version} · ${BUILD.builtAt.slice(0, 10)} · offline</div>
     </div>
@@ -78,12 +84,14 @@ function ComingNext({ p }) {
 
 function RunPage({ session, summary, updateSession, toast, onClearAll, tab, setTab, ui, setUi, onReplaceSession, onPresent }) {
   const hasData = session.files.length > 0;
+  useEffect(() => { if (!hasData) setTab('import'); }, [hasData]);
+  if (tab === 'import' || !hasData) return html`<div>
+    ${hasData && html`<div class="sg-row" style="margin:0 0 .6rem"><${Button} variant="text" size="sm" onClick=${() => setTab('workshop')}>← Back to the workshop</${Button}></div>`}
+    <${ImportView} session=${session} summary=${summary} updateSession=${updateSession} toast=${toast} onClearAll=${onClearAll} onReplaceSession=${onReplaceSession} />
+  </div>`;
   return html`<div>
-    <div class="tabs" role="tablist">
-      <button class="tab" role="tab" aria-selected=${tab === 'workshop'} onClick=${() => setTab('workshop')}>Workshop</button>
-      <button class="tab" role="tab" aria-selected=${tab === 'import'} onClick=${() => setTab('import')}>Data & exports${hasData && html`<span class="cnt">${session.files.length}</span>`}</button>
-    </div>
-    ${tab === 'import' ? html`<${ImportView} session=${session} summary=${summary} updateSession=${updateSession} toast=${toast} onClearAll=${onClearAll} onReplaceSession=${onReplaceSession} />` : hasData ? html`<${WorkshopView} session=${session} summary=${summary} updateSession=${updateSession} toast=${toast} ui=${ui} setUi=${setUi} onPresent=${onPresent} />` : html`<${EmptyState} icon="upload" title="No capture sheets yet" text="Import the stream workbooks first – the workshop view is built from them." action=${html`<${Button} variant="primary" icon="upload" onClick=${() => setTab('import')}>Go to import</${Button}>`} />`}
+    <div class="sg-row" style="justify-content:flex-end;margin:-.5rem 0 .4rem"><${Button} variant="text" size="sm" icon="file" onClick=${() => setTab('import')}>Files & exports (${session.files.length})</${Button}></div>
+    <${WorkshopView} session=${session} summary=${summary} updateSession=${updateSession} toast=${toast} ui=${ui} setUi=${setUi} onPresent=${onPresent} />
   </div>`;
 }
 
@@ -127,7 +135,7 @@ function App() {
     return () => clearTimeout(t);
   }, [session]);
   const [page, setPage] = useState(() => store.get('fg.page', 'home'));
-  const [phase, setPhase] = useState(() => store.get('fg.phase', 'run'));
+  const [phase, setPhase] = useState(() => { const v = store.get('fg.phase', 'run'); return ({ plan: 'plan', prepare: 'plan', run: 'run', evaluate: 'results', results: 'results', qg2: 'signoff', handover: 'signoff', signoff: 'signoff' })[v] || 'run'; });
   const [theme, setThemeState] = useState(() => store.get('fg.theme', null));
   const [share, setShareState] = useState(false);
   const [rail, setRail] = useState(false);
@@ -146,23 +154,24 @@ function App() {
     window.addEventListener('keydown', onKey); document.addEventListener('fg:go', onGo); return () => { window.removeEventListener('keydown', onKey); document.removeEventListener('fg:go', onGo); };
   }, []);
   const toast = (text, opts = {}) => { const id = newId('t'); setToasts(t => [...t, { id, text, ...opts }]); setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), opts.ttl || 4000); };
-  const current = PHASES.find(p => p.key === phase) || PHASES[2];
+  const current = NAV.find(p => p.key === phase) || NAV[1];
   const tab = runTab || (session && session.files.length ? 'workshop' : 'import');
   const viewName = page === 'styleguide' ? 'Style sheet' : page === 'home' ? 'Start here' : `${current.n} ${current.label}`;
-  const goStep = (ph, tab) => { setPage('phase'); setPhase(ph); if (tab) setRunTab(tab); };
-  const crumbs = page === 'styleguide' ? ['Design system', 'Style sheet'] : page === 'home' ? ['Start here'] : [`${current.n} ${current.label}`, phase === 'run' && tab === 'import' ? 'Data & exports' : current.title];
+  const PAGE_OF = { plan: 'plan', prepare: 'plan', run: 'run', evaluate: 'results', results: 'results', qg2: 'signoff', handover: 'signoff', signoff: 'signoff' };
+  const goStep = (ph, tab) => { setPage('phase'); setPhase(PAGE_OF[ph] || ph); if (tab) setRunTab(tab); };
+  const crumbs = page === 'styleguide' ? ['Design system', 'Style sheet'] : page === 'home' ? ['Start here'] : [`${current.n} ${current.label}`, phase === 'run' ? (tab === 'import' ? 'Files & exports' : 'Workshop mode') : ''].filter(Boolean);
   if (!session) return html`<div class="app"><aside class="sidebar"></aside><div class="content"><div class="main" style="display:grid;gap:.6rem;max-width:30rem"><div class="skeleton" style="width:40%"></div><div class="skeleton" style="width:80%"></div><div class="skeleton" style="width:60%"></div></div></div></div>`;
   const goActivity = (p) => { const l3 = p.level >= 4 ? p.parentId : p.id; setPage('phase'); setPhase('run'); setRunTab('workshop'); setWsUi(u => ({ ...u, stream: p.stream, l3, expanded: p.level >= 4 ? p.id : null, selected: p.level >= 4 ? p.id : null, entity: null })); };
-  const paletteItems = [...Object.values(session.entities).map(e => ({ label: `${e.displayName || e.name} · ${e.code}`, kind: 'entity', icon: 'file', go: () => { setPage('phase'); setPhase('run'); setRunTab('workshop'); setWsUi(u => ({ ...u, entity: e.code })); } })), ...STREAMS.filter(s => summary.activitiesByStream[s]).map(s => ({ label: `${s} · ${summary.activitiesByStream[s]} activities`, kind: 'stream', icon: 'run', go: () => { setPage('phase'); setPhase('run'); setRunTab('workshop'); setWsUi(u => ({ ...u, stream: s, l3: null })); } })), ...Object.values(session.processes).filter(p => p.level >= 2).map(p => ({ label: `${p.id} ${p.name}`, kind: `L${p.level}`, icon: 'file', go: () => goActivity(p) })), ...PHASES.map(p => ({ label: `${p.n} ${p.label} – ${p.title}`, kind: 'phase', icon: p.icon, go: () => { setPage('phase'); setPhase(p.key); } })), { label: 'Start here', kind: 'home', icon: 'info', go: () => setPage('home') }, { label: 'Style sheet', kind: 'design', icon: 'palette', go: () => setPage('styleguide') }, { label: 'Present mode', kind: 'present', icon: 'share', go: () => setPresent({ stream: wsUi.stream || 'R2R', entityFilter: null, l3: wsUi.l3 }) }, { label: theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme', kind: 'theme', icon: 'sun', go: () => setTheme(theme === 'dark' ? 'light' : 'dark') }];
+  const paletteItems = [...Object.values(session.entities).map(e => ({ label: `${e.displayName || e.name} · ${e.code}`, kind: 'entity', icon: 'file', go: () => { setPage('phase'); setPhase('run'); setRunTab('workshop'); setWsUi(u => ({ ...u, entity: e.code })); } })), ...STREAMS.filter(s => summary.activitiesByStream[s]).map(s => ({ label: `${s} · ${summary.activitiesByStream[s]} activities`, kind: 'stream', icon: 'run', go: () => { setPage('phase'); setPhase('run'); setRunTab('workshop'); setWsUi(u => ({ ...u, stream: s, l3: null })); } })), ...Object.values(session.processes).filter(p => p.level >= 2).map(p => ({ label: `${p.id} ${p.name}`, kind: `L${p.level}`, icon: 'file', go: () => goActivity(p) })), ...NAV.map(p => ({ label: `${p.n} ${p.label}`, kind: 'page', icon: p.icon, go: () => { setPage('phase'); setPhase(p.key); } })), { label: 'Start here', kind: 'home', icon: 'info', go: () => setPage('home') }, { label: 'Style sheet', kind: 'design', icon: 'palette', go: () => setPage('styleguide') }, { label: 'Present', kind: 'present', icon: 'share', go: () => setPresent({ stream: session.processes[wsUi.l3]?.stream || 'R2R', entityFilter: null, l3: wsUi.l3 }) }, { label: theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme', kind: 'theme', icon: 'sun', go: () => setTheme(theme === 'dark' ? 'light' : 'dark') }];
   const logFeedback = (note) => { updateSession(s => { s.feedback = [...s.feedback, { ts: new Date().toISOString(), view: viewName, note, sessionId: s.activeSessionId }]; }); toast('Feedback logged'); };
   const replaceSession = (loaded) => { setSession({ ...createSession(), ...loaded }); dirty.current = true; setRunTab(loaded.files?.length ? 'workshop' : 'import'); toast('Session loaded from file'); };
   const clearAll = async () => { try { await storageClear(); } catch { /* ignore */ } setSession(createSession()); dirty.current = true; setRunTab('import'); toast('All data cleared'); };
   return html`<div class="app" data-rail=${rail ? '1' : '0'}>
-    <${Sidebar} phase=${phase} setPhase=${setPhase} summary=${summary} rail=${rail} setRail=${setRail} session=${session} page=${page} setPage=${setPage} />
+    <${Sidebar} phase=${phase} setPhase=${setPhase} summary=${summary} rail=${rail} setRail=${setRail} session=${session} page=${page} setPage=${setPage} onPresent=${() => setPresent({ stream: session.processes[wsUi.l3]?.stream || 'R2R', entityFilter: null, l3: wsUi.l3 })} />
     <div class="content">
       <${TopBar} crumbs=${crumbs} theme=${theme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')} setTheme=${setTheme} share=${share} setShare=${setShare} onPalette=${() => setPalette(true)} onFeedback=${() => setFeedback(f => !f)} save=${save} onSave=${() => { downloadSessionJson(session); toast('Session file downloaded'); }} />
       <${KpiStrip} summary=${summary} session=${session} updateSession=${updateSession} toast=${toast} />
-      <main class="main">${page === 'home' ? html`<${HomePage} session=${session} summary=${summary} updateSession=${updateSession} toast=${toast} go=${goStep} onReplaceSession=${replaceSession} />` : page === 'styleguide' ? html`<${StyleGuide} />` : phase === 'run' ? html`<${RunPage} session=${session} summary=${summary} updateSession=${updateSession} toast=${toast} onClearAll=${clearAll} tab=${tab} setTab=${setRunTab} ui=${wsUi} setUi=${setWsUi} onReplaceSession=${replaceSession} onPresent=${p => setPresent(p)} />` : phase === 'plan' ? html`<${PlanView} session=${session} summary=${summary} updateSession=${updateSession} toast=${toast} />` : phase === 'prepare' ? html`<${PreparePage} session=${session} updateSession=${updateSession} toast=${toast} />` : phase === 'evaluate' ? html`<${EvaluatePage} session=${session} updateSession=${updateSession} toast=${toast} goActivity=${goActivity} />` : phase === 'qg2' ? html`<${Qg2Page} session=${session} updateSession=${updateSession} toast=${toast} />` : phase === 'handover' ? html`<${HandoverPage} session=${session} toast=${toast} />` : html`<${ComingNext} p=${current} />`}</main>
+      <main class="main">${page === 'home' ? html`<${HomePage} session=${session} summary=${summary} updateSession=${updateSession} toast=${toast} go=${goStep} onReplaceSession=${replaceSession} />` : page === 'styleguide' ? html`<${StyleGuide} />` : phase === 'run' ? html`<${RunPage} session=${session} summary=${summary} updateSession=${updateSession} toast=${toast} onClearAll=${clearAll} tab=${tab} setTab=${setRunTab} ui=${wsUi} setUi=${setWsUi} onReplaceSession=${replaceSession} onPresent=${p => setPresent(p)} />` : phase === 'plan' ? html`<${PlanView} session=${session} summary=${summary} updateSession=${updateSession} toast=${toast} /><div style="margin-top:2rem"><${PreparePage} session=${session} updateSession=${updateSession} toast=${toast} /></div>` : phase === 'results' ? html`<${EvaluatePage} session=${session} updateSession=${updateSession} toast=${toast} goActivity=${goActivity} />` : phase === 'signoff' ? html`<${Qg2Page} session=${session} updateSession=${updateSession} toast=${toast} /><div style="margin-top:2rem"><${HandoverPage} session=${session} toast=${toast} /></div>` : html`<${ComingNext} p=${current} />`}</main>
     </div>
     <${Palette} open=${palette} onClose=${() => setPalette(false)} items=${paletteItems} onPick=${i => { setPalette(false); i.go(); }} />
     <${Welcome} open=${welcome} onClose=${() => { setWelcome(false); store.set('fg.welcomed', true); }} onPrimary=${() => { setWelcome(false); store.set('fg.welcomed', true); setPage('phase'); setPhase('run'); setRunTab('import'); }} onDemo=${async () => { setWelcome(false); store.set('fg.welcomed', true); setPage('home'); await loadDemoData(updateSession, toast, () => goStep('run', 'workshop')); }} />
