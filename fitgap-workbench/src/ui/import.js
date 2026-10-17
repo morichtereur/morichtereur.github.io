@@ -4,9 +4,10 @@
 function readWorkbook(buffer) { return XLSX.read(buffer, { type: 'array', cellStyles: false, cellNF: false, cellHTML: false }); }
 const tick = () => new Promise(r => setTimeout(r, 0));
 
-function useImportQueue(updateSession, onBatchDone) {
+function useImportQueue(updateSession, onBatchDone, profileRef) {
   const [jobs, setJobs] = useState([]);
   const wbRef = useRef({});
+  const finishFlows = async (buf, wb, parsed) => { try { let procs; updateSession(s => { procs = s.processes; }); const flows = await extractFlowsForImport(buf, wb, parsed, procs || {}); if (flows.length) updateSession(s => { s.flows = s.flows.filter(f => f.file !== parsed.fileName).concat(flows); }); return flows.length; } catch (e) { console.warn('flow extraction failed', e); return 0; } };
   const patch = (id, p) => setJobs(js => js.map(j => j.id === id ? { ...j, ...p } : j));
   const finish = (id, parsed) => {
     let report;
@@ -28,25 +29,27 @@ function useImportQueue(updateSession, onBatchDone) {
         patch(job.id, { status: 'parsing', progress: 45, message: 'Parsing workbook…' }); await tick();
         const wb = readWorkbook(buf);
         patch(job.id, { progress: 75, message: 'Detecting layout…' }); await tick();
-        const parsed = parseCaptureWorkbook(wb, { XLSX, fileName: file.name });
-        if (parsed.needsSheetChoice) { wbRef.current[job.id] = wb; patch(job.id, { status: 'choice', progress: 80, message: 'Several candidate sheets – pick one', candidates: parsed.sheets.candidates }); continue; }
+        const parsed = parseCaptureWorkbook(wb, { XLSX, fileName: file.name, profile: profileRef?.current || undefined });
+        if (parsed.needsSheetChoice) { wbRef.current[job.id] = { wb, buf }; patch(job.id, { status: 'choice', progress: 80, message: 'Several candidate sheets – pick one', candidates: parsed.sheets.candidates }); continue; }
         if (!parsed.ok) { patch(job.id, { status: 'error', progress: 100, message: parsed.warnings.map(w => w.message).join(' ') }); continue; }
         results.push(finish(job.id, parsed));
+        const nf = await finishFlows(buf, wb, parsed); if (nf) patch(job.id, { message: `${nf} flow image${nf > 1 ? 's' : ''} extracted` });
       } catch (e) { patch(job.id, { status: 'error', progress: 100, message: `Could not read this file: ${e.message}` }); results.push({ error: e }); }
       await tick();
     }
     onBatchDone && onBatchDone(results, list.length);
   };
   const choose = (id, sheetName) => {
-    const wb = wbRef.current[id]; const job = jobs.find(j => j.id === id); if (!wb || !job) return;
-    const parsed = parseCaptureWorkbook(wb, { XLSX, fileName: job.name, sheetName });
+    const entry = wbRef.current[id]; const job = jobs.find(j => j.id === id); if (!entry || !job) return;
+    const parsed = parseCaptureWorkbook(entry.wb, { XLSX, fileName: job.name, sheetName, profile: profileRef?.current || undefined });
     if (!parsed.ok) { patch(id, { status: 'error', progress: 100, message: parsed.warnings.map(w => w.message).join(' ') }); return; }
     onBatchDone && onBatchDone([finish(id, parsed)], 1);
+    finishFlows(entry.buf, entry.wb, parsed);
   };
   return { jobs, run, choose, clear: () => setJobs([]) };
 }
 
-function DropZone({ onFiles, compact }) {
+function DropZone({ onFiles, compact, profiles, profileId, setProfileId }) {
   const [over, setOver] = useState(false); const inp = useRef();
   const onDrop = (e) => { e.preventDefault(); setOver(false); onFiles(e.dataTransfer.files); };
   return html`<div class=${`dropzone${over ? ' over' : ''}`} style=${compact ? 'padding:1.1rem' : ''} onDragOver=${e => { e.preventDefault(); setOver(true); }} onDragLeave=${() => setOver(false)} onDrop=${onDrop}>
@@ -54,6 +57,7 @@ function DropZone({ onFiles, compact }) {
     ${!compact && html`<div class="ico"><${Icon} name="upload" size=${22} /></div><h3>Drop the stream capture sheets here</h3><p>All files at once: R2R, A2R, I2P, I2C, ICO and I2C_CMD. Versions re-sent later are merged by Process ID and entity – never duplicated, workshop results are never overwritten.</p>`}
     <${Button} variant=${compact ? 'outline' : 'primary'} icon="upload" onClick=${() => inp.current.click()}>${compact ? 'Add or re-import files' : 'Choose files'}</${Button}>
     ${compact && html`<span class="muted small" style="margin-left:.6rem">or drop them here</span>`}
+    ${profiles && profiles.length > 1 && html`<div style="margin-top:.6rem"><label class="small muted">Template profile </label><select class="select sm" style="width:auto" value=${profileId} onChange=${e => setProfileId(e.target.value)}>${profiles.map(p => html`<option value=${p.id} key=${p.id}>${p.name}</option>`)}</select></div>`}
   </div>`;
 }
 
@@ -114,10 +118,10 @@ function MatrixCard({ summary }) {
   </${Card}>`;
 }
 
-const GAP_ORDER = ['NO_GAP', 'HARMONIZATION', 'STANDARDIZATION', 'BOTH', 'NA', 'UNCLEAR', 'NOT_ASSESSED'];
+const GAP_ORDER_import = ['NO_GAP', 'HARMONIZATION', 'STANDARDIZATION', 'BOTH', 'NA', 'UNCLEAR', 'NOT_ASSESSED'];
 function GapCard({ summary }) {
   const total = {}; for (const g of Object.values(summary.gapByStream)) for (const [k, v] of Object.entries(g)) total[k] = (total[k] || 0) + v;
-  const segs = (g) => GAP_ORDER.map(k => ({ key: k, value: g[k] || 0, label: k === 'NOT_ASSESSED' ? 'Not assessed' : GAP_LABEL[k] }));
+  const segs = (g) => GAP_ORDER_import.map(k => ({ key: k, value: g[k] || 0, label: k === 'NOT_ASSESSED' ? 'Not assessed' : GAP_LABEL[k] }));
   const n = (g) => Object.values(g).reduce((a, b) => a + b, 0);
   return html`<${Card} title="Ops pre-assessment · gap distribution" stats=${[['in scope', n(total)], ['out of scope', summary.outOfScope]]}>
     <${Stack} size="lg" segments=${segs(total)} />
@@ -136,18 +140,21 @@ function DiffsCard({ session }) {
 }
 
 function ImportView({ session, summary, updateSession, toast, onClearAll, onReplaceSession }) {
+  const profiles = allProfiles(session); const [profileId, setProfileId] = useState(DEFAULT_PROFILE_ID); const profileRef = useRef(null);
+  profileRef.current = profiles.find(p => p.id === profileId) || null;
+  const dz = { profiles, profileId, setProfileId };
   const q = useImportQueue(updateSession, (results, n) => {
     const ok = results.filter(r => r && !r.error); const added = ok.reduce((a, r) => a + r.assessments.added, 0), merged = ok.reduce((a, r) => a + r.assessments.merged, 0), changed = ok.reduce((a, r) => a + r.assessments.changedOps, 0);
     const pending = results.length - ok.length;
     toast(`${ok.length} of ${n} file${n > 1 ? 's' : ''} imported · ${added} assessments added${merged ? `, ${merged} merged` : ''}${changed ? `, ${changed} Ops values changed` : ''}${pending ? ` · ${pending} need attention` : ''}`);
-  });
+  }, profileRef);
   const [confirmClear, setConfirmClear] = useState(false);
   const hasData = session.files.length > 0;
   const onFiles = (files) => q.run(files);
   if (!hasData && !q.jobs.length) {
     return html`<div>
       <${PageHead} eyebrow="3 · Run · Data & exports" title="Import the capture sheets" lead="Start with the pre-filled workbooks from GBS Operations. The tool reads the main Fit-Gap sheet of each file, detects entities and blocks by their titles, and shows you exactly what it found before anything is assessed." how=${html`<ol><li>Drop all stream workbooks at once (or add them one by one).</li><li>Check the import summary: entities × streams, activity counts, gap distribution and warnings.</li><li>If a label without entity code looks like a known entity, confirm or reject the match.</li><li>Re-import a newer version at any time – Ops values are refreshed and listed, workshop results stay.</li></ol>`} />
-      <${DropZone} onFiles=${onFiles} />
+      <${DropZone} onFiles=${onFiles} ...${dz} />
       <div style="margin-top:1rem;max-width:46rem"><${ExportsCard} session=${session} summary=${summary} updateSession=${updateSession} toast=${toast} onReplaceSession=${onReplaceSession} /></div>
     </div>`;
   }
@@ -163,10 +170,11 @@ function ImportView({ session, summary, updateSession, toast, onClearAll, onRepl
       </div>
       <div style="display:grid;gap:1rem">
         <${ExportsCard} session=${session} summary=${summary} updateSession=${updateSession} toast=${toast} onReplaceSession=${onReplaceSession} />
-        <${DropZone} onFiles=${onFiles} compact />
+        <${DropZone} onFiles=${onFiles} compact ...${dz} />
         ${q.jobs.length > 0 && html`<div class="filelist">${q.jobs.map(j => html`<${JobRow} key=${j.id} job=${j} onChoose=${q.choose} />`)}</div>`}
         ${hasData && html`<${FilesCard} session=${session} summary=${summary} />`}
         ${hasData && html`<${Card} title="Parsing warnings" stats=${[['open', summary.warnings.filter(w => w.level !== 'info').length]]}><${WarningList} warnings=${summary.warnings} /></${Card}>`}
+        <${ProfilesCard} session=${session} updateSession=${updateSession} toast=${toast} />
         ${hasData && html`<div class="sg-row" style="justify-content:flex-end">${confirmClear ? html`<span class="small muted">Remove all imported data and workshop results from this browser?</span><${Button} variant="danger" size="sm" onClick=${() => { setConfirmClear(false); q.clear(); onClearAll(); }}>Yes, clear everything</${Button}><${Button} variant="text" size="sm" onClick=${() => setConfirmClear(false)}>Cancel</${Button}>` : html`<${Button} variant="text" size="sm" onClick=${() => setConfirmClear(true)}>Clear all data</${Button}>`}</div>`}
       </div>
     </div>

@@ -154,7 +154,9 @@ function EntityCell({ a, process, onOpen, open, updateSession }) {
     </div></td>`;
 }
 
-function WorkshopView({ session, summary, updateSession, toast, ui, setUi }) {
+function WorkshopView({ session, summary, updateSession, toast, ui, setUi, onPresent }) {
+  const [panel, setPanel] = useState(() => store.get('fg.panel', 'none'));
+  const choosePanel = (v) => { setPanel(v); store.set('fg.panel', v); };
   const st = session.settings;
   const streamsWithData = STREAMS.filter(s => summary.activitiesByStream[s]);
   const tabs = [...streamsWithData.filter(s => s === 'A2R' ? (st.streamsInScope['A2R-FAA'] !== false || st.streamsInScope['A2R-IA'] !== false) : st.streamsInScope[s] !== false), ...(st.streamsInScope.MD !== false ? ['MD'] : [])];
@@ -224,8 +226,10 @@ function WorkshopView({ session, summary, updateSession, toast, ui, setUi }) {
           <div><div class="eyebrow">${crumbsNode.map(c => c.id + ' ' + c.name).join(' › ') || stream}</div><h2 style="font-family:var(--font-serif);font-weight:500;font-size:1.3rem;margin:.15rem 0"><span class="pid mono muted" style="font-size:.85rem">${node.id}</span> ${node.name}</h2>
             <div class="muted small">${acts.length} activities${entityFilter ? '' : ` × ${entities.length} entities`} · Ops: ${opsSummary || '–'}${stats.outOfScope ? ` · ${stats.outOfScope} out of scope` : ''}</div>
             <div style="max-width:22rem;margin-top:.4rem"><${MiniBar} segments=${[{ key: 'DONE', value: stats.assessed }, { key: 'OPEN', value: stats.total - stats.assessed }]} pct=${`${stats.assessed}/${stats.total} assessed · ${stats.openGaps} open gaps`} /></div></div>
-          <div style="display:flex;flex-direction:column;gap:.4rem;align-items:flex-end"><${Button} variant="primary" size="sm" disabled=${!stats.opsNoGap} onClick=${bulk}>Confirm Ops NO GAP for this L3 (${stats.opsNoGap})</${Button}><span class="muted small">${mode === 'exceptions' ? `${hidden} NO GAP row${hidden === 1 ? '' : 's'} hidden` : 'all rows shown'} · <a href="#" onClick=${e => { e.preventDefault(); setUi({ ...ui, mode: mode === 'exceptions' ? 'walk' : 'exceptions' }); }}>${mode === 'exceptions' ? 'show all' : 'exceptions only'}</a></span></div>
+          <div style="display:flex;flex-direction:column;gap:.4rem;align-items:flex-end"><div class="sg-row" style="margin:0"><div class="yn"><button aria-pressed=${panel === 'none'} onClick=${() => choosePanel('none')} style="font-family:var(--font-ui);padding:.22rem .5rem">Table</button><button aria-pressed=${panel === 'flow'} onClick=${() => choosePanel('flow')} style="font-family:var(--font-ui);padding:.22rem .5rem">Flow</button><button aria-pressed=${panel === 'swim'} onClick=${() => choosePanel('swim')} style="font-family:var(--font-ui);padding:.22rem .5rem">Swimlane</button></div><${Button} variant="outline" size="sm" icon="share" onClick=${() => onPresent({ stream, entityFilter, l3: node.id })}>Present</${Button}><${Button} variant="primary" size="sm" disabled=${!stats.opsNoGap} onClick=${bulk}>Confirm Ops NO GAP for this L3 (${stats.opsNoGap})</${Button}></div><span class="muted small">${mode === 'exceptions' ? `${hidden} NO GAP row${hidden === 1 ? '' : 's'} hidden` : 'all rows shown'} · <a href="#" onClick=${e => { e.preventDefault(); setUi({ ...ui, mode: mode === 'exceptions' ? 'walk' : 'exceptions' }); }}>${mode === 'exceptions' ? 'show all' : 'exceptions only'}</a></span></div>
         </div></div>
+        ${panel === 'flow' && html`<div class="card" style="margin-bottom:.75rem"><div class="card-body"><${FlowViewer} session=${session} node=${node} updateSession=${updateSession} toast=${toast} compact /></div></div>`}
+        ${panel === 'swim' && html`<div class="card" style="margin-bottom:.75rem"><div class="card-body"><div class="sg-row" style="margin:0 0 .4rem">${entities.map(e => html`<${Chip} key=${e.code} active=${(ui.swimEntity || expandedEntity) === e.code} onClick=${() => setUi({ ...ui, swimEntity: e.code })}>${e.displayName || e.name}</${Chip}>`)}</div><${Swimlane} session=${session} entityCode=${entities.some(e => e.code === ui.swimEntity) ? ui.swimEntity : expandedEntity} node=${node} activities=${acts} /></div></div>`}
         <table class="wtable sticky">
           <thead><tr><th style="width:30%">Activity</th>${entities.map(e => html`<th class="ent" key=${e.code}>${e.displayName || e.name}<small>${e.hasCode ? e.code : ''}</small></th>`)}</tr></thead>
           <tbody>

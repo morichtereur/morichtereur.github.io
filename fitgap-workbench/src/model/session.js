@@ -19,6 +19,8 @@ export function createSession() {
       gapDefinitions: { ...GAP_DEFINITIONS },
       minutesPerActivity: { NO_GAP: 1.5, GAP: 5 },
       editorInitials: '',
+      lunch: { start: '12:00', end: '13:00' },
+      dayStart: '08:00', dayEnd: '18:00',
     },
     entities: {},        // code → { code, name, displayName, country, hasCode, sources[] }
     processes: {},       // id → Process (+ sources[])
@@ -32,9 +34,19 @@ export function createSession() {
     taxonomyChangeRequests: [],
     pendingEntityMatches: [],
     importDiffs: [],     // Ops pre-assessment values changed by a re-import, for review
-    flows: [],           // { id, stream, l3Id, label, dataUrl, file, sheet }
+    flows: [],           // { id, file, sheet, row, label, labelId, nodeId, score, stream, dataUrl, mime }
+    signoff: {},         // stream → { pe: { name, date }, ops: { name, date } }
+    profiles: [],        // custom template profiles (serialisable)
+    portfolio: [],       // planning workbook rows: { country, process, stream, responsible, dateRaw, timeRaw, status, comment }
+    milestones: DEFAULT_MILESTONES.map(m => ({ ...m })),
   };
 }
+
+export const DEFAULT_MILESTONES = [
+  { key: 'start', label: 'Transition start', date: '' }, { key: 'qg1', label: 'QG1', date: '' }, { key: 'workshops', label: 'Fit-gap workshops', date: '' },
+  { key: 'evaluate', label: 'Evaluate & decide', date: '' }, { key: 'qg2', label: 'QG2 fit-gap conclusion', date: '' }, { key: 'kt', label: 'KT kick-off', date: '' },
+  { key: 'qg3', label: 'QG3 go-live', date: '' }, { key: 'qg4', label: 'QG4 closure', date: '' },
+];
 
 const AS_IS_FIELDS = ['le', 'gbs', 'systems', 'gap', 'gapRaw', 'info'];
 
@@ -168,5 +180,6 @@ export function serializeSession(session) { return JSON.stringify(session); }
 export function deserializeSession(text) {
   const s = JSON.parse(text);
   if (typeof s.version !== 'number' || s.version > SESSION_FILE_VERSION) throw new Error(`Unsupported session file version ${s.version}`);
-  return { ...createSession(), ...s };
+  const base = createSession();
+  return { ...base, ...s, settings: { ...base.settings, ...(s.settings || {}), minutesPerActivity: { ...base.settings.minutesPerActivity, ...(s.settings?.minutesPerActivity || {}) }, streamsInScope: { ...base.settings.streamsInScope, ...(s.settings?.streamsInScope || {}) }, gapDefinitions: { ...base.settings.gapDefinitions, ...(s.settings?.gapDefinitions || {}) } } };
 }

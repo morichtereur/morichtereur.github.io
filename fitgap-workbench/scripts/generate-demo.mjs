@@ -5,6 +5,7 @@
 // GAP typos, instruction text, an old sheet copy, flow sheets) so the tool can
 // be shown and tested without client data. Written with SheetJS.
 import * as XLSX from 'xlsx';
+import JSZip from 'jszip';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
@@ -159,6 +160,45 @@ function workbook(stream, { headerRow, entities, asIsTitle, fitGapTitle, oosL2, 
   return wb;
 }
 
+// Tiny PNG (a 160×90 blue-grey box) used as the BPMN image in flow sheets.
+function demoPng() {
+  const w = 160, h = 90; const raw = []; for (let y = 0; y < h; y++) { raw.push(0); for (let x = 0; x < w; x++) { const edge = x < 3 || y < 3 || x >= w - 3 || y >= h - 3; raw.push(edge ? 0x1f : 0xe8, edge ? 0x4e : 0xed, edge ? 0x79 : 0xf1); } }
+  const crc = (buf) => { let c, crc = 0xffffffff; for (let n = 0; n < buf.length; n++) { c = (crc ^ buf[n]) & 0xff; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; crc = (crc >>> 8) ^ c; } return (crc ^ 0xffffffff) >>> 0; };
+  const chunk = (type, data) => { const len = Buffer.alloc(4); len.writeUInt32BE(data.length); const td = Buffer.concat([Buffer.from(type), data]); const c = Buffer.alloc(4); c.writeUInt32BE(crc(td)); return Buffer.concat([len, td, c]); };
+  const ihdr = Buffer.alloc(13); ihdr.writeUInt32BE(w, 0); ihdr.writeUInt32BE(h, 4); ihdr[8] = 8; ihdr[9] = 2; ihdr[10] = 0; ihdr[11] = 0; ihdr[12] = 0;
+  const { deflateSync } = require('node:zlib');
+  return Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), chunk('IHDR', ihdr), chunk('IDAT', deflateSync(Buffer.from(raw))), chunk('IEND', Buffer.alloc(0))]);
+}
+import { createRequire } from 'node:module'; const require = createRequire(import.meta.url);
+
+/** Add one PNG per flow sheet to the xlsx package (SheetJS CE cannot write images). */
+async function addFlowImages(buffer, flowSheetNames) {
+  const zip = await JSZip.loadAsync(buffer);
+  const wbXml = await zip.file('xl/workbook.xml').async('string');
+  const rels = await zip.file('xl/_rels/workbook.xml.rels').async('string');
+  let types = await zip.file('[Content_Types].xml').async('string');
+  if (!types.includes('Extension="png"')) types = types.replace('</Types>', '<Default Extension="png" ContentType="image/png"/></Types>');
+  let n = 0;
+  for (const name of flowSheetNames) {
+    const sm = wbXml.match(new RegExp(`<sheet[^>]*name="${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}"[^>]*r:id="([^"]+)"`)); if (!sm) continue;
+    const target = rels.match(new RegExp(`Id="${sm[1]}"[^>]*Target="([^"]+)"`))[1];
+    const sheetPath = target.startsWith('/') ? target.slice(1) : 'xl/' + target;
+    const sheetFile = sheetPath.slice(sheetPath.lastIndexOf('/') + 1);
+    n++;
+    let xml = await zip.file(sheetPath).async('string');
+    xml = xml.replace('</worksheet>', '<drawing r:id="rIdDr1"/></worksheet>');
+    if (!xml.includes('xmlns:r=')) xml = xml.replace('<worksheet ', '<worksheet xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" ');
+    zip.file(sheetPath, xml);
+    zip.file(`xl/worksheets/_rels/${sheetFile}.rels`, `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rIdDr1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing" Target="../drawings/drawing${n}.xml"/></Relationships>`);
+    zip.file(`xl/drawings/drawing${n}.xml`, `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><xdr:wsDr xmlns:xdr="http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><xdr:twoCellAnchor><xdr:from><xdr:col>1</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>4</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:from><xdr:to><xdr:col>6</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>14</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:to><xdr:pic><xdr:nvPicPr><xdr:cNvPr id="2" name="Flow ${n}"/><xdr:cNvPicPr/></xdr:nvPicPr><xdr:blipFill><a:blip r:embed="rIdImg1"/><a:stretch><a:fillRect/></a:stretch></xdr:blipFill><xdr:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="1600000" cy="900000"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></xdr:spPr></xdr:pic><xdr:clientData/></xdr:twoCellAnchor></xdr:wsDr>`);
+    zip.file(`xl/drawings/_rels/drawing${n}.xml.rels`, `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rIdImg1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/image${n}.png"/></Relationships>`);
+    zip.file(`xl/media/image${n}.png`, demoPng());
+    types = types.replace('</Types>', `<Override PartName="/xl/drawings/drawing${n}.xml" ContentType="application/vnd.openxmlformats-officedocument.drawing+xml"/></Types>`);
+  }
+  zip.file('[Content_Types].xml', types);
+  return zip.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE' });
+}
+
 const rot = (arr, n) => arr.slice(n).concat(arr.slice(0, n));
 const files = [
   ['R2R', { headerRow: 8, entities: ENTITIES, asIsTitle: null, fitGapTitle: 'FIT-GAP ASSESSMENT', sheetName: 'Fit-Gap Template_R2R', oldCopy: true, flows: [{ tab: 'GL', id: 'R2R 1.1', name: 'Journal Entries' }] }],
@@ -170,7 +210,9 @@ const files = [
 for (const [stream, o] of files) {
   const wb = workbook(stream, { ...o, rows: buildRows(stream) });
   const file = resolve(OUT, `Fit-Gap_Template_${stream}_DemoGroup.xlsx`);
-  writeFileSync(file, XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' }));
+  let buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+  if (o.flows?.length) buf = await addFlowImages(buf, o.flows.map(f => `Process Flows_${f.tab}`));
+  writeFileSync(file, buf);
   console.log('wrote', file);
 }
 // I2C_CMD: subset of I2C (customer master data L2) for the separate Master Data session.

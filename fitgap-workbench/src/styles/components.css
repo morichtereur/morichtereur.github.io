@@ -353,3 +353,62 @@ dialog .dlg-actions { display: flex; justify-content: flex-end; gap: .5rem; padd
 .kpi-strip > div:nth-child(2) { min-width: 0; }
 .kpi-strip .legend { flex-wrap: nowrap; overflow: hidden; white-space: nowrap; font-size: .68rem; gap: .25rem .7rem; }
 :root[data-share="on"] .wtable { font-size: 1rem; } :root[data-share="on"] .pill { font-size: .82rem; } :root[data-share="on"] .yn.sm button { font-size: .82rem; padding: .2rem .55rem; }
+
+/* ---------- Flow viewer ---------- */
+.flow-stage { position: relative; overflow: hidden; background: var(--bg); border: 1px solid var(--line); border-radius: var(--radius); display: grid; place-items: center; cursor: grab; user-select: none; }
+.flow-stage:active { cursor: grabbing; }
+.flow-stage img { max-width: 100%; max-height: 100%; transition: transform 60ms linear; }
+dialog.flow-full { max-width: 96vw; width: 96vw; }
+
+/* ---------- Present mode ---------- */
+.present { position: fixed; inset: 0; z-index: 100; background: var(--panel); color: var(--ink); display: flex; flex-direction: column; container-type: inline-size; }
+.present-slide { flex: 1; padding: 4cqw 6cqw 2cqw; display: flex; flex-direction: column; min-height: 0; overflow: auto; animation: slide-next var(--t-base) var(--ease); }
+.present-slide.anim-prev { animation-name: slide-prev; }
+@keyframes slide-next { from { opacity: 0; transform: translateX(24px); } to { opacity: 1; transform: none; } }
+@keyframes slide-prev { from { opacity: 0; transform: translateX(-24px); } to { opacity: 1; transform: none; } }
+.present-slide .eyebrow { font-size: 1.1cqw; }
+.present-slide h2 { font-family: var(--font-serif); font-weight: 500; font-size: 3cqw; line-height: 1.15; margin: .3em 0 .6em; letter-spacing: -.01em; }
+.present-slide .big { font-family: var(--font-mono); font-weight: 500; line-height: 1; }
+.present-foot { display: flex; justify-content: space-between; align-items: center; padding: .6rem 1.2rem; border-top: 1px solid var(--line); font-size: .8rem; color: var(--ink-2); }
+.present-progress { height: 5px; background: var(--none); } .present-progress i { display: block; height: 100%; background: var(--accent); transition: width var(--t-base); }
+.slide-center { margin: auto 0; max-width: 70cqw; }
+.slide-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(16cqw, 1fr)); gap: 2cqw; }
+.slide-kpi { border-left: 4px solid var(--accent); padding-left: 1.2cqw; }
+.slide-legend { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5cqw 3cqw; font-size: 1.3cqw; } .slide-legend p { margin-top: .5cqw; color: var(--ink-2); }
+.slide-two { display: grid; grid-template-columns: 1fr 1fr; gap: 2cqw; min-height: 0; flex: 1; }
+.slide-table { width: 100%; border-collapse: collapse; font-size: 1.15cqw; } .slide-table th { text-align: left; font-size: .85cqw; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-2); padding: .4cqw .6cqw; border-bottom: 1px solid var(--line-strong); } .slide-table td { padding: .5cqw .6cqw; border-bottom: 1px solid var(--line); vertical-align: top; }
+.slide-list { font-size: 1.2cqw; padding-left: 1.4cqw; } .slide-list li { margin: .3cqw 0; }
+.present-select { font-size: .9cqw; padding: .15cqw .4cqw; width: auto; }
+.bar-row { display: grid; grid-template-columns: 11rem 1fr 3rem; gap: .6rem; align-items: center; font-size: .82rem; margin: .3rem 0; }
+.bar-row .bar { height: 10px; background: var(--none); border-radius: 3px; overflow: hidden; } .bar-row .bar i { display: block; height: 100%; }
+.present .bar-row { font-size: 1.1cqw; grid-template-columns: 16cqw 1fr 4cqw; }
+
+/* ---------- Evaluate ---------- */
+.board-cols { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .75rem; }
+@media (max-width: 80rem) { .board-cols { grid-template-columns: repeat(2, 1fr); } }
+.board-col { background: var(--bg); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: .5rem; min-height: 10rem; }
+.board-col-head { display: flex; justify-content: space-between; padding: .2rem .4rem .5rem; font-size: .84rem; }
+.dev-card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: .55rem .65rem; margin-bottom: .5rem; font-size: .84rem; box-shadow: var(--shadow-1); }
+.appr { font-family: var(--font-mono); font-size: .64rem; letter-spacing: .05em; padding: .05rem .35rem; border-radius: 3px; border: 1px solid var(--line-strong); color: var(--ink-2); }
+.appr-ALIGNED { border-color: var(--accent); color: var(--accent); } .appr-APPROVED { background: var(--ok-soft); border-color: var(--ok); color: var(--ok); } .appr-REJECTED { background: var(--flag-soft); border-color: var(--flag); color: var(--flag); }
+.cls-pill { display: inline-block; padding: .08rem .45rem; border-radius: 3px; font-size: .72rem; border-left: 3px solid var(--c); background: var(--bg); white-space: nowrap; }
+.matrix.heat td.clickable { cursor: pointer; } .matrix.heat td.clickable:hover { outline: 2px solid var(--accent); } .matrix.heat td.changed { font-weight: 600; color: var(--g-harm); }
+
+/* ---------- Prepare ---------- */
+.light { width: 12px; height: 12px; border-radius: 50%; flex: none; }
+.checks { display: grid; gap: .35rem; }
+.check { display: flex; align-items: center; gap: .5rem; font-size: .84rem; padding: .35rem .5rem; border-radius: var(--radius); background: var(--bg); }
+.check.ok { color: var(--ok); } .check.warn { color: var(--g-harm); } .check.bad { color: var(--flag); }
+.check span:nth-child(2) { color: var(--ink); font-weight: 500; }
+
+/* ---------- Calendar ---------- */
+.cal-grid { display: grid; gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; position: relative; }
+.cal-grid > div { background: var(--panel); }
+.cal-day { padding: .3rem .4rem; font-size: .78rem; font-weight: 600; }
+.cal-time { font-family: var(--font-mono); font-size: .66rem; color: var(--ink-3); padding: 0 .3rem; }
+.cal-cell { } .cal-cell.lunch { background: repeating-linear-gradient(135deg, var(--panel) 0 5px, var(--bg) 5px 7px); }
+.cal-ev { background: var(--accent-soft); border-left: 3px solid var(--accent); border-radius: 4px; padding: .2rem .4rem; font-size: .74rem; margin: 1px; cursor: grab; overflow: hidden; z-index: 2; }
+.cal-ev.active { background: var(--accent); color: var(--accent-ink); }
+.cal-ev .small { opacity: .85; }
+dialog.agenda { max-width: 48rem; }
+@media print { body * { visibility: hidden; } .print-area, .print-area * { visibility: visible; } .print-area { position: absolute; left: 0; top: 0; width: 100%; } dialog { border: 0; box-shadow: none; } }

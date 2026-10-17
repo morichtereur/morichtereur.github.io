@@ -24,8 +24,13 @@ Session {
   taxonomyChangeRequests[]: { id, processId, proposedChange, reason, raisedBy, sessionId }
   pendingEntityMatches[]:   entities without code that matched an existing one only fuzzily – user confirms
   importDiffs[]: { ts, key, field, old, new, file }  // Ops pre-assessment values changed by a re-import
-  flows[]:       { id, stream, l3Id, label, dataUrl, file, sheet }
+  flows[]:       { id, file, sheet, row, label, labelId, nodeId, score, stream, dataUrl, mime }   // images from "Process Flows_*" sheets
+  signoff:       { [stream]: { pe: { name, date }, ops: { name, date } } }
+  profiles[]:    custom template profiles (same shape as src/parser/profiles.js, serialisable)
+  portfolio[]:   rows of the planning workbook for all countries
+  milestones[]:  { key, label, date }
 }
+Participants additionally carry `mode: onsite | online`; sessions carry `roomSent`, `recordingOn`, `startedAt`, `endedAt`.
 ```
 
 Entity   `{ code, name, displayName, country, hasCode, sources[] }` – merged across files by code.
@@ -78,6 +83,12 @@ Y/N cells are `true | false | null`; unrecognised text is kept as `{ text }`. GA
 - Sub-headers sit at most two rows above the header row.
 - The To-Be block has LE / GBS / System / Planned initiative columns (any subset).
 - A2R sub-stream (FAA vs. IA) is derived from the L1/L2 names ("asset" vs. "inventory") – a configurable rule, not yet in the profile.
+
+## 4b Derived views (src/model/analysis.js, workshop.js)
+- Activity split class per entity × activity: Moves to GBS as planned · Stays local as planned · Planned for GBS, stays local · Planned local, done by GBS · Other party involved · Not assessed (workshop split vs. To-Be).
+- Gap analysis: Ops vs. workshop distribution, change matrix, heatmap L2/L3 × entity, cross-entity (all / one / some), drivers from Detailed Gap fields, open points, country vs. GBS side.
+- QG2-ready per stream = all in-scope activities assessed AND every deviation has owner, resolution approach, decided approval (aligned / approved / rejected) and, for separate variants, a justification.
+- Write-back writes only assessments touched in the workshop (switchable); cells come from `sources[].cells`, values are inline strings, styles are kept, calcChain is dropped.
 
 ## 5 Open decisions
 - Ops values on re-import: currently "newest file wins, diff for review". Alternative: hold the new values until the user accepts each diff.

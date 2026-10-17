@@ -25,20 +25,68 @@ function effortEstimate(session, summary, ws) {
   return { noGap, gap, minutes: Math.round(noGap * mins.NO_GAP + gap * mins.GAP), planned: ws.start && ws.end ? minutesBetween(ws.start, ws.end) : null };
 }
 
+function icsFor(session, sessions) {
+  const dt = (d, t) => d.replace(/-/g, '') + 'T' + (t || '09:00').replace(':', '') + '00';
+  const esc = (x) => String(x || '').replace(/[\\,;]/g, m => '\\' + m).replace(/\n/g, '\\n');
+  const ev = sessions.map(s => `BEGIN:VEVENT\r\nUID:${s.id}@gbs-fitgap-workbench\r\nDTSTAMP:${new Date().toISOString().replace(/[-:]/g, '').slice(0, 15)}Z\r\nDTSTART:${dt(s.date, s.start)}\r\nDTEND:${dt(s.date, s.end || s.start)}\r\nSUMMARY:${esc(`Fit-gap workshop ${s.stream} – ${session.settings.clientName} ${session.settings.country}`)}\r\nDESCRIPTION:${esc(`Participants: ${s.participantIds.map(id => session.participants.find(p => p.id === id)?.name).filter(Boolean).join(', ')}${s.note ? ' · ' + s.note : ''}${s.recording ? ' · Recording: ' + s.recording : ''}`)}\r\nEND:VEVENT`).join('\r\n');
+  return `BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//GBS Fit-Gap Workbench//EN\r\n${ev}\r\nEND:VCALENDAR\r\n`;
+}
+function toMin(t) { const [h, m] = (t || '00:00').split(':').map(Number); return h * 60 + m; }
+function toHM(m) { return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`; }
+function mondayOf(d) { const x = new Date(d + 'T00:00:00'); const day = (x.getDay() + 6) % 7; x.setDate(x.getDate() - day); return x; }
+function isoOf(d) { return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; }
+function weekNo(d) { const x = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())); const day = x.getUTCDay() || 7; x.setUTCDate(x.getUTCDate() + 4 - day); const y0 = new Date(Date.UTC(x.getUTCFullYear(), 0, 1)); return Math.ceil(((x - y0) / 86400000 + 1) / 7); }
+
+function CalendarGrid({ session, updateSession, toast }) {
+  const st = session.settings;
+  const first = session.sessions[0]?.date || isoOf(new Date());
+  const [week, setWeek] = useState(() => isoOf(mondayOf(first)));
+  const [weekend, setWeekend] = useState(false);
+  const days = Array.from({ length: weekend ? 7 : 5 }, (_, i) => { const d = new Date(week + 'T00:00:00'); d.setDate(d.getDate() + i); return isoOf(d); });
+  const start = toMin(st.dayStart || '08:00'), end = toMin(st.dayEnd || '18:00'); const slots = []; for (let m = start; m < end; m += 30) slots.push(m);
+  const shift = (n) => { const d = new Date(week + 'T00:00:00'); d.setDate(d.getDate() + 7 * n); setWeek(isoOf(d)); };
+  const onDrop = (e, day, slot) => { e.preventDefault(); const id = e.dataTransfer.getData('text/session'); if (!id) return; updateSession(s => { const ws = s.sessions.find(x => x.id === id); if (!ws) return; const dur = ws.end ? toMin(ws.end) - toMin(ws.start) : 90; ws.date = day; ws.start = toHM(slot); ws.end = toHM(Math.min(end, slot + dur)); s.sessions.sort((a, b) => (a.date + a.start).localeCompare(b.date + b.start)); }); };
+  const lunchS = toMin(st.lunch?.start || '12:00'), lunchE = toMin(st.lunch?.end || '13:00');
+  const rowH = 1.35;
+  return html`<div class="cal">
+    <div class="sg-row" style="justify-content:space-between;margin-bottom:.5rem"><span class="sg-row" style="margin:0"><${IconButton} icon="chevron" label="Previous week" onClick=${() => shift(-1)} style="transform:rotate(90deg)" /><b>CW ${weekNo(new Date(week + 'T00:00:00'))} · ${fmtDate(days[0])} – ${fmtDate(days[days.length - 1])}</b><${IconButton} icon="chevron" label="Next week" onClick=${() => shift(1)} style="transform:rotate(-90deg)" /></span><span class="sg-row" style="margin:0"><${Switch} checked=${weekend} onChange=${setWeekend}>weekend</${Switch}><span class="muted small">drag a session onto a slot · lunch ${st.lunch?.start}–${st.lunch?.end}</span></span></div>
+    <div class="cal-grid" style=${`grid-template-columns:4rem repeat(${days.length}, 1fr)`}>
+      <div></div>${days.map(d => html`<div class="cal-day" key=${d}>${WEEKDAY(d)} <span class="muted">${fmtDate(d).slice(0, 5)}</span></div>`)}
+      ${slots.map((m, ri) => html`<${Fragment} key=${m}><div class="cal-time" style=${`grid-row:${ri + 2};grid-column:1`}>${m % 60 === 0 ? toHM(m) : ''}</div>${days.map((d, di) => html`<div key=${d} class=${`cal-cell${m >= lunchS && m < lunchE ? ' lunch' : ''}`} onDragOver=${e => e.preventDefault()} onDrop=${e => onDrop(e, d, m)} style=${`height:${rowH}rem;grid-row:${ri + 2};grid-column:${di + 2}`}></div>`)}</${Fragment}>`)}
+      ${session.sessions.filter(ws => days.includes(ws.date) && ws.start).map(ws => { const col = days.indexOf(ws.date) + 2; const top = (toMin(ws.start) - start) / 30; const h = Math.max(1, ((ws.end ? toMin(ws.end) : toMin(ws.start) + 90) - toMin(ws.start)) / 30); const active = ws.id === session.activeSessionId; return html`<div key=${ws.id} class=${`cal-ev${active ? ' active' : ''}`} draggable="true" onDragStart=${e => e.dataTransfer.setData('text/session', ws.id)} style=${`grid-column:${col};grid-row:${2 + Math.round(top)} / span ${Math.round(h)};`} title=${`${ws.start}–${ws.end} ${ws.stream}`}><b>${ws.stream}</b> <span class="mono">${ws.start}–${ws.end}</span><div class="small">${ws.participantIds.map(id => { const p = session.participants.find(x => x.id === id); return p ? `${p.name}${p.mode === 'online' ? ' ◌' : p.mode === 'onsite' ? ' ●' : ''}` : ''; }).filter(Boolean).join(', ')}${ws.recordingOn ? ' · REC' : ''}</div></div>`; })}
+    </div>
+    <div class="muted small" style="margin-top:.3rem">● on site · ◌ online · REC recorded</div>
+  </div>`;
+}
+
+function Milestones({ session, updateSession }) {
+  const ms = session.milestones || [];
+  const dated = ms.filter(m => m.date).sort((a, b) => a.date.localeCompare(b.date));
+  const w0 = dated.length ? weekNo(new Date(dated[0].date + 'T00:00:00')) : 0, w1 = dated.length ? weekNo(new Date(dated[dated.length - 1].date + 'T00:00:00')) : 0;
+  const span = Math.max(1, w1 - w0 + 1);
+  return html`<div>
+    ${dated.length > 1 && html`<svg viewBox=${`0 0 600 70`} style="width:100%;max-width:50rem;font-family:var(--font-ui);font-size:9px"><line x1="20" x2="580" y1="30" y2="30" stroke="var(--line-strong)" />${dated.map((m, i) => { const w = weekNo(new Date(m.date + 'T00:00:00')); const x = 20 + 560 * (w - w0) / Math.max(1, span - 1); return html`<g key=${m.key}><circle cx=${x} cy="30" r="5" fill=${/qg/.test(m.key) ? 'var(--accent)' : 'var(--ink-2)'} /><text x=${x} y=${i % 2 ? 52 : 18} text-anchor="middle" fill="var(--ink)">${m.label}</text><text x=${x} y=${i % 2 ? 62 : 8} text-anchor="middle" fill="var(--ink-3)" font-family="var(--font-mono)">CW ${w}</text></g>`; })}</svg>`}
+    <div class="fgrid" style="grid-template-columns:repeat(4,1fr)">${ms.map((m, i) => html`<${Field} key=${m.key} label=${m.label}><input class="input sm" type="date" value=${m.date} onChange=${e => updateSession(s => { s.milestones[i].date = e.target.value; })} /></${Field}>`)}</div>
+    <p class="sg-note">QG1 and QG2 can be merged per country – leave one of the dates empty.</p>
+  </div>`;
+}
+
 function PlanView({ session, summary, updateSession, toast }) {
   const st = session.settings;
   const setS = (k, v) => updateSession(s => { s.settings[k] = v; });
-  const [pName, setPName] = useState(''), [pRole, setPRole] = useState(''), [pOrg, setPOrg] = useState('Local'), [pEnt, setPEnt] = useState('');
+  const [pName, setPName] = useState(''), [pRole, setPRole] = useState(''), [pOrg, setPOrg] = useState('Local'), [pEnt, setPEnt] = useState(''), [pMode, setPMode] = useState('onsite');
+  const [printAgenda, setPrintAgenda] = useState(null);
   const [ws, setWs] = useState({ date: '', start: '', end: '', stream: 'R2R', participantIds: [], recording: '', note: '' });
   const [plan, setPlan] = useState(null); const [planCountry, setPlanCountry] = useState('');
   const entities = Object.values(session.entities);
-  const addParticipant = () => { if (!pName.trim()) return; updateSession(s => { s.participants.push({ id: newId('p'), name: pName.trim(), role: pRole.trim(), organisation: pOrg, entityCode: pEnt || null }); }); setPName(''); setPRole(''); };
+  const addParticipant = () => { if (!pName.trim()) return; updateSession(s => { s.participants.push({ id: newId('p'), name: pName.trim(), role: pRole.trim(), organisation: pOrg, entityCode: pEnt || null, mode: pMode }); }); setPName(''); setPRole(''); };
   const addSession = () => { if (!ws.date) { toast('Session needs a date'); return; } updateSession(s => { s.sessions.push({ id: newId('ws'), ...ws, startedAt: null, endedAt: null }); s.sessions.sort((a, b) => (a.date + a.start).localeCompare(b.date + b.start)); }); setWs({ ...ws, participantIds: [], recording: '', note: '' }); };
   const onPlanFile = async (e) => {
     const f = e.target.files[0]; if (!f) return; e.target.value = '';
     try { const wb = XLSX.read(await f.arrayBuffer(), { type: 'array', cellDates: true }); const p = parsePlanningWorkbook(wb, { XLSX, fileName: f.name }); if (!p.ok) { toast(p.warnings[0].message); return; }
       const guess = p.countries.find(c => similarity(c, st.country) > 0.6) || p.countries[0] || '';
       setPlan({ ...p, sessions: p.sessions.map(s => ({ ...s, id: newId('ps'), include: true })) }); setPlanCountry(guess);
+      updateSession(s => { s.portfolio = p.rows.map(r => ({ country: r.country, process: r.process, stream: r.stream, responsible: r.responsible, dateRaw: r.dateRaw, timeRaw: r.timeRaw, duration: r.duration, status: r.status, comment: r.comment, file: f.name })); });
     } catch (err) { toast(`Could not read ${f.name}: ${err.message}`); }
   };
   const planRows = plan ? plan.sessions.filter(s => !planCountry || s.country === planCountry) : [];
@@ -77,14 +125,15 @@ function PlanView({ session, summary, updateSession, toast }) {
       </div>
       <div style="display:grid;gap:1rem">
         <${Card} title="Participants" stats=${[['people', session.participants.length]]}>
-          ${session.participants.length > 0 && html`<table class="matrix" style="margin-bottom:.75rem"><thead><tr><th style="text-align:left">Name</th><th style="text-align:left">Role</th><th style="text-align:left">Organisation</th><th style="text-align:left">Entity</th><th></th></tr></thead><tbody>
-            ${session.participants.map(p => html`<tr key=${p.id}><td style="text-align:left"><b>${p.name}</b></td><td style="text-align:left">${p.role}</td><td style="text-align:left">${p.organisation}</td><td style="text-align:left" class="muted">${p.entityCode ? (session.entities[p.entityCode]?.displayName || p.entityCode) : ''}</td><td><${IconButton} icon="x" label="Remove" onClick=${() => updateSession(s => { s.participants = s.participants.filter(x => x.id !== p.id); })} /></td></tr>`)}
+          ${session.participants.length > 0 && html`<table class="matrix" style="margin-bottom:.75rem"><thead><tr><th style="text-align:left">Name</th><th style="text-align:left">Role</th><th style="text-align:left">Organisation</th><th style="text-align:left">Entity</th><th style="text-align:left">Mode</th><th></th></tr></thead><tbody>
+            ${session.participants.map(p => html`<tr key=${p.id}><td style="text-align:left"><b>${p.name}</b></td><td style="text-align:left">${p.role}</td><td style="text-align:left">${p.organisation}</td><td style="text-align:left" class="muted">${p.entityCode ? (session.entities[p.entityCode]?.displayName || p.entityCode) : ''}</td><td style="text-align:left"><select class="select sm" style="width:auto" value=${p.mode || 'onsite'} onChange=${e => updateSession(s => { s.participants.find(x => x.id === p.id).mode = e.target.value; })}><option value="onsite">on site</option><option value="online">online</option></select></td><td><${IconButton} icon="x" label="Remove" onClick=${() => updateSession(s => { s.participants = s.participants.filter(x => x.id !== p.id); })} /></td></tr>`)}
           </tbody></table>`}
-          <div class="fgrid" style="grid-template-columns:1.3fr 1fr 1fr 1fr auto;align-items:end">
+          <div class="fgrid" style="grid-template-columns:1.3fr 1fr 1fr 1fr 1fr auto;align-items:end">
             <${Field} label="Name"><input class="input sm" value=${pName} onInput=${e => setPName(e.target.value)} onKeyDown=${e => e.key === 'Enter' && addParticipant()} placeholder="Full name" /></${Field}>
             <${Field} label="Role"><input class="input sm" value=${pRole} onInput=${e => setPRole(e.target.value)} placeholder="e.g. GL accountant" /></${Field}>
             <${Field} label="Organisation"><select class="select sm" value=${pOrg} onChange=${e => setPOrg(e.target.value)}>${PARTICIPANT_ORG.map(o => html`<option value=${o}>${o}</option>`)}</select></${Field}>
             <${Field} label="Entity"><select class="select sm" value=${pEnt} onChange=${e => setPEnt(e.target.value)}><option value="">–</option>${entities.map(e => html`<option value=${e.code}>${e.displayName || e.name}</option>`)}</select></${Field}>
+            <${Field} label="Mode"><select class="select sm" value=${pMode} onChange=${e => setPMode(e.target.value)}><option value="onsite">on site</option><option value="online">online</option></select></${Field}>
             <${Button} variant="outline" size="sm" onClick=${addParticipant}>Add</${Button}>
           </div>
         </${Card}>
@@ -96,7 +145,7 @@ function PlanView({ session, summary, updateSession, toast }) {
             <div class="sg-row" style="justify-content:flex-end;margin-top:.7rem"><span class="muted small">${planRows.filter(r => r.incomplete).length} row(s) need a fix (highlighted)</span><${Button} variant="text" size="sm" onClick=${() => setPlan(null)}>Discard</${Button}><${Button} variant="primary" size="sm" onClick=${addPlanned}>Add ${planRows.filter(r => r.include && r.date && r.stream).length} sessions</${Button}></div>
           </div></div>`}
           ${session.sessions.length > 0 && html`<table class="matrix" style="margin-bottom:.75rem"><thead><tr><th style="text-align:left">Date</th><th style="text-align:left">Time</th><th style="text-align:left">Stream</th><th style="text-align:left">Participants</th><th class="num">Est. min</th><th></th></tr></thead><tbody>
-            ${session.sessions.map(s => { const est = effortEstimate(session, summary, s); const over = est.planned !== null && est.minutes > est.planned; const active = s.id === session.activeSessionId; return html`<tr key=${s.id} style=${active ? 'background:var(--accent-soft)' : ''}><td style="text-align:left"><b>${fmtDate(s.date)}</b> <span class="muted small">${WEEKDAY(s.date)}</span>${s.note && html`<div class="muted small">${s.note}</div>`}</td><td style="text-align:left" class="mono">${s.start}${s.end ? `–${s.end}` : ''}</td><td style="text-align:left"><${Tag} kind="GBS">${s.stream}</${Tag}></td><td style="text-align:left"><div class="chips">${session.participants.map(p => html`<${Chip} key=${p.id} active=${s.participantIds.includes(p.id)} onClick=${() => updateSession(x => { const ss = x.sessions.find(y => y.id === s.id); ss.participantIds = ss.participantIds.includes(p.id) ? ss.participantIds.filter(i => i !== p.id) : [...ss.participantIds, p.id]; })}>${p.name}</${Chip}>`)}</div></td><td class=${`num${over ? ' miss' : ''}`} title=${`${est.noGap} NO GAP × ${st.minutesPerActivity.NO_GAP} min + ${est.gap} gaps × ${st.minutesPerActivity.GAP} min`}>${est.minutes}${est.planned !== null ? html`<span class="muted"> / ${est.planned}</span>` : ''}</td><td style="white-space:nowrap"><${Button} variant=${active ? 'primary' : 'outline'} size="sm" onClick=${() => updateSession(x => { x.activeSessionId = active ? null : s.id; })}>${active ? 'Active' : 'Set active'}</${Button}> <${IconButton} icon="x" label="Remove" onClick=${() => updateSession(x => { x.sessions = x.sessions.filter(y => y.id !== s.id); if (x.activeSessionId === s.id) x.activeSessionId = null; })} /></td></tr>`; })}
+            ${session.sessions.map(s => { const est = effortEstimate(session, summary, s); const over = est.planned !== null && est.minutes > est.planned; const active = s.id === session.activeSessionId; return html`<tr key=${s.id} style=${active ? 'background:var(--accent-soft)' : ''}><td style="text-align:left"><b>${fmtDate(s.date)}</b> <span class="muted small">${WEEKDAY(s.date)}</span>${s.note && html`<div class="muted small">${s.note}</div>`}</td><td style="text-align:left" class="mono">${s.start}${s.end ? `–${s.end}` : ''}</td><td style="text-align:left"><${Tag} kind="GBS">${s.stream}</${Tag}></td><td style="text-align:left"><div class="chips">${session.participants.map(p => html`<${Chip} key=${p.id} active=${s.participantIds.includes(p.id)} onClick=${() => updateSession(x => { const ss = x.sessions.find(y => y.id === s.id); ss.participantIds = ss.participantIds.includes(p.id) ? ss.participantIds.filter(i => i !== p.id) : [...ss.participantIds, p.id]; })}>${p.name}</${Chip}>`)}</div></td><td class=${`num${over ? ' miss' : ''}`} title=${`${est.noGap} NO GAP × ${st.minutesPerActivity.NO_GAP} min + ${est.gap} gaps × ${st.minutesPerActivity.GAP} min`}>${est.minutes}${est.planned !== null ? html`<span class="muted"> / ${est.planned}</span>` : ''}</td><td style="white-space:nowrap"><label class="toggle" title="Recording"><input type="checkbox" checked=${!!s.recordingOn} onChange=${e => updateSession(x => { x.sessions.find(y => y.id === s.id).recordingOn = e.target.checked; })} /><i></i>REC</label> <${Button} variant=${active ? 'primary' : 'outline'} size="sm" onClick=${() => updateSession(x => { x.activeSessionId = active ? null : s.id; })}>${active ? 'Active' : 'Set active'}</${Button}> <${IconButton} icon="file" label="Agenda (print)" onClick=${() => setPrintAgenda(s.id)} /><${IconButton} icon="plan" label="Calendar file (.ics)" onClick=${() => downloadBlob(`${exportFileName(session, 'session-' + s.stream)}.ics`, new Blob([icsFor(session, [s])], { type: 'text/calendar' }))} /><${IconButton} icon="x" label="Remove" onClick=${() => updateSession(x => { x.sessions = x.sessions.filter(y => y.id !== s.id); if (x.activeSessionId === s.id) x.activeSessionId = null; })} /></td></tr>`; })}
           </tbody></table>`}
           <div class="fgrid" style="grid-template-columns:1fr 1fr 1fr 1fr auto;align-items:end">
             <${Field} label="Date"><input class="input sm" type="date" value=${ws.date} onChange=${e => setWs({ ...ws, date: e.target.value })} /></${Field}>
@@ -106,9 +155,24 @@ function PlanView({ session, summary, updateSession, toast }) {
             <${Button} variant="outline" size="sm" onClick=${addSession}>Add</${Button}>
             <${Field} label="Recording reference" class="full"><input class="input sm" value=${ws.recording} onInput=${e => setWs({ ...ws, recording: e.target.value })} placeholder="Teams link or file name" /></${Field}>
           </div>
+          <div class="sg-row" style="margin-top:.6rem">${session.sessions.length > 0 && html`<${Button} variant="outline" size="sm" icon="plan" onClick=${() => downloadBlob(`${exportFileName(session, 'sessions')}.ics`, new Blob([icsFor(session, session.sessions)], { type: 'text/calendar' }))}>All sessions as .ics</${Button}><${Button} variant="outline" size="sm" icon="file" onClick=${() => setPrintAgenda('all')}>Schedule slide / agenda</${Button}>`}</div>
           <p class="sg-note">Estimated minutes = NO GAP activities × ${st.minutesPerActivity.NO_GAP} + gap activities × ${st.minutesPerActivity.GAP} (from the Ops pre-assessment, all entities, in-scope only). Red = slot too short.</p>
         </${Card}>
+        ${session.sessions.length > 0 && html`<${Card} title="Session planner · week view"><${CalendarGrid} session=${session} updateSession=${updateSession} toast=${toast} /></${Card}>`}
+        <${Card} title="Milestones" stats=${[['calendar weeks', '']]}><${Milestones} session=${session} updateSession=${updateSession} /></${Card}>
+        ${session.portfolio?.length > 0 && html`<${Card} title="Portfolio · all countries in the planning workbook" stats=${[['rows', session.portfolio.length]]}><div style="overflow:auto;max-height:18rem"><table class="matrix"><thead><tr><th style="text-align:left">Country</th><th style="text-align:left">Process</th><th style="text-align:left">Responsible</th><th style="text-align:left">Date</th><th style="text-align:left">Time</th><th style="text-align:left">Status</th></tr></thead><tbody>${session.portfolio.map((r, i) => html`<tr key=${i} style=${similarity(r.country, st.country) > 0.6 ? 'background:var(--accent-soft)' : ''}><td style="text-align:left">${r.country}</td><td style="text-align:left">${r.process} ${r.stream && html`<span class="mono small muted">${r.stream}</span>`}</td><td style="text-align:left">${r.responsible}</td><td style="text-align:left" class="small">${r.dateRaw}</td><td style="text-align:left" class="small">${r.timeRaw}</td><td style="text-align:left" class="small">${r.status}</td></tr>`)}</tbody></table></div></${Card}>`}
       </div>
     </div>
+    ${printAgenda && html`<${AgendaDialog} session=${session} summary=${summary} which=${printAgenda} onClose=${() => setPrintAgenda(null)} />`}
   </div>`;
+}
+
+function AgendaDialog({ session, summary, which, onClose }) {
+  const ref = useRef(); useEffect(() => { ref.current?.showModal(); }, []);
+  const list = which === 'all' ? session.sessions : session.sessions.filter(s => s.id === which);
+  const st = session.settings;
+  return html`<dialog ref=${ref} class="agenda" onClose=${onClose} onClick=${e => e.target === ref.current && onClose()}><div class="dlg-body print-area">
+    <div class="eyebrow">Fit-gap workshops · ${st.clientName} · ${st.country}</div><h2 style="font-family:var(--font-serif);font-weight:500">${which === 'all' ? 'Workshop schedule' : 'Session agenda'}</h2>
+    ${which === 'all' ? html`<table class="matrix"><thead><tr><th style="text-align:left">Date</th><th style="text-align:left">Time</th><th style="text-align:left">Stream</th><th style="text-align:left">Participants</th><th class="num">Activities</th></tr></thead><tbody>${list.map(s => { const est = effortEstimate(session, summary, s); return html`<tr key=${s.id}><td style="text-align:left"><b>${fmtDate(s.date)}</b> ${WEEKDAY(s.date)}</td><td style="text-align:left" class="mono">${s.start}–${s.end}</td><td style="text-align:left">${s.stream}${s.recordingOn ? ' · recorded' : ''}</td><td style="text-align:left" class="small">${s.participantIds.map(id => session.participants.find(p => p.id === id)?.name).filter(Boolean).join(', ')}</td><td class="num">${est.noGap + est.gap}</td></tr>`; })}</tbody></table>` : list.map(s => { const est = effortEstimate(session, summary, s); return html`<div key=${s.id}><p><b>${fmtDate(s.date)} ${WEEKDAY(s.date)} · ${s.start}–${s.end} · ${s.stream}</b>${s.recordingOn ? ' · this session is recorded' : ''}</p><ol><li>Welcome, objectives, gap-type definitions (5 min)</li><li>Per L3: Ops pre-assessment summary, confirm NO GAP in bulk, discuss flagged activities (${est.noGap} NO GAP, ${est.gap} gaps · est. ${est.minutes} min)</li><li>Deviations: dimension, resolution approach, owner, next steps</li><li>Open points and wrap-up (10 min)</li></ol><p class="small"><b>Participants:</b> ${s.participantIds.map(id => { const p = session.participants.find(x => x.id === id); return p ? `${p.name} (${p.organisation}${p.mode === 'online' ? ', online' : ''})` : ''; }).filter(Boolean).join(', ') || '–'}<br /><b>Facilitators:</b> ${(st.facilitators || []).join(', ') || '–'}${s.recording ? html`<br /><b>Recording:</b> ${s.recording}` : ''}${s.note ? html`<br /><b>Note:</b> ${s.note}` : ''}</p></div>`; })}
+  </div><div class="dlg-actions no-print"><${Button} variant="text" onClick=${onClose}>Close</${Button}><${Button} variant="primary" onClick=${() => window.print()}>Print</${Button}></div></dialog>`;
 }

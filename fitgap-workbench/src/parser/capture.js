@@ -42,7 +42,11 @@ export function classifySheets(sheetNames, profile = PROFILE_CAPTURE_SHEET_V1) {
 
 /** Sheet → 2-D array of raw values (null for empty) + merge lookup. */
 export function sheetToGrid(ws, XLSX) {
-  const rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: null, blankrows: true });
+  // Force the origin to A1: sheet_to_json indexes relative to the sheet's !ref,
+  // which real files often start at B1 or row 3. Row/column indexes must be absolute.
+  const range = ws['!ref'] ? XLSX.utils.decode_range(ws['!ref']) : { s: { r: 0, c: 0 }, e: { r: 0, c: 0 } };
+  range.s.r = 0; range.s.c = 0;
+  const rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: null, blankrows: true, range });
   let width = 0;
   for (const r of rows) if (r.length > width) width = r.length;
   const merges = new Map();
