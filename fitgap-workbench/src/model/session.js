@@ -14,7 +14,7 @@ export function createSession() {
     createdAt: new Date().toISOString(),
     updatedAt: null,
     settings: {
-      clientName: '', country: '', workshopDates: [], facilitators: [], logoDataUrl: null,
+      clientName: '', country: '', workshopDates: [], facilitators: [], logoDataUrl: null, logoOnDark: false, logoSource: '', brandColor: '',
       streamsInScope: { R2R: true, 'A2R-FAA': true, 'A2R-IA': true, I2P: true, I2C: true, ICO: true, MD: true },
       gapDefinitions: { ...GAP_DEFINITIONS },
       minutesPerActivity: { NO_GAP: 1.5, GAP: 5 },
@@ -67,6 +67,16 @@ export function countryFromFileName(fileName = '') {
   return tok.charAt(0).toUpperCase() + tok.slice(1);
 }
 
+/** "Alpha Pharma France S.A.S.", "Alpha Logistics S.A.S.", "Beta France S.A.S." → "Alpha" (the first word most entities share). */
+export function clientNameFromEntities(names) {
+  const firsts = names.map(n => (String(n).trim().match(/^[\p{L}][\p{L}\d&'-]{2,}/u) || [''])[0]).filter(Boolean);
+  if (!firsts.length) return '';
+  const count = {}; for (const w of firsts) count[w.toLowerCase()] = (count[w.toLowerCase()] || 0) + 1;
+  const [best, n] = Object.entries(count).sort((a, b) => b[1] - a[1])[0];
+  if (n < 2 || n * 2 < firsts.length) return '';
+  return firsts.find(w => w.toLowerCase() === best);
+}
+
 export function mergeParsedWorkbook(session, parsed, opts = {}) {
   const now = new Date().toISOString();
   const report = { file: parsed.fileName, sheet: parsed.sheetName, entities: { added: [], merged: [], pending: [] }, processes: { added: 0, existing: 0, renamed: [] }, assessments: { added: 0, merged: 0, changedOps: 0, protectedWorkshop: 0 }, warnings: parsed.warnings.slice() };
@@ -95,6 +105,9 @@ export function mergeParsedWorkbook(session, parsed, opts = {}) {
     if (!target.sources.includes(parsed.fileName)) target.sources.push(parsed.fileName);
     codeMap[e.code] = target.code;
   }
+  // Client and country from the files when nobody typed them yet (editable under Plan & prepare).
+  if (!session.settings.country) session.settings.country = countryFromFileName(parsed.fileName);
+  if (!session.settings.clientName) session.settings.clientName = clientNameFromEntities(Object.values(session.entities).map(x => x.name));
 
   for (const p of parsed.processes) {
     const ex = session.processes[p.id];

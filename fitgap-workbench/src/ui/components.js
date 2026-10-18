@@ -30,8 +30,8 @@ function Field({ label, required, hint, error, children }) {
 function Switch({ checked, onChange, children }) {
   return html`<label class="toggle"><input type="checkbox" checked=${checked} onChange=${e => onChange(e.target.checked)} /><i></i>${children}</label>`;
 }
-function Kpi({ value, unit, label, color }) {
-  return html`<div class="kpi" style=${color ? `--kpi-color:${color}` : ''}><div class="value">${value}${unit && html`<small>${unit}</small>`}</div><div class="label eyebrow">${label}</div></div>`;
+function Kpi({ value, unit, label, color, icon }) {
+  return html`<div class="kpi" style=${color ? `--kpi-color:${color}` : ''}>${icon && html`<span class="kpi-ico"><${Icon} name=${icon} size=${16} /></span>`}<div class="value">${value}${unit && html`<small>${unit}</small>`}</div><div class="label eyebrow">${label}</div></div>`;
 }
 function IssueCounter({ n, label, flag }) { return html`<span class=${`issue${flag ? ' flag' : ''}`}><b>${n}</b>${label}</span>`; }
 
@@ -64,8 +64,8 @@ function EmptyState({ icon = 'upload', title, text, action }) {
 function Toast({ text, actionLabel, onAction, onClose }) {
   return html`<div class="toast" role="status">${text}${actionLabel && html`<button class="btn btn-text btn-sm" onClick=${onAction}>${actionLabel}</button>`}${onClose && html`<button class="iconbtn" style="color:inherit" onClick=${onClose} aria-label="Dismiss"><${Icon} name="x" size=${14} /></button>`}</div>`;
 }
-function PageHead({ eyebrow, title, lead, how }) {
-  return html`<div class="page-head">${eyebrow && html`<div class="eyebrow">${eyebrow}</div>`}<h1>${title}</h1>${lead && html`<p class="lead">${lead}</p>`}${how && html`<${Disclosure}>${how}</${Disclosure}>`}</div>`;
+function PageHead({ eyebrow, title, lead, how, icon, aside }) {
+  return html`<div class=${`page-head${icon ? ' with-icon' : ''}`}>${icon && html`<div class="page-ico"><${Icon} name=${icon} size=${22} /></div>`}<div class="page-head-text">${eyebrow && html`<div class="eyebrow">${eyebrow}</div>`}<h1>${title}</h1>${lead && html`<p class="lead">${lead}</p>`}${how && html`<${Disclosure}>${how}</${Disclosure}>`}</div>${aside && html`<div class="page-aside">${aside}</div>`}</div>`;
 }
 
 /** Local-storage helpers wrapped in try/catch (file:// and locked-down browsers may throw). */

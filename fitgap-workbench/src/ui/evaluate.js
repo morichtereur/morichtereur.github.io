@@ -80,11 +80,11 @@ function GapAnalysisView({ session, goActivity }) {
 
 function EvaluatePage({ session, updateSession, toast, goActivity }) {
   const hasData = Object.keys(session.assessments).length > 0;
-  if (!hasData) return html`<${PageHead} eyebrow="3 · Results" title="Results" /><${EmptyState} icon="evaluate" title="No assessments yet" text="Import the capture sheets and run the workshops first." />`;
+  if (!hasData) return html`<${PageHead} icon="evaluate" eyebrow="3 · Results" title="Results" /><${EmptyState} icon="evaluate" title="No assessments yet" text="Import the capture sheets and run the workshops first." />`;
   const [open, setOpen] = useState({ board: true, split: false, analysis: true });
   const tog = (k) => setOpen(o => ({ ...o, [k]: !o[k] }));
   return html`<div>
-    <${PageHead} eyebrow="3 · Results" title="Deviations, activity split and gap analysis" lead="Decide every deviation on the board (approach, owner, approval). Below: where the gaps cluster and what moves to GBS as planned." />
+    <${PageHead} icon="evaluate" eyebrow="3 · Results" title="Deviations, activity split and gap analysis" lead="Decide every deviation on the board (approach, owner, approval). Below: where the gaps cluster and what moves to GBS as planned." />
     <div style="display:grid;gap:1.25rem">
       <${Card} title="Deviation board" stats=${[['deviations', deviationList(session).length]]} open=${open.board} onToggle=${() => tog('board')}><${DeviationBoard} session=${session} updateSession=${updateSession} toast=${toast} goActivity=${goActivity} /></${Card}>
       <${Card} title="Gap analysis" open=${open.analysis} onToggle=${() => tog('analysis')}><${GapAnalysisView} session=${session} goActivity=${goActivity} /></${Card}>

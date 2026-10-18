@@ -20,14 +20,15 @@ function Sidebar({ phase, setPhase, summary, rail, setRail, session, page, setPa
   const counts = summary.activitiesByStream || {};
   const hasData = Object.keys(session.processes).length > 0;
   return html`<aside class="sidebar">
-    <div class="side-brand"><span class="mark">FG</span><div style="min-width:0"><div class="name">GBS Fit-Gap Workbench</div><div class="client">${session.settings.clientName ? `${session.settings.clientName} · ${session.settings.country}` : 'No client loaded'}</div></div></div>
+    <div class="side-brand"><${Mark} size=${28} /><div style="min-width:0"><div class="name">GBS Fit-Gap Workbench</div><div class="client">${session.settings.clientName ? `${session.settings.clientName} · ${session.settings.country}` : 'No client loaded'}</div></div></div>
+    ${session.settings.logoDataUrl && html`<div class="side-client"><${ClientLogo} settings=${session.settings} height=${26} /></div>`}
     <div class="side-section"><div class="eyebrow">Streams</div>
       ${STREAMS.map(s => { const inScope = s !== 'A2R' ? session.settings.streamsInScope[s] !== false : (session.settings.streamsInScope['A2R-FAA'] || session.settings.streamsInScope['A2R-IA']); const g = summary.gapByStream?.[s] || {}; const segs = ['NO_GAP', 'HARMONIZATION', 'STANDARDIZATION', 'BOTH', 'NA', 'UNCLEAR'].map(k => ({ key: k, value: g[k] || 0 })); const tot = segs.reduce((a, b) => a + b.value, 0) || 1;
-        return html`<button class=${`side-stream${inScope ? '' : ' off'}`} key=${s}><div class="row"><span>${s}</span><span class="num">${hasData ? (counts[s] || 0) : '—'}</span></div><div class="bar">${segs.filter(x => x.value).map(x => html`<i class=${`c-${x.key}`} style=${`width:${100 * x.value / tot}%`}></i>`)}</div></button>`; })}
+        return html`<button class=${`side-stream${inScope ? '' : ' off'}`} key=${s}><div class="row"><span class="sname"><${Icon} name=${streamIcon(s)} size=${13} />${s}</span><span class="num">${hasData ? (counts[s] || 0) : '—'}</span></div><div class="bar">${segs.filter(x => x.value).map(x => html`<i class=${`c-${x.key}`} style=${`width:${100 * x.value / tot}%`}></i>`)}</div></button>`; })}
     </div>
     <div class="side-section" style="padding-bottom:.25rem"><div class="eyebrow">Steps</div></div>
     <nav class="side-nav" aria-label="Pages">
-      <button class="side-nav-item" aria-current=${page === 'home' ? 'page' : 'false'} onClick=${() => setPage('home')}><span class="n"><${Icon} name="info" size=${14} /></span><span>Start here</span><span class="state"></span></button>
+      <button class="side-nav-item" aria-current=${page === 'home' ? 'page' : 'false'} onClick=${() => setPage('home')}><span class="n"><${Icon} name="home" size=${14} /></span><span>Start here</span><span class="state"></span></button>
       ${NAV.map(p => { const q = p.key === 'signoff' ? qg2Readiness(session) : null; const done = p.key === 'plan' ? (!!session.settings.country && session.participants.length > 0 && session.sessions.length > 0) : p.key === 'run' ? (Object.keys(session.assessments).length > 0 && Object.values(session.assessments).every(a => a.scope.outOfScope || a.workshop.status !== 'NOT_ASSESSED')) : p.key === 'signoff' ? (q.streams.length > 0 && q.streams.every(st => q.perStream[st].ready)) : false; return html`<button class="side-nav-item" key=${p.key} aria-current=${page === 'phase' && phase === p.key ? 'page' : 'false'} onClick=${() => { setPage('phase'); setPhase(p.key); }}><span class="n">${p.n}</span><span>${p.label}</span>${done ? html`<span class="state done"><${Icon} name="check" size=${13} /></span>` : html`<span class="state"></span>`}</button>`; })}
     </nav>
     <div class="side-section"><button class="btn btn-primary" style="width:100%;justify-content:center" disabled=${!Object.keys(session.assessments).length} onClick=${onPresent}><${Icon} name="share" /> Present</button></div>
@@ -110,7 +111,8 @@ function Palette({ open, onClose, items, onPick }) {
 function Welcome({ open, onClose, onPrimary, onDemo }) {
   const ref = useRef();
   useEffect(() => { const d = ref.current; if (!d) return; if (open && !d.open) d.showModal(); else if (!open && d.open) d.close(); }, [open]);
-  return html`<dialog ref=${ref} onClose=${onClose}><div class="dlg-body"><div class="eyebrow" style="margin-bottom:.4rem">GBS Fit-Gap Workbench · v${BUILD.version}</div><h2>Plan, run and sign off a country fit-gap – offline, in one file.</h2><p class="muted">Import the capture sheets, run the workshops with a full audit trail, evaluate the deviations, sign off QG2 and hand over – all in this file, no network needed. Not sure yet? Try it with demo data first.</p></div><div class="dlg-actions"><${Button} variant="text" onClick=${onClose}>Close</${Button}><${Button} variant="outline" icon="run" onClick=${onDemo}>Try with demo data</${Button}><${Button} variant="primary" icon="upload" onClick=${onPrimary}>Import capture sheets</${Button}></div></dialog>`;
+  return html`<dialog ref=${ref} onClose=${onClose} class="welcome"><div class="dlg-body"><${Lockup} size=${34} sub=${`v${BUILD.version} · offline · one file`} /><h2 style="margin-top:1rem">Plan, run and sign off a country fit-gap.</h2><p class="muted">Import the capture sheets, run the workshops with a full audit trail, evaluate the deviations, sign off QG2 and hand over – no network needed. Not sure yet? Try it with demo data first.</p>
+    <div class="feature-tiles">${[['upload', 'Import', 'Capture sheets in, entities × activities out – with the Ops pre-assessment and the client logo.'], ['run', 'Workshop', 'One row per activity, Fit / Gap in two clicks, every change in the audit trail.'], ['share', 'Present', 'Process flows as boards, live edits in the room, no second tool.'], ['handover', 'Hand over', 'Deviation log, QG2 sign-off and write-back into the original workbooks.']].map(([ic, t, d]) => html`<div class="feature-tile" key=${ic}><span class="ico"><${Icon} name=${ic} size=${16} /></span><b>${t}</b><span>${d}</span></div>`)}</div></div><div class="dlg-actions"><${Button} variant="text" onClick=${onClose}>Close</${Button}><${Button} variant="outline" icon="run" onClick=${onDemo}>Try with demo data</${Button}><${Button} variant="primary" icon="upload" onClick=${onPrimary}>Import capture sheets</${Button}></div></dialog>`;
 }
 
 function FeedbackPanel({ open, onClose, onSave, view }) {
@@ -150,11 +152,13 @@ function App() {
   const setTheme = (t) => { setThemeState(t); store.set('fg.theme', t); applyTheme(t); };
   const setShare = (v) => { setShareState(v); document.documentElement.setAttribute('data-share', v ? 'on' : 'off'); };
   useEffect(() => { applyTheme(theme); }, []);
+  useEffect(() => { applyBrandColor(session?.settings?.brandColor); }, [session?.settings?.brandColor]);
   useEffect(() => { store.set('fg.page', page); store.set('fg.phase', phase); }, [page, phase]);
   useEffect(() => {
     const onKey = (e) => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); setPalette(p => !p); } };
     const onGo = (e) => { if (e.detail?.page) setPage(e.detail.page); };
-    window.addEventListener('keydown', onKey); document.addEventListener('fg:go', onGo); return () => { window.removeEventListener('keydown', onKey); document.removeEventListener('fg:go', onGo); };
+    const onToast = (e) => { if (e.detail?.text) toast(e.detail.text, { ttl: e.detail.ttl || 7000 }); };
+    window.addEventListener('keydown', onKey); document.addEventListener('fg:go', onGo); document.addEventListener('fg:toast', onToast); return () => { window.removeEventListener('keydown', onKey); document.removeEventListener('fg:go', onGo); document.removeEventListener('fg:toast', onToast); };
   }, []);
   const toast = (text, opts = {}) => { const id = newId('t'); setToasts(t => [...t, { id, text, ...opts }]); setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), opts.ttl || 4000); };
   const current = NAV.find(p => p.key === phase) || NAV[1];

@@ -9,6 +9,17 @@ function useImportQueue(updateSession, onBatchDone, profileRef) {
   const wbRef = useRef({});
   const finishFlows = async (buf, wb, parsed) => { try { let procs; updateSession(s => { procs = s.processes; }); const flows = await extractFlowsForImport(buf, wb, parsed, procs || {}); if (flows.length) updateSession(s => { s.flows = s.flows.filter(f => f.file !== parsed.fileName).concat(flows); }); return flows.length; } catch (e) { console.warn('flow extraction failed', e); return 0; } };
   const patch = (id, p) => setJobs(js => js.map(j => j.id === id ? { ...j, ...p } : j));
+  // Client logo from the workbook cover sheet – only while no logo is set (an uploaded or removed one is never replaced).
+  const pickUpLogo = async (buf, fileName) => {
+    let st; updateSession(s => { st = s.settings; });
+    if (!st || st.logoDataUrl || st.logoSource === 'removed' || /^upload:/.test(st.logoSource || '')) return;
+    try {
+      const found = await extractWorkbookLogo(buf); if (!found) return;
+      const logo = await prepareLogo(found.dataUrl, found.mime);
+      updateSession(s => { if (s.settings.logoDataUrl) return; s.settings.logoDataUrl = logo.dataUrl; s.settings.logoOnDark = logo.onDark; s.settings.logoSource = `workbook:${fileName} · ${found.sheet}`; });
+      document.dispatchEvent(new CustomEvent('fg:toast', { detail: { text: `Client logo picked up from "${found.sheet}" in ${fileName} – shown on the cover slides and in the sidebar (change it under Plan & prepare).` } }));
+    } catch (e) { console.warn('logo pick-up failed', e); }
+  };
   const finish = (id, parsed) => {
     let report;
     updateSession(s => { report = mergeParsedWorkbook(s, parsed); });
@@ -33,6 +44,7 @@ function useImportQueue(updateSession, onBatchDone, profileRef) {
         if (parsed.needsSheetChoice) { wbRef.current[job.id] = { wb, buf }; patch(job.id, { status: 'choice', progress: 80, message: 'Several candidate sheets – pick one', candidates: parsed.sheets.candidates }); continue; }
         if (!parsed.ok) { patch(job.id, { status: 'error', progress: 100, message: parsed.warnings.map(w => w.message).join(' ') }); continue; }
         results.push(finish(job.id, parsed));
+        await pickUpLogo(buf, file.name);
       } catch (e) { patch(job.id, { status: 'error', progress: 100, message: `Could not read this file: ${e.message}` }); results.push({ error: e }); }
       await tick();
     }
@@ -164,13 +176,13 @@ function ImportView({ session, summary, updateSession, toast, onClearAll, onRepl
   const onFiles = (files) => q.run(files);
   if (!hasData && !q.jobs.length) {
     return html`<div>
-      <${PageHead} eyebrow="2 · Workshop · files & exports" title="Import the capture sheets" lead="Start with the pre-filled workbooks from GBS Operations. The tool reads the main Fit-Gap sheet of each file, detects entities and blocks by their titles, and shows you exactly what it found before anything is assessed." how=${html`<ol><li>Drop all stream workbooks at once (or add them one by one).</li><li>Check the import summary: entities × streams, activity counts, gap distribution and warnings.</li><li>If a label without entity code looks like a known entity, confirm or reject the match.</li><li>Re-import a newer version at any time – Ops values are refreshed and listed, workshop results stay.</li></ol>`} />
+      <${PageHead} icon="upload" eyebrow="2 · Workshop · files & exports" title="Import the capture sheets" lead="Start with the pre-filled workbooks from GBS Operations. The tool reads the main Fit-Gap sheet of each file, detects entities and blocks by their titles, and shows you exactly what it found before anything is assessed." how=${html`<ol><li>Drop all stream workbooks at once (or add them one by one).</li><li>Check the import summary: entities × streams, activity counts, gap distribution and warnings.</li><li>If a label without entity code looks like a known entity, confirm or reject the match.</li><li>Re-import a newer version at any time – Ops values are refreshed and listed, workshop results stay.</li></ol>`} />
       <${DropZone} onFiles=${onFiles} ...${dz} />
       <div style="margin-top:1rem;max-width:46rem;display:grid;gap:1rem"><${TemplatesCard} session=${session} toast=${toast} /><${ExportsCard} session=${session} summary=${summary} updateSession=${updateSession} toast=${toast} onReplaceSession=${onReplaceSession} /></div>
     </div>`;
   }
   return html`<div>
-    <${PageHead} eyebrow="2 · Workshop · files & exports" title=${hasData ? `${summary.entities.length} entities · ${summary.streams.length} streams · ${summary.assessments} assessments` : 'Importing…'} lead="What was read from the capture sheets. Check that every entity appears in every stream, then go to the workshop." />
+    <${PageHead} icon="upload" eyebrow="2 · Workshop · files & exports" title=${hasData ? `${summary.entities.length} entities · ${summary.streams.length} streams · ${summary.assessments} assessments` : 'Importing…'} lead="What was read from the capture sheets. Check that every entity appears in every stream, then go to the workshop." />
     <${PendingEntities} session=${session} updateSession=${updateSession} />
     ${hasData && html`<div class="kpi-row"><${Kpi} value=${summary.entities.length} label="Entities" /><${Kpi} value=${Object.values(summary.activitiesByStream).reduce((a, b) => a + b, 0)} label="L4 activities" color="var(--gbs)" /><${Kpi} value=${summary.assessments} label="Entity × activity" color="var(--auto)" /><${Kpi} value=${summary.outOfScope} label="Out of scope" color="var(--g-oos)" /><${Kpi} value=${summary.warnings.filter(w => w.level !== 'info').length} label="Warnings" color=${summary.warnings.some(w => w.level === 'error') ? 'var(--flag)' : 'var(--g-harm)'} /></div>`}
     <div class="import-grid">

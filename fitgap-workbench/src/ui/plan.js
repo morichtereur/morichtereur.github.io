@@ -107,7 +107,7 @@ function PlanView({ session, summary, updateSession, toast }) {
   const StepHead = ({ n, done, title, hint }) => html`<div class="pstep-head"><span class=${`step-n${done ? ' done' : ''}`}>${done ? html`<${Icon} name="check" size=${14} />` : n}</span><div><h3>${title}</h3>${hint && html`<div class="muted small">${hint}</div>`}</div></div>`;
 
   return html`<div class="plan">
-    <${PageHead} eyebrow="1 · Plan & prepare" title=${st.country ? `${st.clientName || 'Client'} · ${st.country}` : 'Plan the country fit-gap'} lead="Three things before the first session: who you are, who is in the room, and when the sessions are. Readiness per session shows what still has to be chased." />
+    <${PageHead} icon="plan" eyebrow="1 · Plan & prepare" title=${st.country ? `${st.clientName || 'Client'} · ${st.country}` : 'Plan the country fit-gap'} lead="Three things before the first session: who you are, who is in the room, and when the sessions are. Readiness per session shows what still has to be chased." />
     <div class="plan-grid">
       <div class="card"><div class="card-body">
         <${StepHead} n="1" done=${step1} title="Country & you" hint="Your initials tag every change in the audit trail." />
@@ -116,6 +116,7 @@ function PlanView({ session, summary, updateSession, toast }) {
           <${Field} label="Country" required><${TextInput} value=${st.country} onCommit=${v => setS('country', v)} placeholder="e.g. France" /></${Field}>
           <${Field} label="Initials" required><${TextInput} value=${st.editorInitials} onCommit=${v => setS('editorInitials', v.toUpperCase())} placeholder="MR" /></${Field}>
         </div>
+        <div class="field" style="margin-top:.2rem"><label>Client logo & colour</label><${BrandSettings} session=${session} updateSession=${updateSession} toast=${toast} /></div>
         <details class="disclosure" style="margin-top:.6rem"><summary>More settings – entities, streams in scope, gap definitions, timing <${Icon} name="chevron" size=${14} /></summary><div class="body" style="max-width:none">
           <div class="fgrid" style="margin-bottom:.8rem"><${Field} label="Facilitators" hint="Comma-separated"><${TextInput} value=${(st.facilitators || []).join(', ')} onCommit=${v => setS('facilitators', v.split(',').map(x => x.trim()).filter(Boolean))} /></${Field}><${Field} label="Minutes per activity (no gap / gap)" hint="Effort estimate per session"><div class="sg-row" style="margin:0"><${TextInput} class="num sm" value=${String(st.minutesPerActivity.NO_GAP)} onCommit=${v => updateSession(s => { s.settings.minutesPerActivity.NO_GAP = Number(v.replace(',', '.')) || 1.5; })} style="width:4.5rem" /><${TextInput} class="num sm" value=${String(st.minutesPerActivity.GAP)} onCommit=${v => updateSession(s => { s.settings.minutesPerActivity.GAP = Number(v.replace(',', '.')) || 5; })} style="width:4.5rem" /></div></${Field}></div>
           <div class="eyebrow" style="margin-bottom:.3rem">Streams in scope</div>

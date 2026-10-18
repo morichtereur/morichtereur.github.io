@@ -54,3 +54,10 @@ across modules – the build fails on duplicates.
 3. Session JSON save/load, backup prompt at session end
 4. Deviation log (+ initiative candidates, taxonomy change requests), flat export with audit log, audit export; acceptance run  ← pilot MVP complete
 5–11. flows, present mode, QG2, evaluate, swimlane, write-back, full PLAN/PREPARE/HAND-OVER, profile mapping UI
+12. Branding: tool mark (favicon, sidebar, welcome, present footer), client logo and brand colour (`src/ui/brand.js`).
+    The client logo is picked up from the capture workbooks on import (every picture in every sheet is scored:
+    first rows, a few cm wide, SVG preferred; cover backgrounds, header strips and flow screenshots lose), stored as a
+    data URL in `settings.logoDataUrl`; white logos are detected (`logoOnDark`) and shown on a dark plate. Client name
+    and country are derived from the entity names / file name when empty. Upload, replace, remove and brand colour live
+    under Plan & prepare → step 1. Shown in the sidebar, the hero on "Start here", the cover / closing slide and the brand
+    bar of every slide in present mode.

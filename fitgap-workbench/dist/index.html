@@ -6,7 +6,7 @@
 <meta name="referrer" content="no-referrer">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; font-src data:; connect-src https://api.anthropic.com; form-action 'none'; base-uri 'none'">
 <title>GBS Fit-Gap Workbench</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%231f4e79'/%3E%3Cpath d='M8 22V10h4v8h4v-8h4v8h4V10' fill='none' stroke='%23fff' stroke-width='2.4'/%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%231f4e79'/%3E%3Cstop offset='1' stop-color='%232f7a7a'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='32' height='32' rx='7' fill='url(%23g)'/%3E%3Crect x='6.5' y='8.5' width='8.5' height='15' rx='1.8' fill='%23fff'/%3E%3Crect x='17.5' y='8.5' width='8.5' height='15' rx='1.8' fill='none' stroke='%23fff' stroke-width='1.8' stroke-dasharray='3.2 2.2'/%3E%3Cpath d='M15 16h2.5' stroke='%239dbbd6' stroke-width='2' stroke-linecap='round'/%3E%3Ccircle cx='21.75' cy='16' r='1.6' fill='%239dbbd6'/%3E%3C/svg%3E">
 <style id="fonts">
 /* Fonts embedded under the SIL Open Font License 1.1: Instrument Sans (Rodrigo Fuenzalida, Jordan Egstad), Source Serif 4 (Adobe), IBM Plex Mono (IBM). */
 @font-face {
@@ -629,6 +629,73 @@ dialog.agenda { max-width: 48rem; }
 .present .board-detail { font-size: 1.05cqw; position: static; max-height: calc(100vh - 16rem); overflow: auto; } .present .board-detail .select, .present .board-detail .input, .present .board-detail .textarea { font-size: 1cqw; }
 .present .gapbtns .pill { font-size: .85cqw; }
 
+/* ---------- Branding: tool mark, client logo, hero, present cover ---------- */
+.mark-svg { flex: none; display: block; }
+.lockup { display: flex; align-items: center; gap: .7rem; }
+.lockup-name { font-weight: 600; font-size: 1rem; line-height: 1.15; }
+.lockup-sub { font-size: .74rem; color: var(--ink-3); margin-top: 2px; }
+.logo-plate { display: inline-flex; align-items: center; justify-content: center; padding: .3rem .55rem; border-radius: var(--radius); line-height: 0; max-width: 100%; }
+.logo-plate.light { background: #fff; border: 1px solid var(--line); }
+.logo-plate.dark { background: var(--brand, var(--side)); border: 1px solid transparent; }
+.logo-plate.bare { padding: 0; background: none; border: 0; }
+.logo-plate.bare.dark { background: var(--brand, var(--side)); padding: .5rem .8rem; border-radius: var(--radius-lg); }
+.logo-plate img { height: var(--logo-h, 28px); width: auto; max-width: 16rem; object-fit: contain; display: block; }
+.side-client { padding: .6rem 1rem 0; } .side-client .logo-plate { max-width: 100%; } .side-client .logo-plate img { max-width: 100%; }
+.app[data-rail="1"] .side-client { display: none; }
+.side-stream .sname { display: inline-flex; align-items: center; gap: .4rem; }
+.side-stream .sname svg { color: var(--side-accent); opacity: .9; }
+.tree-ico { display: inline-flex; color: var(--accent); margin-right: .2rem; vertical-align: -2px; }
+.page-head.with-icon { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 0 1rem; align-items: start; }
+.page-ico { width: 2.6rem; height: 2.6rem; border-radius: var(--radius-lg); display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); margin-top: .15rem; }
+.page-aside { align-self: center; }
+.kpi .kpi-ico { position: absolute; top: .7rem; right: .8rem; color: var(--kpi-color, var(--ink-3)); opacity: .8; }
+.hero { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 1.5rem; align-items: center; padding: 1.5rem 1.75rem; border-radius: 14px; margin-bottom: 1.25rem; color: #fff;
+  background: linear-gradient(118deg, var(--brand, #1f4e79) 0%, color-mix(in srgb, var(--brand, #1f4e79) 70%, #0f1f2e) 60%, #141a20 100%); box-shadow: var(--shadow-2); position: relative; overflow: hidden; }
+.hero::after { content: ''; position: absolute; inset: 0; background: radial-gradient(60rem 20rem at 85% -20%, rgba(255,255,255,.14), transparent 60%); pointer-events: none; }
+.hero h1 { color: #fff; font-size: 2rem; }
+.hero .lead { color: rgba(255,255,255,.78); margin-top: .35rem; max-width: 44rem; }
+.hero-main, .hero-side { position: relative; z-index: 1; }
+.hero-side .logo-plate.light { background: #fff; border-color: transparent; padding: .55rem .9rem; border-radius: var(--radius-lg); }
+.hero-side .logo-plate.dark { background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.2); padding: .55rem .9rem; border-radius: var(--radius-lg); }
+.hero-stats { display: flex; flex-wrap: wrap; gap: .5rem .6rem; margin-top: 1rem; }
+.hero-stat { display: inline-flex; align-items: center; gap: .45rem; padding: .35rem .7rem .35rem .6rem; border-radius: 999px; background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.16); font-size: .8rem; color: rgba(255,255,255,.85); }
+.hero-stat b { font-family: var(--font-mono); font-weight: 500; color: #fff; font-size: .95rem; } .hero-stat b small { font-size: .7rem; margin-left: 1px; }
+.hero-stat svg { opacity: .85; }
+.step-n { position: relative; } .step-n .step-num { position: absolute; right: -4px; bottom: -4px; width: 1.1rem; height: 1.1rem; border-radius: 50%; background: var(--panel); border: 1px solid var(--line-strong); font-size: .62rem; display: grid; place-items: center; color: var(--ink-2); }
+.hstep-done .step-n .step-num { display: none; }
+.hstep-next .step-n .step-num, .hstep-progress .step-n .step-num { border-color: var(--accent); color: var(--accent); }
+dialog.welcome { max-width: 40rem; }
+.feature-tiles { display: grid; grid-template-columns: 1fr 1fr; gap: .6rem; margin-top: 1rem; }
+.feature-tile { display: grid; grid-template-columns: auto 1fr; gap: .15rem .6rem; align-items: center; padding: .6rem .7rem; border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--bg); font-size: .8rem; color: var(--ink-2); }
+.feature-tile .ico { grid-row: 1 / 3; width: 2rem; height: 2rem; border-radius: var(--radius); background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; }
+.feature-tile b { color: var(--ink); }
+.brand-settings .brand-preview { min-height: 3.4rem; display: flex; align-items: center; }
+.brand-empty { display: flex; align-items: center; gap: .6rem; color: var(--ink-3); font-size: .8rem; border: 1px dashed var(--line-strong); border-radius: var(--radius); padding: .6rem .8rem; }
+.colorpick { width: 2.4rem; height: 1.7rem; padding: 0; border: 1px solid var(--line-strong); border-radius: var(--radius); background: none; cursor: pointer; }
+/* Present mode */
+.present-brand { display: flex; justify-content: space-between; align-items: center; padding: .9cqw 6cqw 0; font-size: 1cqw; color: var(--ink-2); }
+.present-brand-left { display: inline-flex; align-items: center; gap: .5cqw; letter-spacing: .06em; text-transform: uppercase; font-size: .85cqw; font-weight: 600; }
+.present-brand .logo-plate img { height: 2cqw; }
+.present-slide.is-cover { padding: 0; }
+.cover { flex: 1; display: flex; flex-direction: column; justify-content: space-between; padding: 4cqw 6cqw 3.5cqw; color: #fff;
+  background: linear-gradient(118deg, var(--brand, #1f4e79) 0%, color-mix(in srgb, var(--brand, #1f4e79) 70%, #0f1f2e) 58%, #10161c 100%); position: relative; overflow: hidden; }
+.cover::after { content: ''; position: absolute; inset: 0; background: radial-gradient(70cqw 30cqw at 90% -10%, rgba(255,255,255,.13), transparent 60%); pointer-events: none; }
+.cover > * { position: relative; z-index: 1; }
+.cover-top { display: flex; justify-content: space-between; align-items: center; }
+.cover-logo.light { background: #fff; padding: .8cqw 1.4cqw; border-radius: .8cqw; } .cover-logo.dark { background: none; padding: 0; }
+.cover-logo img { height: 5cqw; max-width: 30cqw; }
+.cover-tool { display: inline-flex; align-items: center; gap: .6cqw; font-size: 1cqw; letter-spacing: .08em; text-transform: uppercase; color: rgba(255,255,255,.7); font-weight: 600; }
+.cover .eyebrow { color: rgba(255,255,255,.75); display: inline-flex; align-items: center; gap: .5cqw; }
+.cover h2 { color: #fff; margin: .2em 0 .3em; } .cover-country { color: rgba(255,255,255,.65); font-weight: 400; }
+.cover-ents { font-size: 1.5cqw; color: rgba(255,255,255,.8); max-width: 70cqw; }
+.cover-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1.5cqw; border-top: 1px solid rgba(255,255,255,.2); padding-top: 1.6cqw; }
+.cover.end .cover-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.cover-stats b { display: block; font-family: var(--font-mono); font-weight: 500; font-size: 2.4cqw; line-height: 1.1; } .cover-stats span { font-size: .95cqw; letter-spacing: .08em; text-transform: uppercase; color: rgba(255,255,255,.65); }
+.cover-stats div:last-child b { font-size: 1.6cqw; font-family: var(--font-ui); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.legend-tile { display: grid; grid-template-columns: auto 1fr; gap: 1cqw; align-items: start; }
+.legend-ico { width: 3cqw; height: 3cqw; border-radius: .8cqw; display: grid; place-items: center; background: color-mix(in srgb, var(--c) 14%, transparent); color: var(--c); margin-top: .2cqw; }
+.present-foot .mark-svg { vertical-align: middle; }
+
 </style>
 </head>
 <body>
@@ -674,7 +741,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 </script>
 <script id="app">
 'use strict';
-const BUILD = { version: '0.1.0', builtAt: '2026-10-17T23:16:53.841Z' };
+const BUILD = { version: '0.1.0', builtAt: '2026-10-18T06:40:09.905Z' };
 
 /* ---- src/model/constants.js ---- */
 // Domain constants. Pure data – no client-specific values anywhere in here.
@@ -1582,7 +1649,7 @@ function createSession() {
     createdAt: new Date().toISOString(),
     updatedAt: null,
     settings: {
-      clientName: '', country: '', workshopDates: [], facilitators: [], logoDataUrl: null,
+      clientName: '', country: '', workshopDates: [], facilitators: [], logoDataUrl: null, logoOnDark: false, logoSource: '', brandColor: '',
       streamsInScope: { R2R: true, 'A2R-FAA': true, 'A2R-IA': true, I2P: true, I2C: true, ICO: true, MD: true },
       gapDefinitions: { ...GAP_DEFINITIONS },
       minutesPerActivity: { NO_GAP: 1.5, GAP: 5 },
@@ -1635,6 +1702,16 @@ function countryFromFileName(fileName = '') {
   return tok.charAt(0).toUpperCase() + tok.slice(1);
 }
 
+/** "Alpha Pharma France S.A.S.", "Alpha Logistics S.A.S.", "Beta France S.A.S." → "Alpha" (the first word most entities share). */
+function clientNameFromEntities(names) {
+  const firsts = names.map(n => (String(n).trim().match(/^[\p{L}][\p{L}\d&'-]{2,}/u) || [''])[0]).filter(Boolean);
+  if (!firsts.length) return '';
+  const count = {}; for (const w of firsts) count[w.toLowerCase()] = (count[w.toLowerCase()] || 0) + 1;
+  const [best, n] = Object.entries(count).sort((a, b) => b[1] - a[1])[0];
+  if (n < 2 || n * 2 < firsts.length) return '';
+  return firsts.find(w => w.toLowerCase() === best);
+}
+
 function mergeParsedWorkbook(session, parsed, opts = {}) {
   const now = new Date().toISOString();
   const report = { file: parsed.fileName, sheet: parsed.sheetName, entities: { added: [], merged: [], pending: [] }, processes: { added: 0, existing: 0, renamed: [] }, assessments: { added: 0, merged: 0, changedOps: 0, protectedWorkshop: 0 }, warnings: parsed.warnings.slice() };
@@ -1663,6 +1740,9 @@ function mergeParsedWorkbook(session, parsed, opts = {}) {
     if (!target.sources.includes(parsed.fileName)) target.sources.push(parsed.fileName);
     codeMap[e.code] = target.code;
   }
+  // Client and country from the files when nobody typed them yet (editable under Plan & prepare).
+  if (!session.settings.country) session.settings.country = countryFromFileName(parsed.fileName);
+  if (!session.settings.clientName) session.settings.clientName = clientNameFromEntities(Object.values(session.entities).map(x => x.name));
 
   for (const p of parsed.processes) {
     const ex = session.processes[p.id];
@@ -2646,8 +2726,9 @@ function generateTemplateWorkbooks(XLSX, { entities = [], streams = ['R2R', 'A2R
   return out;
 }
 
+const DEMO_LOGO = 'data:image/svg+xml;base64,' + (typeof btoa === 'function' ? btoa : (s) => Buffer.from(s).toString('base64'))(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 96"><rect x="4" y="8" width="80" height="80" rx="18" fill="#0f6e56"/><path d="M24 62V34h18a10 10 0 0 1 0 20H24M24 48h18M58 34v28" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/><text x="104" y="64" font-family="Georgia, 'Source Serif 4', serif" font-size="46" font-weight="600" fill="#0f6e56">Demo Group</text></svg>`);
 const DEMO_PLAN = {
-  clientName: 'Demo Group', country: 'France', editorInitials: 'FG',
+  clientName: 'Demo Group', country: 'France', editorInitials: 'FG', logoDataUrl: DEMO_LOGO, brandColor: '#0f6e56',
   participants: [['Marie Dupont', 'GL lead', 'Local', '301001', 'onsite'], ['Luc Bernard', 'AP accountant', 'Local', '301002', 'online'], ['Anna Weber', 'Ops team lead', 'GBS Ops', null, 'online'], ['Jonas Keller', 'Process expert R2R', 'Process Expert', null, 'onsite']],
   sessions: [['R2R', '14:00', '15:30'], ['I2P', '16:00', '17:30'], ['MD', '09:00', '10:00']],
 };
@@ -2740,6 +2821,38 @@ const ICON_PATHS = {
   spark: 'M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3zM19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8L19 16z',
   globe: 'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM2 12h20M12 2a15 15 0 0 1 0 20M12 2a15 15 0 0 0 0 20',
   users: 'M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM23 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8',
+  ledger: 'M4 19.5A2.5 2.5 0 0 1 6.5 17H20M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2zM9 7h7M9 11h7',
+  building: 'M3 21h18M5 21V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16M9 7h2M13 7h2M9 11h2M13 11h2M9 15h2M13 15h2M10 21v-3h4v3',
+  cart: 'M3 3h2l2.4 12.4a2 2 0 0 0 2 1.6h8.7a2 2 0 0 0 2-1.5L22 7H6M9 21a1 1 0 1 0 0-2 1 1 0 0 0 0 2zM18 21a1 1 0 1 0 0-2 1 1 0 0 0 0 2z',
+  coins: 'M9 14a6 6 0 1 0 0-12 6 6 0 0 0 0 12zM18.1 9.5A6 6 0 1 1 9.5 18.1M7 6h1v4M16.7 13.7l.7.7-2.8 2.8',
+  swap: 'M16 3l4 4-4 4M20 7H4M8 21l-4-4 4-4M4 17h16',
+  database: 'M12 8c5 0 9-1.3 9-3s-4-3-9-3-9 1.3-9 3 4 3 9 3zM3 5v14c0 1.7 4 3 9 3s9-1.3 9-3V5M3 12c0 1.7 4 3 9 3s9-1.3 9-3',
+  image: 'M19 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2zM8.5 10a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zM21 15l-5-5L5 21',
+  trash: 'M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6M10 11v6M14 11v6',
+  clock: 'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM12 6v6l4 2',
+  flag: 'M4 22V4a1 1 0 0 1 1-1h11l-1.5 4L16 11H5M4 15h11',
+  target: 'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM12 18a6 6 0 1 0 0-12 6 6 0 0 0 0 12zM12 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4z',
+  layers: 'M12 2 2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5',
+  grid: 'M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z',
+  chart: 'M3 3v18h18M8 17V9M13 17V5M18 17v-7',
+  download: 'M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3',
+  pen: 'M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z',
+  star: 'm12 2 3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1L12 2z',
+  briefcase: 'M20 7H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2zM16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2M2 13h20',
+  clipboard: 'M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2M9 2h6a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1zM9 13l2 2 4-4',
+  zap: 'M13 2 3 14h9l-1 8 10-12h-9l1-8z',
+  pin: 'M12 22s7-6.5 7-12a7 7 0 1 0-14 0c0 5.5 7 12 7 12zM12 13a3 3 0 1 0 0-6 3 3 0 0 0 0 6z',
+  filter: 'M22 3H2l8 9.5V19l4 2v-8.5L22 3z',
+  bulb: 'M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.2 1 2V18h6v-1.3c0-.8.4-1.5 1-2A7 7 0 0 0 12 2z',
+  message: 'M21 11.5a8.4 8.4 0 0 1-9 8.4 8.4 0 0 1-3.8-.9L3 21l2-5.2A8.4 8.4 0 0 1 3 11.5a8.4 8.4 0 0 1 9-8.4 8.4 8.4 0 0 1 9 8.4z',
+  arrow: 'M5 12h14M12 5l7 7-7 7',
+  refresh: 'M21 12a9 9 0 0 1-15.5 6.2L3 16M3 12a9 9 0 0 1 15.5-6.2L21 8M21 3v5h-5M3 21v-5h5',
+  lock: 'M19 11H5a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7a2 2 0 0 0-2-2zM7 11V7a5 5 0 0 1 10 0v4',
+  eye: 'M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z',
+  gear: 'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z',
+  handshake: 'M11 17l-2-2M14 14l-2-2M17 11l-2-2M2 8l5-4 4 1 3-1 6 4 2 4-4 5-3 3-3-2-3 2-4-4 2-3-3-3z',
+  trophy: 'M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4zM7 6H4v2a3 3 0 0 0 3 3M17 6h3v2a3 3 0 0 1-3 3',
+  compass: 'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM16.2 7.8l-2.1 6.3-6.3 2.1 2.1-6.3 6.3-2.1z',
 };
 
 function Icon({ name, size = 16, stroke = 1.9 }) {
@@ -2781,8 +2894,8 @@ function Field({ label, required, hint, error, children }) {
 function Switch({ checked, onChange, children }) {
   return html`<label class="toggle"><input type="checkbox" checked=${checked} onChange=${e => onChange(e.target.checked)} /><i></i>${children}</label>`;
 }
-function Kpi({ value, unit, label, color }) {
-  return html`<div class="kpi" style=${color ? `--kpi-color:${color}` : ''}><div class="value">${value}${unit && html`<small>${unit}</small>`}</div><div class="label eyebrow">${label}</div></div>`;
+function Kpi({ value, unit, label, color, icon }) {
+  return html`<div class="kpi" style=${color ? `--kpi-color:${color}` : ''}>${icon && html`<span class="kpi-ico"><${Icon} name=${icon} size=${16} /></span>`}<div class="value">${value}${unit && html`<small>${unit}</small>`}</div><div class="label eyebrow">${label}</div></div>`;
 }
 function IssueCounter({ n, label, flag }) { return html`<span class=${`issue${flag ? ' flag' : ''}`}><b>${n}</b>${label}</span>`; }
 
@@ -2815,8 +2928,8 @@ function EmptyState({ icon = 'upload', title, text, action }) {
 function Toast({ text, actionLabel, onAction, onClose }) {
   return html`<div class="toast" role="status">${text}${actionLabel && html`<button class="btn btn-text btn-sm" onClick=${onAction}>${actionLabel}</button>`}${onClose && html`<button class="iconbtn" style="color:inherit" onClick=${onClose} aria-label="Dismiss"><${Icon} name="x" size=${14} /></button>`}</div>`;
 }
-function PageHead({ eyebrow, title, lead, how }) {
-  return html`<div class="page-head">${eyebrow && html`<div class="eyebrow">${eyebrow}</div>`}<h1>${title}</h1>${lead && html`<p class="lead">${lead}</p>`}${how && html`<${Disclosure}>${how}</${Disclosure}>`}</div>`;
+function PageHead({ eyebrow, title, lead, how, icon, aside }) {
+  return html`<div class=${`page-head${icon ? ' with-icon' : ''}`}>${icon && html`<div class="page-ico"><${Icon} name=${icon} size=${22} /></div>`}<div class="page-head-text">${eyebrow && html`<div class="eyebrow">${eyebrow}</div>`}<h1>${title}</h1>${lead && html`<p class="lead">${lead}</p>`}${how && html`<${Disclosure}>${how}</${Disclosure}>`}</div>${aside && html`<div class="page-aside">${aside}</div>`}</div>`;
 }
 
 /** Local-storage helpers wrapped in try/catch (file:// and locked-down browsers may throw). */
@@ -2824,6 +2937,172 @@ const store = {
   get(k, fallback = null) { try { const v = localStorage.getItem(k); return v === null ? fallback : JSON.parse(v); } catch { return fallback; } },
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* ignore */ } },
 };
+
+
+/* ---- src/ui/brand.js ---- */
+// Branding: the tool mark, the client logo (uploaded or picked up from the workbook cover sheet)
+// and the brand colour. Everything is data URLs inside the session – no network, no files.
+
+/** Tool mark: a "fit" block next to a dashed "gap" block, bridged. */
+function Mark({ size = 28, radius = 7 }) {
+  return html`<svg width=${size} height=${size} viewBox="0 0 32 32" aria-hidden="true" class="mark-svg">
+    <defs><linearGradient id="fgMarkGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#1f4e79" /><stop offset="1" stop-color="#2f7a7a" /></linearGradient></defs>
+    <rect width="32" height="32" rx=${radius} fill="url(#fgMarkGrad)" />
+    <rect x="6.5" y="8.5" width="8.5" height="15" rx="1.8" fill="#fff" />
+    <rect x="17.5" y="8.5" width="8.5" height="15" rx="1.8" fill="none" stroke="#fff" stroke-width="1.8" stroke-dasharray="3.2 2.2" />
+    <path d="M15 16h2.5" stroke="#9dbbd6" stroke-width="2" stroke-linecap="round" />
+    <circle cx="21.75" cy="16" r="1.6" fill="#9dbbd6" />
+  </svg>`;
+}
+const MARK_SVG = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='%231f4e79'/><stop offset='1' stop-color='%232f7a7a'/></linearGradient></defs><rect width='32' height='32' rx='7' fill='url(%23g)'/><rect x='6.5' y='8.5' width='8.5' height='15' rx='1.8' fill='%23fff'/><rect x='17.5' y='8.5' width='8.5' height='15' rx='1.8' fill='none' stroke='%23fff' stroke-width='1.8' stroke-dasharray='3.2 2.2'/><path d='M15 16h2.5' stroke='%239dbbd6' stroke-width='2' stroke-linecap='round'/><circle cx='21.75' cy='16' r='1.6' fill='%239dbbd6'/></svg>`;
+const MARK_DATA_URL = 'data:image/svg+xml,' + MARK_SVG;
+
+/** Wordmark next to the mark. */
+function Lockup({ size = 28, sub, light }) {
+  return html`<div class=${`lockup${light ? ' light' : ''}`}><${Mark} size=${size} /><div class="lockup-text"><div class="lockup-name">GBS Fit-Gap Workbench</div>${sub && html`<div class="lockup-sub">${sub}</div>`}</div></div>`;
+}
+
+/** Client logo on a plate that matches the logo: light logos go on a dark plate and vice versa. */
+function ClientLogo({ settings, height = 28, plate = true, className = '' }) {
+  if (!settings?.logoDataUrl) return null;
+  const dark = !!settings.logoOnDark;
+  return html`<span class=${`logo-plate${plate ? '' : ' bare'}${dark ? ' dark' : ' light'} ${className}`} style=${`--logo-h:${height}px`}><img src=${settings.logoDataUrl} alt=${settings.clientName ? `${settings.clientName} logo` : 'Client logo'} /></span>`;
+}
+
+const STREAM_ICON = { R2R: 'ledger', A2R: 'building', I2P: 'cart', I2C: 'coins', ICO: 'swap', MD: 'database' };
+function streamIcon(stream) { return STREAM_ICON[String(stream || '').replace(/-.*$/, '')] || 'layers'; }
+
+// ---------- logo processing (browser only) ----------
+
+function loadImage(src) { return new Promise((res, rej) => { const img = new Image(); img.onload = () => res(img); img.onerror = () => rej(new Error('image could not be decoded')); img.src = src; }); }
+
+/** Average luminance of the opaque pixels (0 … 1) and the share of opaque pixels. */
+function imageStats(img, w, h) {
+  const c = document.createElement('canvas'); const W = Math.max(1, Math.min(200, Math.round(w))), H = Math.max(1, Math.round(W * h / Math.max(1, w)));
+  c.width = W; c.height = H; const ctx = c.getContext('2d', { willReadFrequently: true }); ctx.drawImage(img, 0, 0, W, H);
+  const d = ctx.getImageData(0, 0, W, H).data; let lum = 0, n = 0;
+  for (let i = 0; i < d.length; i += 4) { if (d[i + 3] < 40) continue; lum += (0.2126 * d[i] + 0.7152 * d[i + 1] + 0.0722 * d[i + 2]) / 255; n++; }
+  return { lum: n ? lum / n : 0, opaque: n / (W * H) };
+}
+
+/** Normalise any logo file / data URL: SVG stays SVG, rasters are downscaled to ≤ 1200 px; detects "white logo". */
+async function prepareLogo(dataUrl, mime) {
+  const isSvg = /^data:image\/svg\+xml/.test(dataUrl) || /svg/.test(mime || '');
+  let out = dataUrl, w = 0, h = 0, onDark = false;
+  try {
+    const img = await loadImage(dataUrl);
+    w = img.naturalWidth || img.width || 300; h = img.naturalHeight || img.height || 150;
+    if (isSvg) { const m = atob(dataUrl.split(',')[1] || '').match(/viewBox="[\d.\s-]*?([\d.]+)\s+([\d.]+)"/); if (m && (!img.naturalWidth || img.naturalWidth === 300)) { w = Number(m[1]); h = Number(m[2]); } }
+    const st = imageStats(img, w, h);
+    onDark = st.lum > 0.78;
+    if (!isSvg && w > 1200) { const c = document.createElement('canvas'); c.width = 1200; c.height = Math.round(1200 * h / w); c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); out = c.toDataURL('image/png'); }
+  } catch { /* keep the original */ }
+  return { dataUrl: out, onDark, width: w, height: h };
+}
+
+function fileToDataUrl(file) { return new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = () => rej(r.error); r.readAsDataURL(file); }); }
+
+const MIME_BY_EXT = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', svg: 'image/svg+xml', webp: 'image/webp', bmp: 'image/bmp' };
+const brandDirOf = (p) => p.replace(/[^/]*$/, '');
+function brandResolvePath(base, target) { const parts = (brandDirOf(base) + target).split('/'); const out = []; for (const p of parts) { if (p === '..') out.pop(); else if (p !== '.' && p !== '') out.push(p); } return out.join('/'); }
+function brandRelsOf(xml) { const out = {}; for (const m of xml.matchAll(/<Relationship\b[^>]*>/g)) { const id = m[0].match(/\bId="([^"]+)"/)?.[1], target = m[0].match(/\bTarget="([^"]+)"/)?.[1], type = m[0].match(/\bType="[^"]*\/([a-zA-Z]+)"/)?.[1]; if (id && target) out[id] = { target, type }; } return out; }
+
+/** Pixel size of a PNG / JPEG / SVG from its bytes (null if unknown). */
+function imageDims(bytes, ext) {
+  try {
+    if (ext === 'png' && bytes.length > 24) { const dv = new DataView(bytes.buffer, bytes.byteOffset); return { w: dv.getUint32(16), h: dv.getUint32(20) }; }
+    if (ext === 'jpg' || ext === 'jpeg') { let i = 2; while (i < bytes.length - 9) { if (bytes[i] !== 0xFF) { i++; continue; } const m = bytes[i + 1]; if (m >= 0xC0 && m <= 0xCF && m !== 0xC4 && m !== 0xC8 && m !== 0xCC) { return { h: (bytes[i + 5] << 8) | bytes[i + 6], w: (bytes[i + 7] << 8) | bytes[i + 8] }; } i += 2 + ((bytes[i + 2] << 8) | bytes[i + 3]); } return null; }
+    if (ext === 'svg') { const head = new TextDecoder().decode(bytes.subarray(0, 600)); const vb = head.match(/viewBox="[\d.\s-]*?([\d.]+)\s+([\d.]+)"/); if (vb) return { w: Number(vb[1]), h: Number(vb[2]) }; const w = head.match(/\swidth="([\d.]+)/), h = head.match(/\sheight="([\d.]+)/); if (w && h) return { w: Number(w[1]), h: Number(h[1]) }; }
+  } catch { /* ignore */ }
+  return null;
+}
+
+/**
+ * Looks for the client logo in the workbook. Scores every picture in every sheet: logos sit in the first rows,
+ * are a few centimetres wide, often carry an SVG; cover backgrounds, header strips and flow screenshots are large.
+ * Returns { dataUrl, mime, sheet, name, score } or null.
+ */
+async function extractWorkbookLogo(buffer) {
+  if (typeof JSZip === 'undefined') return null;
+  const zip = await JSZip.loadAsync(buffer);
+  const wbXml = await zip.file('xl/workbook.xml')?.async('string'); if (!wbXml) return null;
+  const wbRels = brandRelsOf(await zip.file('xl/_rels/workbook.xml.rels')?.async('string') || '');
+  const sheets = [...wbXml.matchAll(/<sheet\b[^>]*>/g)].map(m => ({ name: (m[0].match(/\bname="([^"]*)"/)?.[1] || '').replace(/&amp;/g, '&').replace(/&gt;/g, '>').replace(/&lt;/g, '<'), rId: m[0].match(/\br:id="([^"]+)"/)?.[1] }));
+  const candidates = []; const seenMedia = new Map();
+  for (const sh of sheets) {
+    const rel = wbRels[sh.rId]; if (!rel) continue;
+    const sheetPath = rel.target.startsWith('/') ? rel.target.slice(1) : 'xl/' + rel.target.replace(/^\/?xl\//, '');
+    const sheetRels = brandRelsOf(await zip.file(sheetPath.replace(/([^/]+)$/, '_rels/$1.rels'))?.async('string') || '');
+    const drawingRel = Object.values(sheetRels).find(r => r.type === 'drawing'); if (!drawingRel) continue;
+    const drawingPath = brandResolvePath(sheetPath, drawingRel.target);
+    const drawingXml = await zip.file(drawingPath)?.async('string'); if (!drawingXml) continue;
+    const drawingRels = brandRelsOf(await zip.file(drawingPath.replace(/([^/]+)$/, '_rels/$1.rels'))?.async('string') || '');
+    for (const anchor of drawingXml.matchAll(/<xdr:(?:twoCellAnchor|oneCellAnchor|absoluteAnchor)\b[\s\S]*?<\/xdr:(?:twoCellAnchor|oneCellAnchor|absoluteAnchor)>/g)) {
+      const a = anchor[0]; if (!/<xdr:pic>/.test(a)) continue;
+      const ext = a.match(/<a:ext\s+cx="(\d+)"\s+cy="(\d+)"/); const cxCm = ext ? Number(ext[1]) / 360000 : 0, cyCm = ext ? Number(ext[2]) / 360000 : 0;
+      const fromRow = Number(a.match(/<xdr:from>[\s\S]*?<xdr:row>(\d+)<\/xdr:row>/)?.[1] ?? 0), toRow = Number(a.match(/<xdr:to>[\s\S]*?<xdr:row>(\d+)<\/xdr:row>/)?.[1] ?? fromRow);
+      const svgId = a.match(/svgBlip\b[^>]*r:embed="([^"]+)"/)?.[1]; const blipId = a.match(/<a:blip\b[^>]*r:embed="([^"]+)"/)?.[1];
+      for (const id of [svgId, blipId].filter(Boolean)) {
+        const r = drawingRels[id]; if (!r) continue; const path = brandResolvePath(drawingPath, r.target); const ext2 = path.split('.').pop().toLowerCase(); const mime = MIME_BY_EXT[ext2]; if (!mime || !zip.file(path)) continue;
+        let bytes = seenMedia.get(path); if (!bytes) { bytes = await zip.file(path).async('uint8array'); seenMedia.set(path, bytes); }
+        if (bytes.length > 3_000_000) continue;
+        const dims = imageDims(bytes, ext2); const aspect = dims && dims.h ? dims.w / dims.h : 0;
+        let score = 0;
+        if (ext2 === 'svg') score += 4;
+        if (fromRow <= 3) score += 2;
+        if (cyCm > 0 && cyCm <= 2.5) score += 2;
+        if (cxCm > 0 && cxCm <= 12) score += 1;
+        if (cxCm > 60) score -= 4;
+        if (toRow - fromRow >= 10) score -= 4;
+        if (aspect >= 1.2 && aspect <= 12) score += 1; else if (aspect > 15 || (aspect > 0 && aspect < 0.5)) score -= 3;
+        if (seenMedia.has(path + '#used')) score += 1; seenMedia.set(path + '#used', true);
+        candidates.push({ path, mime, bytes, score, sheet: sh.name, isSvg: ext2 === 'svg' });
+        if (ext2 === 'svg') break; // the PNG fallback of the same picture is not needed
+      }
+    }
+  }
+  if (!candidates.length) return null;
+  candidates.sort((x, y) => y.score - x.score || (y.isSvg - x.isSvg));
+  const pick = candidates[0]; if (pick.score < 4) return null;
+  let bin = ''; for (let i = 0; i < pick.bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, pick.bytes.subarray(i, i + 0x8000));
+  return { dataUrl: `data:${pick.mime};base64,${btoa(bin)}`, mime: pick.mime, sheet: pick.sheet, name: pick.path.split('/').pop(), score: pick.score };
+}
+
+/** Brand colour → CSS variables on the document (present cover, hero, client plate). */
+function applyBrandColor(color) {
+  const el = document.documentElement;
+  if (color && /^#[0-9a-f]{6}$/i.test(color)) { el.style.setProperty('--brand', color); el.setAttribute('data-brand', 'on'); } else { el.style.removeProperty('--brand'); el.removeAttribute('data-brand'); }
+}
+
+/** Plan page block: logo upload / preview / white-logo switch / brand colour. */
+function BrandSettings({ session, updateSession, toast }) {
+  const st = session.settings; const inp = useRef(); const [busy, setBusy] = useState(false);
+  const onFile = async (e) => {
+    const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+    if (!/^image\//.test(f.type) || f.size > 4_000_000) { toast('Please pick a PNG, SVG or JPG under 4 MB'); return; }
+    setBusy(true);
+    try { const raw = await fileToDataUrl(f); const logo = await prepareLogo(raw, f.type); updateSession(s => { s.settings.logoDataUrl = logo.dataUrl; s.settings.logoOnDark = logo.onDark; s.settings.logoSource = `upload:${f.name}`; }); toast(`Logo set${logo.onDark ? ' – white logo, shown on a dark plate' : ''}`); }
+    catch (err) { toast(`Could not read the image: ${err.message}`); }
+    finally { setBusy(false); }
+  };
+  return html`<div class="brand-settings">
+    <div class="brand-preview">
+      ${st.logoDataUrl ? html`<${ClientLogo} settings=${st} height=${44} />` : html`<div class="brand-empty"><${Icon} name="image" size=${18} /><span>No client logo yet – it is picked up automatically from the workbook cover sheet, or upload one.</span></div>`}
+    </div>
+    <div class="sg-row" style="margin:.5rem 0 0">
+      <${Button} size="sm" icon="upload" disabled=${busy} onClick=${() => inp.current.click()}>${st.logoDataUrl ? 'Replace logo…' : 'Upload logo…'}</${Button}>
+      ${st.logoDataUrl && html`<${Button} size="sm" variant="text" icon="trash" onClick=${() => { updateSession(s => { s.settings.logoDataUrl = null; s.settings.logoOnDark = false; s.settings.logoSource = 'removed'; }); toast('Logo removed'); }}>Remove</${Button}>`}
+      ${st.logoDataUrl && html`<${Switch} checked=${!!st.logoOnDark} onChange=${v => updateSession(s => { s.settings.logoOnDark = v; })}>White logo (dark plate)</${Switch}>`}
+      <input ref=${inp} type="file" accept="image/png,image/svg+xml,image/jpeg,image/webp" style="display:none" onChange=${onFile} />
+    </div>
+    <div class="sg-row" style="margin:.6rem 0 0;align-items:center">
+      <label class="small" style="display:flex;align-items:center;gap:.5rem"><span class="eyebrow">Brand colour</span><input type="color" class="colorpick" value=${st.brandColor || '#1f4e79'} onInput=${e => updateSession(s => { s.settings.brandColor = e.target.value; })} /></label>
+      ${st.brandColor && html`<${Button} size="sm" variant="text" onClick=${() => updateSession(s => { s.settings.brandColor = ''; })}>Reset</${Button}>`}
+      <span class="hint" style="margin:0">Used for the cover slide, the client plate and the hero – the gap colours stay as they are.</span>
+    </div>
+    ${st.logoSource && /^workbook:/.test(st.logoSource) && html`<div class="hint" style="margin-top:.4rem"><${Icon} name="info" size=${12} /> Picked up from ${st.logoSource.replace(/^workbook:/, '')}.</div>`}
+  </div>`;
+}
 
 
 /* ---- src/ui/exports.js ---- */
@@ -3058,7 +3337,7 @@ function buildSlides(session, stream, entityFilter) {
   const leaves = []; const walk = (n) => { if (n.activities.length) leaves.push(n); n.children.forEach(walk); }; tree.forEach(walk);
   const slides = [{ type: 'cover' }, { type: 'scope' }, { type: 'legend' }];
   for (const n of leaves) { slides.push({ type: 'l3flow', node: n }); slides.push({ type: 'l3table', node: n }); }
-  slides.push({ type: 'stream' }); slides.push({ type: 'cross' }); slides.push({ type: 'open' });
+  slides.push({ type: 'stream' }); slides.push({ type: 'cross' }); slides.push({ type: 'open' }); slides.push({ type: 'end' });
   return { slides, entities, leaves };
 }
 
@@ -3067,28 +3346,41 @@ function PresentMode({ session, updateSession, stream: initialStream, entityFilt
   const { slides, entities, leaves } = useMemo(() => buildSlides(session, stream, entityFilter), [session, stream, entityFilter]);
   const [i, setI] = useState(() => { const idx = l3 ? slides.findIndex(s => s.node?.id === l3) : 0; return idx > 0 ? idx : 0; });
   const [dir, setDir] = useState('next'); const [swimEntity, setSwimEntity] = useState(entities[0]?.code);
+  // On a flow slide, default to the first entity that actually has in-scope rows for this process group.
+  const sNow = slides[Math.min(i, slides.length - 1)];
+  useEffect(() => { if (sNow?.type !== 'l3flow') return; const has = (code) => sNow.node.activities.some(p => { const a = session.assessments[assessmentKey(code, p.id)]; return a && !a.scope.outOfScope; }); if (!has(swimEntity)) { const e = entities.find(x => has(x.code)); if (e) setSwimEntity(e.code); } }, [sNow?.node?.id]);
   const go = (d) => { setDir(d > 0 ? 'next' : 'prev'); setI(x => Math.min(slides.length - 1, Math.max(0, x + d))); };
-  useEffect(() => { const k = (e) => { if (['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName)) return; if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') { e.preventDefault(); go(1); } if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); go(-1); } if (e.key === 'Escape') onClose(); if (e.key === 'Home') setI(0); }; window.addEventListener('keydown', k); return () => window.removeEventListener('keydown', k); }, [slides.length]);
+  useEffect(() => { const k = (e) => { if (['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName)) return; if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') { e.preventDefault(); go(1); } if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); go(-1); } if (e.key === 'Escape') onClose(); if (e.key === 'Home') setI(0); if (e.key === 'End') setI(slides.length - 1); }; window.addEventListener('keydown', k); return () => window.removeEventListener('keydown', k); }, [slides.length]);
   useEffect(() => { document.documentElement.requestFullscreen?.().catch(() => {}); return () => { if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {}); }; }, []);
   const s = slides[Math.min(i, slides.length - 1)]; const st = session.settings;
   const title = (eyebrow, h) => html`<div class="eyebrow">${eyebrow}</div><h2>${h}</h2>`;
   const streamStats = (() => { const g = gapAnalysis(session, { stream: stream === 'MD' ? null : stream, entityCode: entityFilter }); const split = entities.map(e => activitySplit(session, e.code, stream === 'MD' ? null : stream).totals); const cls = {}; for (const t of split) for (const [k, v] of Object.entries(t.cls)) cls[k] = (cls[k] || 0) + v; return { g, cls }; })();
   const content = (() => {
     switch (s.type) {
-      case 'cover': return html`<div class="slide-center">${st.logoDataUrl && html`<img src=${st.logoDataUrl} style="max-height:12cqw;margin-bottom:2cqw" alt="logo" />`}<div class="eyebrow">Fit-gap workshop · ${stream}</div><h2 style="font-size:5cqw">${st.clientName || 'Client'} · ${st.country || 'Country'}</h2><p style="font-size:1.6cqw;color:var(--ink-2)">${entities.map(e => e.displayName || e.name).join(' · ')}</p><p style="font-size:1.3cqw;color:var(--ink-3)">${(st.workshopDates || []).join(', ') || session.sessions.filter(x => x.stream.startsWith(stream)).map(x => x.date).join(', ') || new Date().toLocaleDateString()}${st.facilitators?.length ? ' · ' + st.facilitators.join(', ') : ''}</p></div>`;
+      case 'cover': { const nAct = Object.values(session.processes).filter(p => p.stream === (stream === 'MD' ? p.stream : stream) && p.level >= 4).length; const dates = (st.workshopDates || []).join(', ') || session.sessions.filter(x => x.stream.startsWith(stream)).map(x => fmtDateShort(x.date)).join(', ') || fmtDateShort(new Date().toISOString().slice(0, 10)); return html`<div class="cover">
+        <div class="cover-top">${st.logoDataUrl ? html`<${ClientLogo} settings=${st} height=${64} plate=${false} className="cover-logo" />` : html`<${Mark} size=${64} radius=${14} />`}<span class="cover-tool"><${Mark} size=${22} /> GBS Fit-Gap Workbench</span></div>
+        <div class="cover-body"><div class="eyebrow"><${Icon} name=${streamIcon(stream)} size=${14} /> Fit-gap workshop · ${stream === 'MD' ? 'Master data' : stream}</div><h2 style="font-size:5cqw">${st.clientName || 'Client'}<span class="cover-country"> · ${st.country || 'Country'}</span></h2><p class="cover-ents">${entities.map(e => e.displayName || e.name).join(' · ')}</p></div>
+        <div class="cover-stats"><div><b>${entities.length}</b><span>entities</span></div><div><b>${leaves.length}</b><span>process groups</span></div><div><b>${nAct}</b><span>activities</span></div><div><b>${dates}</b><span>${st.facilitators?.length ? st.facilitators.join(', ') : 'workshop dates'}</span></div></div>
+      </div>`; }
       case 'scope': return html`${title('Scope', 'Streams and activities in scope')}<div class="slide-grid">${STREAMS.filter(x => Object.values(session.processes).some(p => p.stream === x)).map(x => { const n = Object.values(session.processes).filter(p => p.stream === x && p.level >= 4).length; const oos = Object.values(session.assessments).filter(a => a.stream === x && a.scope.outOfScope).length; return html`<div class="slide-kpi" key=${x}><div class="big" style="font-size:4cqw">${n}</div><div class="eyebrow">${x} · L4 activities${oos ? ` · ${oos} entity-rows out of scope` : ''}</div></div>`; })}</div>`;
-      case 'legend': return html`${title('Gap types', 'How we classify every activity')}<div class="slide-legend">${['NO_GAP', 'HARMONIZATION', 'STANDARDIZATION', 'BOTH'].map(g => html`<div key=${g}><${GapPill} value=${g} size="lg" /><p>${st.gapDefinitions[g]}</p></div>`)}<div><span class="eyebrow">Resolution approaches</span><p><b>Separate variant</b> – cannot be closed; separate process variant for substantiated legal, tax or regulatory reasons.<br /><b>Close before go-live</b> – close the gap in the current as-is process before transition go-live.<br /><b>Lift & shift</b> – adopt the global standard after transition; deviation closed after migration.</p></div></div>`;
+      case 'legend': { const GI = { NO_GAP: 'check', HARMONIZATION: 'swap', STANDARDIZATION: 'target', BOTH: 'layers' }; return html`${title('Gap types', 'How we classify every activity')}<div class="slide-legend">${['NO_GAP', 'HARMONIZATION', 'STANDARDIZATION', 'BOTH'].map(g => html`<div class="legend-tile" key=${g}><span class="legend-ico" style=${`--c:var(--g-${({ NO_GAP: 'none', HARMONIZATION: 'harm', STANDARDIZATION: 'std', BOTH: 'both' })[g]})`}><${Icon} name=${GI[g]} size=${18} /></span><div><${GapPill} value=${g} size="lg" /><p>${st.gapDefinitions[g]}</p></div></div>`)}<div class="legend-tile"><span class="legend-ico" style="--c:var(--accent)"><${Icon} name="compass" size=${18} /></span><div><span class="eyebrow">Resolution approaches</span><p><b>Separate variant</b> – cannot be closed; separate process variant for substantiated legal, tax or regulatory reasons.<br /><b>Close before go-live</b> – close the gap in the current as-is process before transition go-live.<br /><b>Lift & shift</b> – adopt the global standard after transition; deviation closed after migration.</p></div></div></div>`; }
       case 'l3flow': return html`${title(`${stream} · ${s.node.id}`, s.node.name)}<div class="sg-row" style="margin:0 0 .6cqw">${entities.map(e => html`<${Chip} key=${e.code} active=${swimEntity === e.code} onClick=${() => setSwimEntity(e.code)}>${e.displayName || e.name}</${Chip}>`)}<span class="muted small">click a step to capture who performs it and what is different</span></div>${swimEntity && html`<${FlowBoard} session=${session} entityCode=${swimEntity} node=${s.node} activities=${s.node.activities} updateSession=${updateSession} toast=${toast} large onAsk=${onAsk} />`}`;
       case 'l3table': return html`${title(`${stream} · ${s.node.id}`, `${s.node.name} · ${s.node.activities.length} activities`)}<table class="slide-table"><thead><tr><th>Activity</th>${entities.map(e => html`<th key=${e.code}>${e.displayName || e.name}</th>`)}</tr></thead><tbody>${s.node.activities.map(p => html`<tr key=${p.id}><td><span class="mono muted">${p.id}</span> ${p.name}</td>${entities.map(e => { const a = session.assessments[assessmentKey(e.code, p.id)]; if (!a) return html`<td key=${e.code}>—</td>`; if (a.scope.outOfScope) return html`<td key=${e.code}><${GapPill} value="OUT_OF_SCOPE" size="sm" /></td>`; const l = lanesOf(a, p); const findings = ['legalRegulatory', 'languageRequirements', 'externalParty', 'internalControls'].filter(f => a.detailedGap[f] && a.detailedGap[f] !== NA).map(f => DETAILED_GAP_LABEL[f].split(' ')[0]); return html`<td key=${e.code}><div class="sg-row" style="margin:0;gap:.3cqw"><select class="select sm present-select" value=${a.workshop.gapType || ''} onChange=${ev => updateSession(x => applyChange(x, a.key, 'workshop.gapType', ev.target.value || null))}><option value="">${a.asIs.gap ? 'Ops: ' + GAP_LABEL[a.asIs.gap] : '–'}</option>${['NO_GAP', 'HARMONIZATION', 'STANDARDIZATION', 'BOTH', 'NA'].map(g => html`<option value=${g}>${GAP_LABEL[g]}</option>`)}</select><${GapPill} value=${effectiveGap(a) || 'NOT_ASSESSED'} size="sm" />${gapDiffersFromOps(a) && html`<span class="diff-note">Ops: ${GAP_LABEL[a.asIs.gap] || '–'}</span>`}</div><div class="muted small">${l.workshop ? html`<${Tag} kind=${l.workshop} />` : 'split: –'} ${findings.length ? '· ' + findings.join(', ') : ''}</div></td>`; })}</tr>`)}</tbody></table>`;
       case 'stream': return html`${title(stream, 'Stream summary')}<div class="slide-two"><div><div class="eyebrow">Activity split (workshop vs. plan)</div>${SPLIT_CLASS_KEYS.map(k => html`<div class="bar-row" key=${k}><span>${SPLIT_CLASS[k]}</span><span class="bar"><i style=${`width:${100 * (streamStats.cls[k] || 0) / Math.max(1, Object.values(streamStats.cls).reduce((a, b) => a + b, 0))}%;background:var(--${k === 'NOT_ASSESSED' ? 'none' : k.includes('GBS') && !k.startsWith('PLANNED_GBS') ? 'gbs' : k === 'OTHER_PARTY' ? 'coe' : k === 'STAYS_LOCAL' ? 'local' : 'flag'})`}></i></span><b class="num">${streamStats.cls[k] || 0}</b></div>`)}</div><div><div class="eyebrow">Gap distribution · Ops pre-assessment vs. workshop</div><${OpsVsWorkshopChart} dist=${streamStats.g.dist} /></div></div>`;
       case 'cross': { const g = gapAnalysis(session, { entityCode: entityFilter }); return html`${title(st.country || 'Country', 'Cross-entity view')}<div class="slide-two"><div><div class="eyebrow">Gap in all entities (likely global-standard issue) · ${g.cross.all.length}</div><ul class="slide-list">${g.cross.all.slice(0, 12).map(b => html`<li key=${b.processId}><span class="mono muted">${b.processId}</span> ${b.name}</li>`)}</ul></div><div><div class="eyebrow">Gap in one entity only (entity-specific) · ${g.cross.one.length}</div><ul class="slide-list">${g.cross.one.slice(0, 12).map(b => html`<li key=${b.processId}><span class="mono muted">${b.processId}</span> ${b.name} <span class="muted">· ${session.entities[b.gaps[0]]?.displayName || b.gaps[0]}</span></li>`)}</ul></div></div>`; }
       case 'open': { const g = gapAnalysis(session, { stream: stream === 'MD' ? null : stream, entityCode: entityFilter }); return html`${title('Open points & next steps', `${g.openPoints.length} open points`)}<table class="slide-table"><thead><tr><th>Activity</th><th>Entity</th><th>Status</th><th>Missing / next step</th><th>Owner · due</th></tr></thead><tbody>${g.openPoints.slice(0, 14).map(o => html`<tr key=${o.key}><td><span class="mono muted">${o.processId}</span> ${o.name}</td><td>${session.entities[o.entityCode]?.displayName || o.entityCode}</td><td><${StatusDot} status=${o.status} /></td><td>${o.nextStep || o.missing.join(', ')}</td><td>${session.participants.find(p => p.id === o.owner)?.name || ''}${o.due ? ' · ' + o.due : ''}</td></tr>`)}</tbody></table>`; }
+      case 'end': { const g = gapAnalysis(session, { stream: stream === 'MD' ? null : stream, entityCode: entityFilter }); const next = session.sessions.filter(x => !x.endedAt && x.date >= new Date().toISOString().slice(0, 10)).sort((a, b) => (a.date + a.start).localeCompare(b.date + b.start))[0]; const assessed = Object.values(session.assessments).filter(a => !a.scope.outOfScope && (stream === 'MD' || a.stream === stream) && a.workshop.status !== 'NOT_ASSESSED').length, tot = Object.values(session.assessments).filter(a => !a.scope.outOfScope && (stream === 'MD' || a.stream === stream)).length; return html`<div class="cover end">
+        <div class="cover-top">${st.logoDataUrl ? html`<${ClientLogo} settings=${st} height=${48} plate=${false} className="cover-logo" />` : html`<${Mark} size=${48} radius=${12} />`}<span class="cover-tool"><${Mark} size=${22} /> GBS Fit-Gap Workbench</span></div>
+        <div class="cover-body"><div class="eyebrow"><${Icon} name="trophy" size=${14} /> Thank you · ${stream === 'MD' ? 'Master data' : stream}</div><h2 style="font-size:4cqw">Where we landed today</h2><p class="cover-ents">${assessed} of ${tot} activities assessed · ${g.openPoints.length} open points · ${Object.values(g.dist.workshop).reduce((a, b) => a + b, 0) - (g.dist.workshop.NO_GAP || 0) - (g.dist.workshop.NOT_ASSESSED || 0)} deviations to decide</p></div>
+        <div class="cover-stats"><div><b>${next ? `${fmtDateShort(next.date)} ${next.start || ''}` : '–'}</b><span>${next ? `next session · ${next.stream}` : 'no further session planned'}</span></div><div><b>${g.openPoints.length}</b><span>open points</span></div><div><b>${st.facilitators?.length ? st.facilitators.join(', ') : (st.editorInitials || '–')}</b><span>facilitation</span></div></div>
+      </div>`; }
       default: return null;
     }
   })();
   return html`<div class="present" role="dialog" aria-label="Present mode">
-    <div class=${`present-slide anim-${dir}`} key=${i}>${content}</div>
-    <div class="present-foot"><span>${st.clientName || ''} · ${stream}</span><span class="sg-row" style="margin:0"><select class="select sm present-select" value=${stream} onChange=${e => { setStream(e.target.value); setI(0); }}>${[...STREAMS.filter(x => Object.values(session.processes).some(p => p.stream === x)), 'MD'].map(x => html`<option value=${x}>${x}</option>`)}</select><span class="mono">${i + 1} / ${slides.length}</span><span class="muted">← → navigate · Esc exit</span><${IconButton} icon="x" label="Exit" onClick=${onClose} /></span></div>
+    ${s.type !== 'cover' && s.type !== 'end' && html`<div class="present-brand"><span class="present-brand-left"><${Icon} name=${streamIcon(stream)} size=${13} /> ${st.clientName || 'Client'}${st.country ? ` · ${st.country}` : ''} · ${stream === 'MD' ? 'Master data' : stream}</span>${st.logoDataUrl ? html`<${ClientLogo} settings=${st} height=${22} />` : html`<${Mark} size=${22} />`}</div>`}
+    <div class=${`present-slide anim-${dir}${s.type === 'cover' || s.type === 'end' ? ' is-cover' : ''}`} key=${i}>${content}</div>
+    <div class="present-foot"><span class="sg-row" style="margin:0;gap:.5rem"><${Mark} size=${16} radius=${4} /> ${st.clientName || ''} · ${stream} · <span class="muted">fit-gap workshop · confidential</span></span><span class="sg-row" style="margin:0"><select class="select sm present-select" value=${stream} onChange=${e => { setStream(e.target.value); setI(0); }}>${[...STREAMS.filter(x => Object.values(session.processes).some(p => p.stream === x)), 'MD'].map(x => html`<option value=${x}>${x}</option>`)}</select><span class="mono">${i + 1} / ${slides.length}</span><span class="muted">← → navigate · Esc exit</span><${IconButton} icon="x" label="Exit" onClick=${onClose} /></span></div>
     <div class="present-progress"><i style=${`width:${100 * (i + 1) / slides.length}%`}></i></div>
   </div>`;
 }
@@ -3317,6 +3609,17 @@ function useImportQueue(updateSession, onBatchDone, profileRef) {
   const wbRef = useRef({});
   const finishFlows = async (buf, wb, parsed) => { try { let procs; updateSession(s => { procs = s.processes; }); const flows = await extractFlowsForImport(buf, wb, parsed, procs || {}); if (flows.length) updateSession(s => { s.flows = s.flows.filter(f => f.file !== parsed.fileName).concat(flows); }); return flows.length; } catch (e) { console.warn('flow extraction failed', e); return 0; } };
   const patch = (id, p) => setJobs(js => js.map(j => j.id === id ? { ...j, ...p } : j));
+  // Client logo from the workbook cover sheet – only while no logo is set (an uploaded or removed one is never replaced).
+  const pickUpLogo = async (buf, fileName) => {
+    let st; updateSession(s => { st = s.settings; });
+    if (!st || st.logoDataUrl || st.logoSource === 'removed' || /^upload:/.test(st.logoSource || '')) return;
+    try {
+      const found = await extractWorkbookLogo(buf); if (!found) return;
+      const logo = await prepareLogo(found.dataUrl, found.mime);
+      updateSession(s => { if (s.settings.logoDataUrl) return; s.settings.logoDataUrl = logo.dataUrl; s.settings.logoOnDark = logo.onDark; s.settings.logoSource = `workbook:${fileName} · ${found.sheet}`; });
+      document.dispatchEvent(new CustomEvent('fg:toast', { detail: { text: `Client logo picked up from "${found.sheet}" in ${fileName} – shown on the cover slides and in the sidebar (change it under Plan & prepare).` } }));
+    } catch (e) { console.warn('logo pick-up failed', e); }
+  };
   const finish = (id, parsed) => {
     let report;
     updateSession(s => { report = mergeParsedWorkbook(s, parsed); });
@@ -3341,6 +3644,7 @@ function useImportQueue(updateSession, onBatchDone, profileRef) {
         if (parsed.needsSheetChoice) { wbRef.current[job.id] = { wb, buf }; patch(job.id, { status: 'choice', progress: 80, message: 'Several candidate sheets – pick one', candidates: parsed.sheets.candidates }); continue; }
         if (!parsed.ok) { patch(job.id, { status: 'error', progress: 100, message: parsed.warnings.map(w => w.message).join(' ') }); continue; }
         results.push(finish(job.id, parsed));
+        await pickUpLogo(buf, file.name);
       } catch (e) { patch(job.id, { status: 'error', progress: 100, message: `Could not read this file: ${e.message}` }); results.push({ error: e }); }
       await tick();
     }
@@ -3472,13 +3776,13 @@ function ImportView({ session, summary, updateSession, toast, onClearAll, onRepl
   const onFiles = (files) => q.run(files);
   if (!hasData && !q.jobs.length) {
     return html`<div>
-      <${PageHead} eyebrow="2 · Workshop · files & exports" title="Import the capture sheets" lead="Start with the pre-filled workbooks from GBS Operations. The tool reads the main Fit-Gap sheet of each file, detects entities and blocks by their titles, and shows you exactly what it found before anything is assessed." how=${html`<ol><li>Drop all stream workbooks at once (or add them one by one).</li><li>Check the import summary: entities × streams, activity counts, gap distribution and warnings.</li><li>If a label without entity code looks like a known entity, confirm or reject the match.</li><li>Re-import a newer version at any time – Ops values are refreshed and listed, workshop results stay.</li></ol>`} />
+      <${PageHead} icon="upload" eyebrow="2 · Workshop · files & exports" title="Import the capture sheets" lead="Start with the pre-filled workbooks from GBS Operations. The tool reads the main Fit-Gap sheet of each file, detects entities and blocks by their titles, and shows you exactly what it found before anything is assessed." how=${html`<ol><li>Drop all stream workbooks at once (or add them one by one).</li><li>Check the import summary: entities × streams, activity counts, gap distribution and warnings.</li><li>If a label without entity code looks like a known entity, confirm or reject the match.</li><li>Re-import a newer version at any time – Ops values are refreshed and listed, workshop results stay.</li></ol>`} />
       <${DropZone} onFiles=${onFiles} ...${dz} />
       <div style="margin-top:1rem;max-width:46rem;display:grid;gap:1rem"><${TemplatesCard} session=${session} toast=${toast} /><${ExportsCard} session=${session} summary=${summary} updateSession=${updateSession} toast=${toast} onReplaceSession=${onReplaceSession} /></div>
     </div>`;
   }
   return html`<div>
-    <${PageHead} eyebrow="2 · Workshop · files & exports" title=${hasData ? `${summary.entities.length} entities · ${summary.streams.length} streams · ${summary.assessments} assessments` : 'Importing…'} lead="What was read from the capture sheets. Check that every entity appears in every stream, then go to the workshop." />
+    <${PageHead} icon="upload" eyebrow="2 · Workshop · files & exports" title=${hasData ? `${summary.entities.length} entities · ${summary.streams.length} streams · ${summary.assessments} assessments` : 'Importing…'} lead="What was read from the capture sheets. Check that every entity appears in every stream, then go to the workshop." />
     <${PendingEntities} session=${session} updateSession=${updateSession} />
     ${hasData && html`<div class="kpi-row"><${Kpi} value=${summary.entities.length} label="Entities" /><${Kpi} value=${Object.values(summary.activitiesByStream).reduce((a, b) => a + b, 0)} label="L4 activities" color="var(--gbs)" /><${Kpi} value=${summary.assessments} label="Entity × activity" color="var(--auto)" /><${Kpi} value=${summary.outOfScope} label="Out of scope" color="var(--g-oos)" /><${Kpi} value=${summary.warnings.filter(w => w.level !== 'info').length} label="Warnings" color=${summary.warnings.some(w => w.level === 'error') ? 'var(--flag)' : 'var(--g-harm)'} /></div>`}
     <div class="import-grid">
@@ -3612,7 +3916,7 @@ function PlanView({ session, summary, updateSession, toast }) {
   const StepHead = ({ n, done, title, hint }) => html`<div class="pstep-head"><span class=${`step-n${done ? ' done' : ''}`}>${done ? html`<${Icon} name="check" size=${14} />` : n}</span><div><h3>${title}</h3>${hint && html`<div class="muted small">${hint}</div>`}</div></div>`;
 
   return html`<div class="plan">
-    <${PageHead} eyebrow="1 · Plan & prepare" title=${st.country ? `${st.clientName || 'Client'} · ${st.country}` : 'Plan the country fit-gap'} lead="Three things before the first session: who you are, who is in the room, and when the sessions are. Readiness per session shows what still has to be chased." />
+    <${PageHead} icon="plan" eyebrow="1 · Plan & prepare" title=${st.country ? `${st.clientName || 'Client'} · ${st.country}` : 'Plan the country fit-gap'} lead="Three things before the first session: who you are, who is in the room, and when the sessions are. Readiness per session shows what still has to be chased." />
     <div class="plan-grid">
       <div class="card"><div class="card-body">
         <${StepHead} n="1" done=${step1} title="Country & you" hint="Your initials tag every change in the audit trail." />
@@ -3621,6 +3925,7 @@ function PlanView({ session, summary, updateSession, toast }) {
           <${Field} label="Country" required><${TextInput} value=${st.country} onCommit=${v => setS('country', v)} placeholder="e.g. France" /></${Field}>
           <${Field} label="Initials" required><${TextInput} value=${st.editorInitials} onCommit=${v => setS('editorInitials', v.toUpperCase())} placeholder="MR" /></${Field}>
         </div>
+        <div class="field" style="margin-top:.2rem"><label>Client logo & colour</label><${BrandSettings} session=${session} updateSession=${updateSession} toast=${toast} /></div>
         <details class="disclosure" style="margin-top:.6rem"><summary>More settings – entities, streams in scope, gap definitions, timing <${Icon} name="chevron" size=${14} /></summary><div class="body" style="max-width:none">
           <div class="fgrid" style="margin-bottom:.8rem"><${Field} label="Facilitators" hint="Comma-separated"><${TextInput} value=${(st.facilitators || []).join(', ')} onCommit=${v => setS('facilitators', v.split(',').map(x => x.trim()).filter(Boolean))} /></${Field}><${Field} label="Minutes per activity (no gap / gap)" hint="Effort estimate per session"><div class="sg-row" style="margin:0"><${TextInput} class="num sm" value=${String(st.minutesPerActivity.NO_GAP)} onCommit=${v => updateSession(s => { s.settings.minutesPerActivity.NO_GAP = Number(v.replace(',', '.')) || 1.5; })} style="width:4.5rem" /><${TextInput} class="num sm" value=${String(st.minutesPerActivity.GAP)} onCommit=${v => updateSession(s => { s.settings.minutesPerActivity.GAP = Number(v.replace(',', '.')) || 5; })} style="width:4.5rem" /></div></${Field}></div>
           <div class="eyebrow" style="margin-bottom:.3rem">Streams in scope</div>
@@ -3734,7 +4039,7 @@ function TreePanel({ tree, selectedId, onSelect, session, entityFilter, collapse
     return html`<div>
       <button class=${`tree-node${selectedId === n.id ? ' sel' : ''}${!n.parentId ? ' root' : ''}`} style=${`padding-left:${0.5 + depth * 0.8}rem`} onClick=${() => isLeaf ? onSelect(n.id) : toggle(n.id)}>
         ${!isLeaf && n.children.length ? html`<span class=${`tw${open ? ' open' : ''}`}><${Icon} name="chevron" size=${12} /></span>` : html`<span class="tw"></span>`}
-        <span class="tn"><span class="pid">${n.id}</span> ${n.name}</span>
+        <span class="tn">${!n.parentId && html`<span class="tree-ico"><${Icon} name=${streamIcon(n.stream)} size=${13} /></span>`}<span class="pid">${n.id}</span> ${n.name}</span>
         <span class="tp"><span class="num">${s.assessed}/${s.total}</span>${s.openGaps ? html`<span class="og" title="open gaps">${s.openGaps}</span>` : null}</span>
         <span class="tb"><i style=${`width:${pct}%`}></i></span>
       </button>
@@ -4062,11 +4367,11 @@ function GapAnalysisView({ session, goActivity }) {
 
 function EvaluatePage({ session, updateSession, toast, goActivity }) {
   const hasData = Object.keys(session.assessments).length > 0;
-  if (!hasData) return html`<${PageHead} eyebrow="3 · Results" title="Results" /><${EmptyState} icon="evaluate" title="No assessments yet" text="Import the capture sheets and run the workshops first." />`;
+  if (!hasData) return html`<${PageHead} icon="evaluate" eyebrow="3 · Results" title="Results" /><${EmptyState} icon="evaluate" title="No assessments yet" text="Import the capture sheets and run the workshops first." />`;
   const [open, setOpen] = useState({ board: true, split: false, analysis: true });
   const tog = (k) => setOpen(o => ({ ...o, [k]: !o[k] }));
   return html`<div>
-    <${PageHead} eyebrow="3 · Results" title="Deviations, activity split and gap analysis" lead="Decide every deviation on the board (approach, owner, approval). Below: where the gaps cluster and what moves to GBS as planned." />
+    <${PageHead} icon="evaluate" eyebrow="3 · Results" title="Deviations, activity split and gap analysis" lead="Decide every deviation on the board (approach, owner, approval). Below: where the gaps cluster and what moves to GBS as planned." />
     <div style="display:grid;gap:1.25rem">
       <${Card} title="Deviation board" stats=${[['deviations', deviationList(session).length]]} open=${open.board} onToggle=${() => tog('board')}><${DeviationBoard} session=${session} updateSession=${updateSession} toast=${toast} goActivity=${goActivity} /></${Card}>
       <${Card} title="Gap analysis" open=${open.analysis} onToggle=${() => tog('analysis')}><${GapAnalysisView} session=${session} goActivity=${goActivity} /></${Card}>
@@ -4082,11 +4387,11 @@ function EvaluatePage({ session, updateSession, toast, goActivity }) {
 function Qg2Page({ session, updateSession, toast }) {
   const q = useMemo(() => qg2Readiness(session), [session]);
   const ents = Object.values(session.entities);
-  if (!q.streams.length) return html`<${PageHead} eyebrow="4 · Sign-off & hand-over" title="Quality Gate 2 readiness" /><${EmptyState} icon="qg2" title="Nothing to sign off yet" text="QG2 readiness is computed from the workshop results." />`;
+  if (!q.streams.length) return html`<${PageHead} icon="qg2" eyebrow="4 · Sign-off & hand-over" title="Quality Gate 2 readiness" /><${EmptyState} icon="qg2" title="Nothing to sign off yet" text="QG2 readiness is computed from the workshop results." />`;
   const setSign = (stream, who, field, value) => updateSession(s => { s.signoff = s.signoff || {}; s.signoff[stream] = s.signoff[stream] || { pe: { name: '', date: '' }, ops: { name: '', date: '' } }; s.signoff[stream][who][field] = value; s.audit.push({ ts: new Date().toISOString(), key: `signoff:${stream}`, field: `${who}.${field}`, old: null, new: value, sessionId: s.activeSessionId, editor: s.settings.editorInitials }); });
   const pct = (a, b) => b ? `${Math.round(100 * a / b)} %` : '–';
   return html`<div>
-    <${PageHead} eyebrow="4 · Sign-off & hand-over" title="Quality Gate 2 readiness" lead="A stream is QG2-ready only when every in-scope activity is assessed and every deviation has an accountable owner, a resolution approach and a decided approval status (aligned, approved or rejected)." />
+    <${PageHead} icon="qg2" eyebrow="4 · Sign-off & hand-over" title="Quality Gate 2 readiness" lead="A stream is QG2-ready only when every in-scope activity is assessed and every deviation has an accountable owner, a resolution approach and a decided approval status (aligned, approved or rejected)." />
     <div class="kpi-row">${q.streams.map(s => html`<${Kpi} key=${s} value=${pct(q.perStream[s].assessed, q.perStream[s].total)} label=${`${s} assessed · ${q.perStream[s].ready ? 'QG2-ready' : 'not ready'}`} color=${q.perStream[s].ready ? 'var(--ok)' : 'var(--g-harm)'} />`)}</div>
     <${Card} title="Per entity × stream"><div style="overflow:auto"><table class="matrix"><thead><tr><th style="text-align:left">Entity</th>${q.streams.map(s => html`<th key=${s} class="num">${s}</th>`)}</tr></thead><tbody>
       ${ents.map(e => html`<tr key=${e.code}><td style="text-align:left">${e.displayName || e.name}</td>${q.streams.map(s => { const c = q.cells.find(x => x.entityCode === e.code && x.stream === s); if (!c) return html`<td key=${s} class="num zero">·</td>`; const miss = c.noOwner + c.undecided + c.noApproval + c.noJustification; return html`<td key=${s} class="num" style="text-align:left"><div><b>${pct(c.assessed, c.total)}</b> <span class="muted">assessed</span></div><div class="small">${c.deviations} dev · ${Object.entries(c.byResolution).map(([r, n]) => `${(RESOLUTION_LABEL[r] || 'undecided').split(' ')[0]} ${n}`).join(', ') || '–'}</div><div class=${`small${miss ? ' incomplete' : ' complete'}`}>${miss ? `${c.noOwner} no owner · ${c.undecided} no approach · ${c.noApproval} no approval${c.noJustification ? ` · ${c.noJustification} no justification` : ''}` : 'complete'}</div>${c.openQuestions ? html`<div class="small" style="color:var(--g-unclear)">${c.openQuestions} open question${c.openQuestions > 1 ? 's' : ''}</div>` : null}</td>`; })}</tr>`)}
@@ -4104,10 +4409,10 @@ function Qg2Page({ session, updateSession, toast }) {
 function PreparePage({ session, updateSession, toast }) {
   const fbn = useMemo(() => flowsByNode(session), [session.flows]);
   const [open, setOpen] = useState(null);
-  if (!session.sessions.length) return html`<${PageHead} eyebrow="1 · Plan & prepare · readiness" title="Readiness per session" /><${EmptyState} icon="prepare" title="No sessions planned" text="Add sessions in 1 · Plan – readiness is checked per session." />`;
+  if (!session.sessions.length) return html`<${PageHead} icon="prepare" eyebrow="1 · Plan & prepare · readiness" title="Readiness per session" /><${EmptyState} icon="prepare" title="No sessions planned" text="Add sessions in 1 · Plan – readiness is checked per session." />`;
   const lightColor = { green: 'var(--ok)', amber: 'var(--g-harm)', red: 'var(--flag)' };
   return html`<div>
-    <${PageHead} eyebrow="1 · Plan & prepare · readiness" title="Readiness per session" lead="Capture sheet received, Ops pre-assessment complete, flows available, participants nominated, room or link sent. The list of missing pre-fills is what to chase with GBS Operations before the session." />
+    <${PageHead} icon="prepare" eyebrow="1 · Plan & prepare · readiness" title="Readiness per session" lead="Capture sheet received, Ops pre-assessment complete, flows available, participants nominated, room or link sent. The list of missing pre-fills is what to chase with GBS Operations before the session." />
     <div style="display:grid;gap:1rem">${session.sessions.map(ws => { const r = prepareReadiness(session, ws, fbn); return html`<div class="card" key=${ws.id}><div class="card-head"><span class="light" style=${`background:${lightColor[r.light]}`}></span><h3>${ws.date} ${ws.start}${ws.end ? '–' + ws.end : ''} · ${ws.stream}</h3><span class="muted small">${r.activities} activities in scope</span></div><div class="card-body">
       <div class="checks">${r.checks.map(c => html`<div class=${`check ${c.ok ? 'ok' : c.warn ? 'warn' : 'bad'}`} key=${c.key}><${Icon} name=${c.ok ? 'check' : 'alert'} size=${14} /><span>${c.label}</span><span class="muted small">${c.detail}</span>${c.key === 'room' && html`<label class="toggle" style="margin-left:auto"><input type="checkbox" checked=${!!ws.roomSent} onChange=${e => updateSession(s => { s.sessions.find(x => x.id === ws.id).roomSent = e.target.checked; })} /><i></i>sent</label>`}</div>`)}</div>
       ${r.missing.length > 0 && html`<div style="margin-top:.6rem"><${Button} variant="text" size="sm" onClick=${() => setOpen(open === ws.id ? null : ws.id)}>${open === ws.id ? 'Hide' : 'Show'} ${r.missing.length} missing Ops pre-fills</${Button}> <${Button} variant="text" size="sm" onClick=${() => { navigator.clipboard?.writeText(r.missing.map(m => `${m.processId}\t${m.name}\t${session.entities[m.entityCode]?.displayName || m.entityCode}`).join('\n')).then(() => toast('Chase list copied')); }}>Copy chase list</${Button}>
@@ -4171,7 +4476,7 @@ function HandoverPage({ session, toast }) {
   const dev = deviationRows(session); const q = qg2Readiness(session);
   const items = [['Approved deviation log', dev.filter(r => r['Approval status'] === 'APPROVED').length, dev.length], ['Separate-variant list (input for DTPs)', dev.filter(r => r['Resolution approach'] === 'Separate variant').length], ['Initiative candidates (PE / WP3)', initiativeRows(session).length], ['Taxonomy change requests', taxonomyRows(session).length], ['QG2 sign-off summary', q.streams.filter(s => q.perStream[s].ready).length, q.streams.length]];
   return html`<div>
-    <${PageHead} eyebrow="4 · Sign-off & hand-over · package" title="Hand-over package" lead="Everything knowledge transfer needs in one zip: approved deviation log, separate-variant list for the DTPs, initiative candidates, taxonomy change requests, QG2 sign-off summary, the full flat export, the audit trail and the session file." />
+    <${PageHead} icon="handover" eyebrow="4 · Sign-off & hand-over · package" title="Hand-over package" lead="Everything knowledge transfer needs in one zip: approved deviation log, separate-variant list for the DTPs, initiative candidates, taxonomy change requests, QG2 sign-off summary, the full flat export, the audit trail and the session file." />
     <div class="import-grid">
       <${Card} title="Package contents"><table class="matrix"><tbody>${items.map(([l, n, of]) => html`<tr key=${l}><td style="text-align:left">${l}</td><td class="num"><b>${n}</b>${of !== undefined ? html`<span class="muted"> / ${of}</span>` : ''}</td></tr>`)}</tbody></table>
         <div class="sg-row" style="margin-top:.8rem"><${Button} variant="primary" icon="file" disabled=${busy || !Object.keys(session.assessments).length} onClick=${async () => { setBusy(true); try { const p = await buildHandoverPackage(session); downloadBlob(p.name, p.blob); toast(`Hand-over package downloaded (${p.counts.deviations} deviations, ${p.counts.approved} approved)`); } finally { setBusy(false); } }}>${busy ? 'Building…' : 'Download hand-over package (.zip)'}</${Button}></div>
@@ -4278,6 +4583,7 @@ async function loadDemoData(updateSession, toast, onDone) {
   const iso = (d, plus = 0) => { const x = new Date(d); x.setDate(x.getDate() + plus); return x.toISOString().slice(0, 10); };
   updateSession(s => {
     Object.assign(s.settings, { clientName: DEMO_PLAN.clientName, country: DEMO_PLAN.country, editorInitials: s.settings.editorInitials || DEMO_PLAN.editorInitials });
+    if (!s.settings.logoDataUrl) { s.settings.logoDataUrl = DEMO_PLAN.logoDataUrl; s.settings.logoOnDark = false; s.settings.logoSource = 'workbook:demo'; s.settings.brandColor = s.settings.brandColor || DEMO_PLAN.brandColor; }
     if (!s.participants.length) s.participants = DEMO_PLAN.participants.map(([name, role, organisation, entityCode, mode]) => ({ id: newId('p'), name, role, organisation, entityCode, mode }));
     if (!s.sessions.length) { s.sessions = DEMO_PLAN.sessions.map(([stream, start, end], i) => ({ id: newId('ws'), date: iso(monday, i === 2 ? 1 : 0), start, end, stream, participantIds: s.participants.map(p => p.id), recording: '', note: 'demo', recordingOn: true, roomSent: i === 0, startedAt: null, endedAt: null })); }
     for (const e of Object.values(s.entities)) e.country = 'France';
@@ -4303,11 +4609,27 @@ function HomePage({ session, summary, updateSession, toast, go, onReplaceSession
   ];
   const next = steps.find(s => s.state === 'next' || s.state === 'progress') || steps.find(s => s.state === 'todo');
   const onLoad = async (e) => { const f = e.target.files[0]; e.target.value = ''; if (!f) return; try { const loaded = deserializeSession(await f.text()); onReplaceSession(loaded); } catch (err) { toast(`Not a session file: ${err.message}`); } };
+  const streams = STREAMS.filter(x => Object.values(session.processes).some(p => p.stream === x));
+  const STEP_ICON = { 1: 'upload', 2: 'users', 3: 'run', 4: 'evaluate', 5: 'qg2' };
   return html`<div class="home">
-    <div class="page-head"><div class="eyebrow">GBS Fit-Gap Workbench${st.clientName ? ` · ${st.clientName} · ${st.country}` : ''}</div><h1>${hasData ? 'Where you are' : 'Start here'}</h1><p class="lead">${hasData ? 'Five steps from capture sheets to QG2 sign-off. Pick up where you left off.' : 'Five steps from capture sheets to QG2 sign-off. Import your files, or try the tool with demo data first.'}</p></div>
+    <div class="hero">
+      <div class="hero-main">
+        <div class="eyebrow" style="color:inherit;opacity:.75">GBS Fit-Gap Workbench${st.clientName ? ` · ${st.clientName} · ${st.country}` : ''}</div>
+        <h1>${hasData ? (st.clientName ? `${st.clientName} · ${st.country || ''}` : 'Where you are') : 'Start here'}</h1>
+        <p class="lead">${hasData ? 'Five steps from capture sheets to QG2 sign-off. Pick up where you left off.' : 'Five steps from capture sheets to QG2 sign-off. Import your files, or try the tool with demo data first.'}</p>
+        ${hasData && html`<div class="hero-stats">
+          <div class="hero-stat"><${Icon} name="building" size=${15} /><b>${summary.entities.length}</b><span>entities</span></div>
+          <div class="hero-stat"><${Icon} name="layers" size=${15} /><b>${streams.length}</b><span>streams</span></div>
+          <div class="hero-stat"><${Icon} name="grid" size=${15} /><b>${Object.values(summary.activitiesByStream || {}).reduce((a, b) => a + b, 0)}</b><span>activities</span></div>
+          <div class="hero-stat"><${Icon} name="check" size=${15} /><b>${Math.round(100 * assessed / Math.max(1, inScope.length))}<small>%</small></b><span>assessed</span></div>
+          <div class="hero-stat"><${Icon} name="flag" size=${15} /><b>${devs.length}</b><span>deviations</span></div>
+        </div>`}
+      </div>
+      <div class="hero-side">${st.logoDataUrl ? html`<${ClientLogo} settings=${st} height=${40} />` : html`<${Mark} size=${56} radius=${12} />`}</div>
+    </div>
     ${next && html`<div class="next-banner"><span class="eyebrow">Next</span><b>${next.n} · ${next.title}</b><${Button} variant="primary" size="sm" onClick=${next.go} disabled=${next.disabled}>${next.action}</${Button}></div>`}
     <div class="home-grid">
-      <div class="steps">${steps.map(s => html`<div class=${`hstep hstep-${s.state}`} key=${s.n}><div class="step-n">${s.state === 'done' ? html`<${Icon} name="check" size=${16} />` : s.n}</div><div class="step-body"><h3>${s.title}</h3><p>${s.text}</p><div class="step-status">${s.status}</div></div><div class="step-action"><${Button} variant=${s.state === 'next' || s.state === 'progress' ? 'primary' : 'outline'} size="sm" onClick=${s.go} disabled=${s.disabled}>${s.action}</${Button}></div></div>`)}</div>
+      <div class="steps">${steps.map(s => html`<div class=${`hstep hstep-${s.state}`} key=${s.n}><div class="step-n">${s.state === 'done' ? html`<${Icon} name="check" size=${16} />` : html`<${Icon} name=${STEP_ICON[s.n]} size=${16} />`}<span class="step-num">${s.n}</span></div><div class="step-body"><h3>${s.title}</h3><p>${s.text}</p><div class="step-status">${s.status}</div></div><div class="step-action"><${Button} variant=${s.state === 'next' || s.state === 'progress' ? 'primary' : 'outline'} size="sm" onClick=${s.go} disabled=${s.disabled}>${s.action}</${Button}></div></div>`)}</div>
       <div class="home-side">
         <div class="card"><div class="card-body">
           <div class="eyebrow" style="margin-bottom:.4rem">Quick start</div>
@@ -4345,14 +4667,15 @@ function Sidebar({ phase, setPhase, summary, rail, setRail, session, page, setPa
   const counts = summary.activitiesByStream || {};
   const hasData = Object.keys(session.processes).length > 0;
   return html`<aside class="sidebar">
-    <div class="side-brand"><span class="mark">FG</span><div style="min-width:0"><div class="name">GBS Fit-Gap Workbench</div><div class="client">${session.settings.clientName ? `${session.settings.clientName} · ${session.settings.country}` : 'No client loaded'}</div></div></div>
+    <div class="side-brand"><${Mark} size=${28} /><div style="min-width:0"><div class="name">GBS Fit-Gap Workbench</div><div class="client">${session.settings.clientName ? `${session.settings.clientName} · ${session.settings.country}` : 'No client loaded'}</div></div></div>
+    ${session.settings.logoDataUrl && html`<div class="side-client"><${ClientLogo} settings=${session.settings} height=${26} /></div>`}
     <div class="side-section"><div class="eyebrow">Streams</div>
       ${STREAMS.map(s => { const inScope = s !== 'A2R' ? session.settings.streamsInScope[s] !== false : (session.settings.streamsInScope['A2R-FAA'] || session.settings.streamsInScope['A2R-IA']); const g = summary.gapByStream?.[s] || {}; const segs = ['NO_GAP', 'HARMONIZATION', 'STANDARDIZATION', 'BOTH', 'NA', 'UNCLEAR'].map(k => ({ key: k, value: g[k] || 0 })); const tot = segs.reduce((a, b) => a + b.value, 0) || 1;
-        return html`<button class=${`side-stream${inScope ? '' : ' off'}`} key=${s}><div class="row"><span>${s}</span><span class="num">${hasData ? (counts[s] || 0) : '—'}</span></div><div class="bar">${segs.filter(x => x.value).map(x => html`<i class=${`c-${x.key}`} style=${`width:${100 * x.value / tot}%`}></i>`)}</div></button>`; })}
+        return html`<button class=${`side-stream${inScope ? '' : ' off'}`} key=${s}><div class="row"><span class="sname"><${Icon} name=${streamIcon(s)} size=${13} />${s}</span><span class="num">${hasData ? (counts[s] || 0) : '—'}</span></div><div class="bar">${segs.filter(x => x.value).map(x => html`<i class=${`c-${x.key}`} style=${`width:${100 * x.value / tot}%`}></i>`)}</div></button>`; })}
     </div>
     <div class="side-section" style="padding-bottom:.25rem"><div class="eyebrow">Steps</div></div>
     <nav class="side-nav" aria-label="Pages">
-      <button class="side-nav-item" aria-current=${page === 'home' ? 'page' : 'false'} onClick=${() => setPage('home')}><span class="n"><${Icon} name="info" size=${14} /></span><span>Start here</span><span class="state"></span></button>
+      <button class="side-nav-item" aria-current=${page === 'home' ? 'page' : 'false'} onClick=${() => setPage('home')}><span class="n"><${Icon} name="home" size=${14} /></span><span>Start here</span><span class="state"></span></button>
       ${NAV.map(p => { const q = p.key === 'signoff' ? qg2Readiness(session) : null; const done = p.key === 'plan' ? (!!session.settings.country && session.participants.length > 0 && session.sessions.length > 0) : p.key === 'run' ? (Object.keys(session.assessments).length > 0 && Object.values(session.assessments).every(a => a.scope.outOfScope || a.workshop.status !== 'NOT_ASSESSED')) : p.key === 'signoff' ? (q.streams.length > 0 && q.streams.every(st => q.perStream[st].ready)) : false; return html`<button class="side-nav-item" key=${p.key} aria-current=${page === 'phase' && phase === p.key ? 'page' : 'false'} onClick=${() => { setPage('phase'); setPhase(p.key); }}><span class="n">${p.n}</span><span>${p.label}</span>${done ? html`<span class="state done"><${Icon} name="check" size=${13} /></span>` : html`<span class="state"></span>`}</button>`; })}
     </nav>
     <div class="side-section"><button class="btn btn-primary" style="width:100%;justify-content:center" disabled=${!Object.keys(session.assessments).length} onClick=${onPresent}><${Icon} name="share" /> Present</button></div>
@@ -4435,7 +4758,8 @@ function Palette({ open, onClose, items, onPick }) {
 function Welcome({ open, onClose, onPrimary, onDemo }) {
   const ref = useRef();
   useEffect(() => { const d = ref.current; if (!d) return; if (open && !d.open) d.showModal(); else if (!open && d.open) d.close(); }, [open]);
-  return html`<dialog ref=${ref} onClose=${onClose}><div class="dlg-body"><div class="eyebrow" style="margin-bottom:.4rem">GBS Fit-Gap Workbench · v${BUILD.version}</div><h2>Plan, run and sign off a country fit-gap – offline, in one file.</h2><p class="muted">Import the capture sheets, run the workshops with a full audit trail, evaluate the deviations, sign off QG2 and hand over – all in this file, no network needed. Not sure yet? Try it with demo data first.</p></div><div class="dlg-actions"><${Button} variant="text" onClick=${onClose}>Close</${Button}><${Button} variant="outline" icon="run" onClick=${onDemo}>Try with demo data</${Button}><${Button} variant="primary" icon="upload" onClick=${onPrimary}>Import capture sheets</${Button}></div></dialog>`;
+  return html`<dialog ref=${ref} onClose=${onClose} class="welcome"><div class="dlg-body"><${Lockup} size=${34} sub=${`v${BUILD.version} · offline · one file`} /><h2 style="margin-top:1rem">Plan, run and sign off a country fit-gap.</h2><p class="muted">Import the capture sheets, run the workshops with a full audit trail, evaluate the deviations, sign off QG2 and hand over – no network needed. Not sure yet? Try it with demo data first.</p>
+    <div class="feature-tiles">${[['upload', 'Import', 'Capture sheets in, entities × activities out – with the Ops pre-assessment and the client logo.'], ['run', 'Workshop', 'One row per activity, Fit / Gap in two clicks, every change in the audit trail.'], ['share', 'Present', 'Process flows as boards, live edits in the room, no second tool.'], ['handover', 'Hand over', 'Deviation log, QG2 sign-off and write-back into the original workbooks.']].map(([ic, t, d]) => html`<div class="feature-tile" key=${ic}><span class="ico"><${Icon} name=${ic} size=${16} /></span><b>${t}</b><span>${d}</span></div>`)}</div></div><div class="dlg-actions"><${Button} variant="text" onClick=${onClose}>Close</${Button}><${Button} variant="outline" icon="run" onClick=${onDemo}>Try with demo data</${Button}><${Button} variant="primary" icon="upload" onClick=${onPrimary}>Import capture sheets</${Button}></div></dialog>`;
 }
 
 function FeedbackPanel({ open, onClose, onSave, view }) {
@@ -4475,11 +4799,13 @@ function App() {
   const setTheme = (t) => { setThemeState(t); store.set('fg.theme', t); applyTheme(t); };
   const setShare = (v) => { setShareState(v); document.documentElement.setAttribute('data-share', v ? 'on' : 'off'); };
   useEffect(() => { applyTheme(theme); }, []);
+  useEffect(() => { applyBrandColor(session?.settings?.brandColor); }, [session?.settings?.brandColor]);
   useEffect(() => { store.set('fg.page', page); store.set('fg.phase', phase); }, [page, phase]);
   useEffect(() => {
     const onKey = (e) => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); setPalette(p => !p); } };
     const onGo = (e) => { if (e.detail?.page) setPage(e.detail.page); };
-    window.addEventListener('keydown', onKey); document.addEventListener('fg:go', onGo); return () => { window.removeEventListener('keydown', onKey); document.removeEventListener('fg:go', onGo); };
+    const onToast = (e) => { if (e.detail?.text) toast(e.detail.text, { ttl: e.detail.ttl || 7000 }); };
+    window.addEventListener('keydown', onKey); document.addEventListener('fg:go', onGo); document.addEventListener('fg:toast', onToast); return () => { window.removeEventListener('keydown', onKey); document.removeEventListener('fg:go', onGo); document.removeEventListener('fg:toast', onToast); };
   }, []);
   const toast = (text, opts = {}) => { const id = newId('t'); setToasts(t => [...t, { id, text, ...opts }]); setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), opts.ttl || 4000); };
   const current = NAV.find(p => p.key === phase) || NAV[1];

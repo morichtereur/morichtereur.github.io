@@ -10,7 +10,7 @@ and compare the printout with the assumptions in section 4.
 ```
 Session {
   version: 1, id, createdAt, updatedAt,
-  settings: { clientName, country, workshopDates[], facilitators[], logoDataUrl,
+  settings: { clientName, country, workshopDates[], facilitators[], logoDataUrl, logoOnDark, logoSource ('workbook:<file> · <sheet>' | 'upload:<name>' | 'removed'), brandColor,
               streamsInScope{R2R,A2R-FAA,A2R-IA,I2P,I2C,ICO,MD}, gapDefinitions{}, minutesPerActivity{NO_GAP,GAP}, editorInitials },
   entities:    { [code]: Entity },          // code = 6-digit code, or "name:<fuzzykey>" when the label has none
   processes:   { [processId]: Process },

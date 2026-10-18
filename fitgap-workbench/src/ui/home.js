@@ -14,6 +14,7 @@ async function loadDemoData(updateSession, toast, onDone) {
   const iso = (d, plus = 0) => { const x = new Date(d); x.setDate(x.getDate() + plus); return x.toISOString().slice(0, 10); };
   updateSession(s => {
     Object.assign(s.settings, { clientName: DEMO_PLAN.clientName, country: DEMO_PLAN.country, editorInitials: s.settings.editorInitials || DEMO_PLAN.editorInitials });
+    if (!s.settings.logoDataUrl) { s.settings.logoDataUrl = DEMO_PLAN.logoDataUrl; s.settings.logoOnDark = false; s.settings.logoSource = 'workbook:demo'; s.settings.brandColor = s.settings.brandColor || DEMO_PLAN.brandColor; }
     if (!s.participants.length) s.participants = DEMO_PLAN.participants.map(([name, role, organisation, entityCode, mode]) => ({ id: newId('p'), name, role, organisation, entityCode, mode }));
     if (!s.sessions.length) { s.sessions = DEMO_PLAN.sessions.map(([stream, start, end], i) => ({ id: newId('ws'), date: iso(monday, i === 2 ? 1 : 0), start, end, stream, participantIds: s.participants.map(p => p.id), recording: '', note: 'demo', recordingOn: true, roomSent: i === 0, startedAt: null, endedAt: null })); }
     for (const e of Object.values(s.entities)) e.country = 'France';
@@ -39,11 +40,27 @@ function HomePage({ session, summary, updateSession, toast, go, onReplaceSession
   ];
   const next = steps.find(s => s.state === 'next' || s.state === 'progress') || steps.find(s => s.state === 'todo');
   const onLoad = async (e) => { const f = e.target.files[0]; e.target.value = ''; if (!f) return; try { const loaded = deserializeSession(await f.text()); onReplaceSession(loaded); } catch (err) { toast(`Not a session file: ${err.message}`); } };
+  const streams = STREAMS.filter(x => Object.values(session.processes).some(p => p.stream === x));
+  const STEP_ICON = { 1: 'upload', 2: 'users', 3: 'run', 4: 'evaluate', 5: 'qg2' };
   return html`<div class="home">
-    <div class="page-head"><div class="eyebrow">GBS Fit-Gap Workbench${st.clientName ? ` · ${st.clientName} · ${st.country}` : ''}</div><h1>${hasData ? 'Where you are' : 'Start here'}</h1><p class="lead">${hasData ? 'Five steps from capture sheets to QG2 sign-off. Pick up where you left off.' : 'Five steps from capture sheets to QG2 sign-off. Import your files, or try the tool with demo data first.'}</p></div>
+    <div class="hero">
+      <div class="hero-main">
+        <div class="eyebrow" style="color:inherit;opacity:.75">GBS Fit-Gap Workbench${st.clientName ? ` · ${st.clientName} · ${st.country}` : ''}</div>
+        <h1>${hasData ? (st.clientName ? `${st.clientName} · ${st.country || ''}` : 'Where you are') : 'Start here'}</h1>
+        <p class="lead">${hasData ? 'Five steps from capture sheets to QG2 sign-off. Pick up where you left off.' : 'Five steps from capture sheets to QG2 sign-off. Import your files, or try the tool with demo data first.'}</p>
+        ${hasData && html`<div class="hero-stats">
+          <div class="hero-stat"><${Icon} name="building" size=${15} /><b>${summary.entities.length}</b><span>entities</span></div>
+          <div class="hero-stat"><${Icon} name="layers" size=${15} /><b>${streams.length}</b><span>streams</span></div>
+          <div class="hero-stat"><${Icon} name="grid" size=${15} /><b>${Object.values(summary.activitiesByStream || {}).reduce((a, b) => a + b, 0)}</b><span>activities</span></div>
+          <div class="hero-stat"><${Icon} name="check" size=${15} /><b>${Math.round(100 * assessed / Math.max(1, inScope.length))}<small>%</small></b><span>assessed</span></div>
+          <div class="hero-stat"><${Icon} name="flag" size=${15} /><b>${devs.length}</b><span>deviations</span></div>
+        </div>`}
+      </div>
+      <div class="hero-side">${st.logoDataUrl ? html`<${ClientLogo} settings=${st} height=${40} />` : html`<${Mark} size=${56} radius=${12} />`}</div>
+    </div>
     ${next && html`<div class="next-banner"><span class="eyebrow">Next</span><b>${next.n} · ${next.title}</b><${Button} variant="primary" size="sm" onClick=${next.go} disabled=${next.disabled}>${next.action}</${Button}></div>`}
     <div class="home-grid">
-      <div class="steps">${steps.map(s => html`<div class=${`hstep hstep-${s.state}`} key=${s.n}><div class="step-n">${s.state === 'done' ? html`<${Icon} name="check" size=${16} />` : s.n}</div><div class="step-body"><h3>${s.title}</h3><p>${s.text}</p><div class="step-status">${s.status}</div></div><div class="step-action"><${Button} variant=${s.state === 'next' || s.state === 'progress' ? 'primary' : 'outline'} size="sm" onClick=${s.go} disabled=${s.disabled}>${s.action}</${Button}></div></div>`)}</div>
+      <div class="steps">${steps.map(s => html`<div class=${`hstep hstep-${s.state}`} key=${s.n}><div class="step-n">${s.state === 'done' ? html`<${Icon} name="check" size=${16} />` : html`<${Icon} name=${STEP_ICON[s.n]} size=${16} />`}<span class="step-num">${s.n}</span></div><div class="step-body"><h3>${s.title}</h3><p>${s.text}</p><div class="step-status">${s.status}</div></div><div class="step-action"><${Button} variant=${s.state === 'next' || s.state === 'progress' ? 'primary' : 'outline'} size="sm" onClick=${s.go} disabled=${s.disabled}>${s.action}</${Button}></div></div>`)}</div>
       <div class="home-side">
         <div class="card"><div class="card-body">
           <div class="eyebrow" style="margin-bottom:.4rem">Quick start</div>
