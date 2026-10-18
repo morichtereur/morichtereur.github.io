@@ -24,6 +24,12 @@ npm start              # serves dist/index.html on $PORT (Replit / preview only 
 npm run package:replit # zips the project (no node_modules, no samples) for upload to Replit
 ```
 
+## Explanation video
+
+`npm run video` records a ~2:30 min guided tour with demo data (captions, visible cursor, title cards) to
+`dist/video/walkthrough.mp4` (ffmpeg) and `.webm`. The tour is scripted in `scripts/walkthrough.mjs` – edit the
+captions there and re-record after UI changes. Uses the pre-installed Chromium; no network.
+
 ## Replit
 
 Upload the zip from `npm run package:replit` (or import the repository folder) into a Node.js Repl.
