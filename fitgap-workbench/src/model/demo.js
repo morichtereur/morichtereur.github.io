@@ -231,7 +231,7 @@ export function generateTemplateWorkbooks(XLSX, { entities = [], streams = ['R2R
   return out;
 }
 
-export const DEMO_LOGO = 'data:image/svg+xml;base64,' + (typeof btoa === 'function' ? btoa : (s) => Buffer.from(s).toString('base64'))(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 96"><rect x="4" y="8" width="80" height="80" rx="18" fill="#0f6e56"/><path d="M24 62V34h18a10 10 0 0 1 0 20H24M24 48h18M58 34v28" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/><text x="104" y="64" font-family="Georgia, 'Source Serif 4', serif" font-size="46" font-weight="600" fill="#0f6e56">Demo Group</text></svg>`);
+export const DEMO_LOGO = 'data:image/svg+xml;base64,' + (typeof btoa === 'function' ? btoa : (s) => Buffer.from(s).toString('base64'))(`<svg xmlns="http://www.w3.org/2000/svg" width="420" height="96" viewBox="0 0 420 96"><rect x="4" y="8" width="80" height="80" rx="18" fill="#0f6e56"/><text x="44" y="61" text-anchor="middle" font-family="Georgia, serif" font-size="34" font-weight="700" fill="#fff">DG</text><text x="104" y="64" font-family="Georgia, 'Source Serif 4', serif" font-size="46" font-weight="600" fill="#0f6e56">Demo Group</text></svg>`);
 export const DEMO_PLAN = {
   clientName: 'Demo Group', country: 'France', editorInitials: 'FG', logoDataUrl: DEMO_LOGO, brandColor: '#0f6e56',
   participants: [['Marie Dupont', 'GL lead', 'Local', '301001', 'onsite'], ['Luc Bernard', 'AP accountant', 'Local', '301002', 'online'], ['Anna Weber', 'Ops team lead', 'GBS Ops', null, 'online'], ['Jonas Keller', 'Process expert R2R', 'Process Expert', null, 'onsite']],

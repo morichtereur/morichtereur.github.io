@@ -20,11 +20,43 @@ function Lockup({ size = 28, sub, light }) {
   return html`<div class=${`lockup${light ? ' light' : ''}`}><${Mark} size=${size} /><div class="lockup-text"><div class="lockup-name">GBS Fit-Gap Workbench</div>${sub && html`<div class="lockup-sub">${sub}</div>`}</div></div>`;
 }
 
+/**
+ * SVGs that only carry a viewBox have no intrinsic size; inside a flex plate the browser then sizes the plate to
+ * zero and the logo overflows it. Give such SVGs width/height from their viewBox (data URL in, data URL out).
+ */
+const svgSizeCache = new Map();
+function svgWithSize(dataUrl) {
+  if (!/^data:image\/svg\+xml/.test(dataUrl || '')) return dataUrl;
+  if (svgSizeCache.has(dataUrl)) return svgSizeCache.get(dataUrl);
+  let out = dataUrl;
+  try {
+    const comma = dataUrl.indexOf(','); const head = dataUrl.slice(0, comma), body = dataUrl.slice(comma + 1); const b64 = /;base64/.test(head);
+    const text = b64 ? new TextDecoder().decode(Uint8Array.from(atob(body), c => c.charCodeAt(0))) : decodeURIComponent(body);
+    const root = text.match(/<svg\b[^>]*>/);
+    if (root && !/\swidth\s*=/.test(root[0]) && !/\sheight\s*=/.test(root[0])) {
+      const vb = root[0].match(/viewBox\s*=\s*["'][\d.\s,-]*?([\d.]+)[\s,]+([\d.]+)\s*["']/);
+      if (vb) {
+        const fixed = text.replace(root[0], root[0].replace(/^<svg\b/, `<svg width="${vb[1]}" height="${vb[2]}"`));
+        const bytes = new TextEncoder().encode(fixed); let bin = ''; for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+        out = 'data:image/svg+xml;base64,' + btoa(bin);
+      }
+    }
+  } catch { /* keep the original */ }
+  svgSizeCache.set(dataUrl, out); return out;
+}
+
 /** Client logo on a plate that matches the logo: light logos go on a dark plate and vice versa. */
+// Explicit width from the aspect ratio: the plate is sized before the image is decoded, and an <img> with
+// width:auto then contributes 0 px – the plate collapses and the logo overflows it.
+const logoAspectCache = new Map();
 function ClientLogo({ settings, height = 28, plate = true, className = '' }) {
-  if (!settings?.logoDataUrl) return null;
+  const src = settings?.logoDataUrl ? svgWithSize(settings.logoDataUrl) : null;
+  const [aspect, setAspect] = useState(() => (src && logoAspectCache.get(src)) || settings?.logoAspect || 0);
+  useEffect(() => { if (!src) return; const known = logoAspectCache.get(src); if (known) { setAspect(known); return; } const img = new Image(); img.onload = () => { const a = img.naturalWidth && img.naturalHeight ? img.naturalWidth / img.naturalHeight : 0; if (a) { logoAspectCache.set(src, a); setAspect(a); } }; img.src = src; }, [src]);
+  if (!src) return null;
   const dark = !!settings.logoOnDark;
-  return html`<span class=${`logo-plate${plate ? '' : ' bare'}${dark ? ' dark' : ' light'} ${className}`} style=${`--logo-h:${height}px`}><img src=${settings.logoDataUrl} alt=${settings.clientName ? `${settings.clientName} logo` : 'Client logo'} /></span>`;
+  const style = `--logo-h:${height}px${aspect ? `;--logo-w:${(height * aspect).toFixed(1)}px` : ''}`;
+  return html`<span class=${`logo-plate${plate ? '' : ' bare'}${dark ? ' lp-dark' : ' lp-light'}${aspect ? ' sized' : ''} ${className}`} style=${style}><img src=${src} alt=${settings.clientName ? `${settings.clientName} logo` : 'Client logo'} /></span>`;
 }
 
 const STREAM_ICON = { R2R: 'ledger', A2R: 'building', I2P: 'cart', I2C: 'coins', ICO: 'swap', MD: 'database' };
@@ -46,6 +78,7 @@ function imageStats(img, w, h) {
 /** Normalise any logo file / data URL: SVG stays SVG, rasters are downscaled to ≤ 1200 px; detects "white logo". */
 async function prepareLogo(dataUrl, mime) {
   const isSvg = /^data:image\/svg\+xml/.test(dataUrl) || /svg/.test(mime || '');
+  if (isSvg) dataUrl = svgWithSize(dataUrl);
   let out = dataUrl, w = 0, h = 0, onDark = false;
   try {
     const img = await loadImage(dataUrl);
@@ -53,6 +86,7 @@ async function prepareLogo(dataUrl, mime) {
     if (isSvg) { const m = atob(dataUrl.split(',')[1] || '').match(/viewBox="[\d.\s-]*?([\d.]+)\s+([\d.]+)"/); if (m && (!img.naturalWidth || img.naturalWidth === 300)) { w = Number(m[1]); h = Number(m[2]); } }
     const st = imageStats(img, w, h);
     onDark = st.lum > 0.78;
+    if (isSvg && !w) { w = 300; h = 150; }
     if (!isSvg && w > 1200) { const c = document.createElement('canvas'); c.width = 1200; c.height = Math.round(1200 * h / w); c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); out = c.toDataURL('image/png'); }
   } catch { /* keep the original */ }
   return { dataUrl: out, onDark, width: w, height: h };

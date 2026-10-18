@@ -34,6 +34,7 @@ const overlay = async () => page.evaluate(() => {
     #vt-title .eb { font: 600 15px/1 'Instrument Sans Variable', sans-serif; letter-spacing: .12em; text-transform: uppercase; opacity: .75; }
     #vt-title p { font-size: 24px; opacity: .8; max-width: 52rem; margin: 0; }
     #vt-title .mark { width: 72px; height: 72px; }
+    .toasts { bottom: 128px !important; }
     #vt-cap[popover], #vt-cur[popover], #vt-ring[popover] { margin: 0; border: 0; overflow: visible; color: inherit; inset: auto; }
     #vt-cap[popover] { left: 50%; bottom: 28px; background: rgba(20,26,32,.92); color: #fff; padding: 14px 22px 14px 18px; }
     #vt-cur[popover] { background: none; padding: 0; } #vt-ring[popover] { background: none; padding: 0; border: 3px solid #1f4e79; }`;
@@ -106,8 +107,8 @@ await moveTo('.tree-node.sel', { pause: 900 });
 await moveTo('.wtable thead th >> nth=1', { pause: 900 });
 await say('Every cell shows the Ops pre-assessment. Accept all "no gap" rows in one click – and discuss only the flagged ones.', 3800, '');
 await click('.l3head .btn-primary', { after: 1200 });
-await say('Fit, Gap or ? per entity. Two clicks per activity in the room.', 3000, '');
-await click('.wtable tr.act .qbtn.fit >> nth=0', { after: 900 });
+await say('Fit, Gap or ? per entity. Ops was unsure here – it becomes an open question with one click.', 3400, '');
+await click('.wtable tr.act >> nth=1 >> .qbtn.q >> nth=0', { after: 900 });
 await click('.wtable tr.act td.ent .pill >> nth=0', { after: 900 });
 await page.waitForSelector('.expand-inner');
 await say('Open a cell for the full form: activity split, FTE, the detailed gap fields, gap type, rationale and the deviation block.', 4000, '');
