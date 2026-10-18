@@ -1,0 +1,32 @@
+{
+  "voice": "af_heart",
+  "speed": 1.0,
+  "lang": "en-us",
+  "note": "Voice-over for scripts/walkthrough.mjs. One entry per title() / say() call, in tour order. Abbreviations are spelled the way they should be spoken.",
+  "lines": [
+    { "id": "t1",  "text": "This is the G-B-S Fit-Gap Workbench. It takes you from the capture sheets all the way to Q-G-2 sign-off – in one single file." },
+    { "id": "n01", "text": "It's just one H-T-M-L file. There's nothing to install, no server, and no network connection – everything you do is saved right in your browser." },
+    { "id": "n02", "text": "Let's load the demo data: a fictional group with three entities and all five streams, structured exactly like a real set of capture workbooks." },
+    { "id": "n03", "text": "The start page shows the five steps, and where you are right now. The client's name and logo are picked up automatically from the workbooks." },
+    { "id": "n04", "text": "Up here you've got the key numbers – entities, streams, activities, progress, and deviations. Always live." },
+    { "id": "n05", "text": "Step one is planning. You set the client and the country, your initials for the audit trail, and the logo and brand colour." },
+    { "id": "n06", "text": "Then you add the people in the room, and one session per stream. The traffic light tells you what's still missing before the workshop starts." },
+    { "id": "n07", "text": "Step two is the workshop itself. The process tree is on the left – one row per activity, with all the entities side by side." },
+    { "id": "n08", "text": "Each cell shows what G-B-S Operations pre-assessed. You can accept all the no-gap rows in one click, and spend your time on the ones that are actually flagged." },
+    { "id": "n09", "text": "For every entity, it's Fit, Gap, or a question mark. Operations wasn't sure about this one – so it becomes an open question. One click." },
+    { "id": "n10", "text": "Open a cell, and you get the full form: the activity split, F-T-E, the detailed gap fields, the gap type, the rationale, and the deviation block." },
+    { "id": "n11", "text": "And every change is logged – with the session, the editor, and a timestamp. The audit trail is simply built in." },
+    { "id": "n12", "text": "Here's the same process group as a flow board. There's a lane for local accounting, one for other parties, and one for G-B-S – one card per step, with the hand-offs in between." },
+    { "id": "n13", "text": "Click a step to capture who performs it, and what's different from the global standard." },
+    { "id": "n14", "text": "Step three is present mode. Full-screen slides for the room: a cover with the client logo, the scope, the gap types – and then one process group after another." },
+    { "id": "n15", "text": "The flow boards stay editable while you present. So decisions are captured live, in the meeting. No second tool." },
+    { "id": "n16", "text": "The table slide shows the entities side by side, with the findings in each cell." },
+    { "id": "n17", "text": "And the closing slide sums up what was assessed, the open points, and the next session." },
+    { "id": "n18", "text": "Step four is the results. Every deviation sits on one board – with its resolution approach, the accountable owner, the escalation level, and the approval status." },
+    { "id": "n19", "text": "Further down, you'll find the activity split against the plan, Operations versus the workshop, the change matrix, and the cross-entity view." },
+    { "id": "n20", "text": "Step five is the Q-G-2 sign-off: readiness per entity and stream, plus the sign-off fields for the process expert and for G-B-S Operations." },
+    { "id": "n21", "text": "The hand-over package bundles everything: the deviation log, separate variants for the D-T-Ps, initiative candidates, taxonomy change requests, the Q-G-2 summary, the flat export, and the audit trail." },
+    { "id": "n22", "text": "And finally, the write-back puts the workshop results straight into the original capture workbooks. Values only – all the formatting stays as it is." },
+    { "id": "t2",  "text": "Capture sheets in. Decisions out. The G-B-S Fit-Gap Workbench." }
+  ]
+}

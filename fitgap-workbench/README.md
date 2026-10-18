@@ -26,9 +26,22 @@ npm run package:replit # zips the project (no node_modules, no samples) for uplo
 
 ## Explanation video
 
-`npm run video` records a ~2:30 min guided tour with demo data (captions, visible cursor, title cards) to
+`npm run video` records a guided tour with demo data (captions, visible cursor, title cards) to
 `dist/video/walkthrough.mp4` (ffmpeg) and `.webm`. The tour is scripted in `scripts/walkthrough.mjs` – edit the
 captions there and re-record after UI changes. Uses the pre-installed Chromium; no network.
+
+Voice-over (English, Kokoro-82M, Apache-2.0, runs offline on CPU):
+
+1. Model files once, into any folder outside the repo: join the 6 parts of the npm package `kokoro-q8-shards`
+   into `model_q8.onnx` (sha256 `fbae9257…a1478`), and build `voices.npz` from `voices/*.bin` of the npm package
+   `kokoro-js` (float32, reshape to 510×1×256 per voice).
+2. `pip install kokoro-onnx soundfile`, then `python scripts/narrate.py <model-dir> <clips-dir>` – the text is in
+   `scripts/narration.json` (one line per caption, in tour order; default voice `af_heart`, `--voice` to change).
+3. `NARRATION=<clips-dir>/manifest.json npm run video` – every scene holds as long as its sentence, the clips are
+   mixed in at the moment their caption appears and normalised to -16 LUFS.
+
+If eSpeak complains about a missing `phontab` under `/home/runner/work/espeakng-loader/…`, symlink that path's
+`espeak-ng-data` to the `espeak-ng-data` folder inside the installed `espeakng_loader` package.
 
 ## Replit
 

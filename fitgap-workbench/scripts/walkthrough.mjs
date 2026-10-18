@@ -1,8 +1,10 @@
 #!/usr/bin/env node
 // Records an explanation video of the workbench: a scripted tour with demo data, captions and a visible cursor.
 // Usage: node scripts/walkthrough.mjs [out-dir]   → <out-dir>/walkthrough.webm (+ .mp4 when ffmpeg is installed)
+// Voice-over: NARRATION=<dir>/manifest.json (from scripts/narrate.py) – every title()/say() then holds as long as its
+// clip and the clips are mixed into the mp4 at the moment their caption appears.
 import { chromium } from 'playwright-core';
-import { mkdirSync, renameSync, readdirSync, existsSync } from 'node:fs';
+import { mkdirSync, renameSync, readdirSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { execFileSync } from 'node:child_process';
 
@@ -11,6 +13,16 @@ const W = 1600, H = 1000;
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--no-sandbox', '--force-device-scale-factor=1'] });
 const ctx = await browser.newContext({ viewport: { width: W, height: H }, recordVideo: { dir: out, size: { width: W, height: H } }, locale: 'en-GB', timezoneId: 'Europe/Zurich' });
 const page = await ctx.newPage();
+const t0 = Date.now(); // the video starts with the page
+const NARR = process.env.NARRATION ? JSON.parse(readFileSync(process.env.NARRATION, 'utf8')) : null;
+let cueNo = 0; const cues = [];
+// Next voice clip: remember when it starts, return how long the scene has to hold.
+const speak = (fallbackMs) => {
+  if (!NARR) return fallbackMs;
+  const id = NARR.order[cueNo++]; const clip = id && NARR.clips[id]; if (!clip) return fallbackMs;
+  cues.push({ id, file: clip.file, at: Date.now() - t0 + Number(process.env.AUDIO_OFFSET_MS || 0) });
+  return Math.round(clip.duration * 1000) + 450;
+};
 const errors = []; page.on('pageerror', e => errors.push(String(e)));
 await page.route(/^https?:\/\//, r => r.abort());
 
@@ -49,13 +61,15 @@ const title = async (eyebrow, h, p) => page.evaluate(([eyebrow, h, p]) => {
   let t = document.getElementById('vt-title'); if (!t) { t = document.createElement('div'); t.id = 'vt-title'; document.body.appendChild(t); }
   t.className = ''; t.innerHTML = `<svg class="mark" viewBox="0 0 32 32"><defs><linearGradient id="vtg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#9dbbd6"/><stop offset="1" stop-color="#2f7a7a"/></linearGradient></defs><rect width="32" height="32" rx="7" fill="url(#vtg)"/><rect x="6.5" y="8.5" width="8.5" height="15" rx="1.8" fill="#fff"/><rect x="17.5" y="8.5" width="8.5" height="15" rx="1.8" fill="none" stroke="#fff" stroke-width="1.8" stroke-dasharray="3.2 2.2"/><path d="M15 16h2.5" stroke="#141a20" stroke-width="2" stroke-linecap="round"/><circle cx="21.75" cy="16" r="1.6" fill="#141a20"/></svg><div class="eb">${eyebrow}</div><h1>${h}</h1><p>${p}</p>`;
 }, [eyebrow, h, p]);
+// Fullscreen (present mode) puts the app into the top layer above our popovers: re-show them to move them back on top.
+const raise = () => page.evaluate(() => { if (!document.fullscreenElement) return; for (const id of ['vt-cap', 'vt-ring', 'vt-cur']) { const el = document.getElementById(id); if (!el || !el.showPopover) continue; try { if (el.matches(':popover-open')) el.hidePopover(); el.showPopover(); } catch { /* ignore */ } } });
 const titleOff = () => page.evaluate(() => { const t = document.getElementById('vt-title'); if (t) t.className = 'off'; });
 // Badge label: "Step N · …" captions set STEP N (prefix stripped), an explicit label sets it too, everything else keeps the current one.
 let currentLabel = 'INTRO';
-const say = async (text, ms = 3200, n) => { await overlay(); const m = text.match(/^Step (\d) · /); if (m) { currentLabel = `STEP ${m[1]}`; text = text.slice(m[0].length); text = text.charAt(0).toUpperCase() + text.slice(1); } else if (n) currentLabel = n; const label = currentLabel; await page.evaluate(([t, l]) => { const c = document.getElementById('vt-cap'); c.querySelector('.t').textContent = t; c.querySelector('.n').textContent = l; c.querySelector('.n').style.display = l ? '' : 'none'; c.classList.add('on'); }, [text, label]); await sleep(ms); };
+const say = async (text, ms = 3200, n) => { await overlay(); await raise(); const m = text.match(/^Step (\d) · /); if (m) { currentLabel = `STEP ${m[1]}`; text = text.slice(m[0].length); text = text.charAt(0).toUpperCase() + text.slice(1); } else if (n) currentLabel = n; const label = currentLabel; await page.evaluate(([t, l]) => { const c = document.getElementById('vt-cap'); c.querySelector('.t').textContent = t; c.querySelector('.n').textContent = l; c.querySelector('.n').style.display = l ? '' : 'none'; c.classList.add('on'); }, [text, label]); await sleep(speak(ms)); };
 const hush = () => page.evaluate(() => document.getElementById('vt-cap')?.classList.remove('on'));
 const moveTo = async (selector, opts = {}) => {
-  await overlay();
+  await overlay(); await raise();
   const loc = page.locator(selector).first(); await loc.waitFor({ state: 'visible', timeout: 15000 }); await loc.scrollIntoViewIfNeeded(); await sleep(150);
   const b = await loc.boundingBox(); if (!b) return null; const x = b.x + Math.min(b.width - 6, opts.dx ?? b.width / 2), y = b.y + (opts.dy ?? b.height / 2);
   await page.evaluate(([x, y]) => { const c = document.getElementById('vt-cur'); c.style.left = x + 'px'; c.style.top = y + 'px'; }, [x, y]);
@@ -74,7 +88,7 @@ await overlay();
 // The modal dialog sits in the browser's top layer, above any overlay – hide it while the title card plays.
 await page.evaluate(() => { document.querySelector('dialog[open]').style.visibility = 'hidden'; });
 await title('GBS Fit-Gap Workbench', 'Plan, run and sign off a country fit-gap.', 'One offline file. Capture sheets in, workshop decisions out – with an audit trail, present mode and the hand-over package.');
-await sleep(4200); await titleOff(); await sleep(700);
+await sleep(speak(4200)); await titleOff(); await sleep(700);
 await page.evaluate(() => { document.querySelector('dialog[open]').style.visibility = ''; }); await sleep(600);
 
 await say('It opens from a single HTML file – no install, no server, no network. Everything is saved in the browser.', 3600, '');
@@ -163,10 +177,24 @@ await say('And the write-back: the workshop results go into the original capture
 await hush();
 
 await title('GBS Fit-Gap Workbench', 'Capture sheets in. Decisions out.', 'Plan · Workshop · Present · Results · QG2 · Hand-over. One file, offline, with the full audit trail.');
-await sleep(4000);
+await sleep(speak(4000) + 600);
 await ctx.close(); await browser.close();
 const webm = readdirSync(out).find(f => f.endsWith('.webm'));
 renameSync(resolve(out, webm), resolve(out, 'walkthrough.webm'));
 let mp4 = null;
-try { execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-i', resolve(out, 'walkthrough.webm'), '-c:v', 'libx264', '-preset', 'medium', '-crf', '21', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', '-r', '30', resolve(out, 'walkthrough.mp4')]); mp4 = resolve(out, 'walkthrough.mp4'); } catch (e) { console.warn('ffmpeg not available or failed:', e.message); }
+const video = ['-c:v', 'libx264', '-preset', 'medium', '-crf', '21', '-pix_fmt', 'yuv420p', '-r', '30'];
+try {
+  if (cues.length) {
+    // One input per clip, delayed to its caption, mixed without level ducking, then loudness-normalised (-16 LUFS).
+    const inputs = cues.flatMap(c => ['-i', c.file]);
+    const chains = cues.map((c, i) => `[${i + 1}:a]adelay=${Math.max(0, c.at)}:all=1[a${i}]`).join(';');
+    const mix = `${chains};${cues.map((_, i) => `[a${i}]`).join('')}amix=inputs=${cues.length}:normalize=0:dropout_transition=0,loudnorm=I=-16:TP=-1.5:LRA=11,aresample=48000[aout]`;
+    execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-i', resolve(out, 'walkthrough.webm'), ...inputs, '-filter_complex', mix, '-map', '0:v', '-map', '[aout]', ...video, '-c:a', 'aac', '-b:a', '160k', '-movflags', '+faststart', resolve(out, 'walkthrough.mp4')]);
+    writeFileSync(resolve(out, 'cues.json'), JSON.stringify(cues, null, 1));
+    if (cueNo !== NARR.order.length) console.warn(`narration: ${NARR.order.length} clips, ${cueNo} used – check that narration.json matches the tour`);
+  } else {
+    execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-i', resolve(out, 'walkthrough.webm'), ...video, '-movflags', '+faststart', resolve(out, 'walkthrough.mp4')]);
+  }
+  mp4 = resolve(out, 'walkthrough.mp4');
+} catch (e) { console.warn('ffmpeg not available or failed:', e.message); }
 console.log('video:', resolve(out, 'walkthrough.webm'), mp4 ? '+ ' + mp4 : '', '· page errors:', errors.length, errors.slice(0, 2));
