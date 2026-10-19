@@ -742,7 +742,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 </script>
 <script id="app">
 'use strict';
-const BUILD = { version: '0.1.0', builtAt: '2026-10-18T11:48:34.089Z' };
+const BUILD = { version: '0.1.0', builtAt: '2026-10-19T22:27:33.453Z' };
 
 /* ---- src/model/constants.js ---- */
 // Domain constants. Pure data – no client-specific values anywhere in here.
@@ -1857,8 +1857,8 @@ function getPath(obj, path) { return path.split('.').reduce((o, k) => (o == null
 function setPath(obj, path, value) { const ks = path.split('.'); let o = obj; for (const k of ks.slice(0, -1)) { if (o[k] == null || typeof o[k] !== 'object') o[k] = {}; o = o[k]; } o[ks[ks.length - 1]] = value; }
 const same = (a, b) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
 
-/** Meta for audit entries: { sessionId, editor, bulkId? }. */
-function auditMeta(session, extra = {}) { return { sessionId: session.activeSessionId, editor: session.settings.editorInitials || '', ...extra }; }
+/** Meta for audit entries: { sessionId, editor, bulkId?, actionId? }. actionId groups every change of one user step. */
+function auditMeta(session, extra = {}) { return { sessionId: session.activeSessionId, editor: session.settings.editorInitials || '', actionId: session._actionId || null, ...extra }; }
 
 /** Set one field of an assessment, record the change. Returns true when something changed. */
 function applyChange(session, key, path, value, meta = auditMeta(session)) {
@@ -1868,8 +1868,21 @@ function applyChange(session, key, path, value, meta = auditMeta(session)) {
   setPath(a, path, value);
   const ts = new Date().toISOString();
   a.workshop.changedAt = ts;
-  session.audit.push({ ts, key, field: path, old: old === undefined ? null : old, new: value, sessionId: meta.sessionId ?? null, editor: meta.editor ?? '', bulkId: meta.bulkId || null, note: meta.note || null });
+  session.audit.push({ ts, key, field: path, old: old === undefined ? null : old, new: value, sessionId: meta.sessionId ?? null, editor: meta.editor ?? '', bulkId: meta.bulkId || null, note: meta.note || null, actionId: meta.actionId ?? session._actionId ?? null });
   return true;
+}
+
+/** Undo every change of one user step (applied in reverse order); logged as new audit entries. Returns the count. */
+function undoAction(session, actionId, meta = auditMeta(session)) {
+  const entries = session.audit.filter(e => e.actionId === actionId && e.key !== 'bulk' && session.assessments[e.key]);
+  let n = 0; for (const e of entries.slice().reverse()) if (applyChange(session, e.key, e.field, e.old, { ...meta, actionId: `undo:${actionId}`, note: 'undo' })) n++;
+  return n;
+}
+/** Re-apply one user step after an undo. Returns the count. */
+function redoAction(session, actionId, meta = auditMeta(session)) {
+  const entries = session.audit.filter(e => e.actionId === actionId && e.key !== 'bulk' && session.assessments[e.key]);
+  let n = 0; for (const e of entries) if (applyChange(session, e.key, e.field, e.new, { ...meta, actionId: `redo:${actionId}`, note: 'redo' })) n++;
+  return n;
 }
 
 function effectiveGap(a) { return a.workshop.gapType || a.asIs.gap || null; }
@@ -2249,7 +2262,7 @@ function fmt(v) { if (v === null || v === undefined) return ''; if (typeof v ===
 
 function feedbackRows(session) { return session.feedback.map(f => ({ 'Timestamp': ts(f.ts), 'View': f.view, 'Note': f.note, 'Session': sessionLabel(session, f.sessionId) })); }
 
-function sheet(XLSX, rows, header) {
+function sheet(XLSX, rows, header = []) {
   const ws = XLSX.utils.json_to_sheet(rows.length ? rows : [Object.fromEntries(header.map(h => [h, '']))], { header: rows.length ? undefined : header });
   const cols = Object.keys(rows[0] || Object.fromEntries(header.map(h => [h, ''])));
   ws['!cols'] = cols.map(c => ({ wch: Math.min(60, Math.max(10, c.length + 2, ...rows.slice(0, 200).map(r => String(r[c] ?? '').length + 2))) }));
@@ -2263,7 +2276,7 @@ function buildDeviationLogWorkbook(session, XLSX) {
   XLSX.utils.book_append_sheet(wb, sheet(XLSX, dev, ['Entity', 'Stream', 'Process ID']), 'Deviation log');
   XLSX.utils.book_append_sheet(wb, sheet(XLSX, initiativeRows(session), ['Entity', 'Stream', 'Process ID']), 'Initiative candidates');
   XLSX.utils.book_append_sheet(wb, sheet(XLSX, taxonomyRows(session), ['Process ID', 'Proposed change', 'Reason']), 'Taxonomy change requests');
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([['GBS Fit-Gap Workbench – deviation log'], ['Client', session.settings.clientName], ['Country', session.settings.country], ['Exported', new Date().toISOString().slice(0, 16).replace('T', ' ')], ['Deviations', dev.length], ['Entities', Object.keys(session.entities).length], ['Assessments', Object.keys(session.assessments).length]]), 'About');
+  { const about = XLSX.utils.aoa_to_sheet([['GBS Fit-Gap Workbench – deviation log'], ['Client', session.settings.clientName], ['Country', session.settings.country], ['Exported', new Date().toISOString().slice(0, 16).replace('T', ' ')], ['Deviations', dev.length], ['Entities', Object.keys(session.entities).length], ['Assessments', Object.keys(session.assessments).length]]); about['!cols'] = [{ wch: 30 }, { wch: 70 }]; XLSX.utils.book_append_sheet(wb, about, 'About'); }
   return wb;
 }
 
@@ -2281,6 +2294,33 @@ function buildAuditWorkbook(session, XLSX) {
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, sheet(XLSX, auditRows(session), ['Timestamp', 'Field']), 'Audit log');
   return wb;
+}
+
+/**
+ * Client-ready polish that SheetJS CE cannot write: header row frozen, header cells bold white on the brand blue,
+ * wrapped and vertically centred. Patches the package XML (styles.xml + every worksheet). Bytes in, bytes out.
+ */
+async function polishXlsx(bytes, JSZip, { fill = '1F4E79' } = {}) {
+  const zip = await JSZip.loadAsync(bytes);
+  const stylesFile = zip.file('xl/styles.xml'); if (!stylesFile) return bytes;
+  let styles = await stylesFile.async('string');
+  const count = (tag) => { const m = styles.match(new RegExp(`<${tag}[^>]*count="(\\d+)"`)); return m ? Number(m[1]) : (styles.match(new RegExp(`<${tag.slice(0, -1)}[ >/]`, 'g')) || []).length; };
+  const append = (tag, xml) => { const n = count(tag); if (new RegExp(`<${tag}[^>]*/>`).test(styles)) styles = styles.replace(new RegExp(`<${tag}[^>]*/>`), `<${tag} count="1">${xml}</${tag}>`); else styles = styles.replace(new RegExp(`<${tag}([^>]*)count="\\d+"([^>]*)>`), `<${tag}$1count="${n + 1}"$2>`).replace(`</${tag}>`, `${xml}</${tag}>`); return n; };
+  if (!/<fonts[\s>]/.test(styles) || !/<fills[\s>]/.test(styles) || !/<cellXfs[\s>]/.test(styles)) return bytes;
+  const fontId = append('fonts', '<font><b/><sz val="10"/><color rgb="FFFFFFFF"/><name val="Calibri"/><family val="2"/></font>');
+  const fillId = append('fills', `<fill><patternFill patternType="solid"><fgColor rgb="FF${fill}"/><bgColor indexed="64"/></patternFill></fill>`);
+  const xfId = append('cellXfs', `<xf numFmtId="0" fontId="${fontId}" fillId="${fillId}" borderId="0" xfId="0" applyFont="1" applyFill="1" applyAlignment="1"><alignment vertical="center" wrapText="1"/></xf>`);
+  zip.file('xl/styles.xml', styles);
+  const pane = '<sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/><selection pane="bottomLeft" activeCell="A2" sqref="A2"/></sheetView></sheetViews>';
+  for (const path of Object.keys(zip.files).filter(p => /^xl\/worksheets\/sheet\d+\.xml$/.test(p))) {
+    let xml = await zip.file(path).async('string');
+    if (!/<row r="2"/.test(xml)) continue; // nothing below the header – leave as is
+    xml = xml.replace(/<row r="1"([^>]*)>([\s\S]*?)<\/row>/, (m, attrs, cells) => `<row r="1"${attrs.replace(/\s(ht|customHeight)="[^"]*"/g, '')} ht="30" customHeight="1">${cells.replace(/<c ([^>]*?)(\/?)>/g, (c, a, close) => `<c ${a.replace(/\ss="\d+"/, '')} s="${xfId}"${close}>`)}</row>`);
+    if (/<sheetViews[\s>]/.test(xml)) xml = xml.replace(/<sheetViews[\s\S]*?<\/sheetViews>|<sheetViews\/>/, pane);
+    else xml = xml.replace(/(<dimension[^>]*\/>)/, `$1${pane}`).replace(/^((?![\s\S]*<sheetViews)[\s\S]*?)(<sheetFormatPr|<cols|<sheetData)/, (m, a, b) => m.includes('<sheetViews') ? m : `${a}${pane}${b}`);
+    zip.file(path, xml);
+  }
+  return zip.generateAsync({ type: 'uint8array', compression: 'DEFLATE' });
 }
 
 function exportFileName(session, kind) {
@@ -3147,7 +3187,7 @@ function downloadBlob(name, blob) {
   const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click();
   setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 2000);
 }
-function downloadWorkbook(name, wb) { const out = XLSX.write(wb, { bookType: 'xlsx', type: 'array' }); downloadBlob(`${name}.xlsx`, new Blob([out], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })); }
+async function downloadWorkbook(name, wb) { const out = await polishXlsx(new Uint8Array(XLSX.write(wb, { bookType: 'xlsx', type: 'array' })), JSZip); downloadBlob(`${name}.xlsx`, new Blob([out], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })); }
 function downloadSessionJson(session) { downloadBlob(`${exportFileName(session, 'session')}.json`, new Blob([serializeSession(session)], { type: 'application/json' })); }
 
 function ExportsCard({ session, summary, updateSession, toast, onReplaceSession }) {
@@ -4074,7 +4114,7 @@ function TreePanel({ tree, selectedId, onSelect, session, entityFilter, collapse
     return html`<div>
       <button class=${`tree-node${selectedId === n.id ? ' sel' : ''}${!n.parentId ? ' root' : ''}`} style=${`padding-left:${0.5 + depth * 0.8}rem`} onClick=${() => isLeaf ? onSelect(n.id) : toggle(n.id)}>
         ${!isLeaf && n.children.length ? html`<span class=${`tw${open ? ' open' : ''}`}><${Icon} name="chevron" size=${12} /></span>` : html`<span class="tw"></span>`}
-        <span class="tn">${!n.parentId && html`<span class="tree-ico"><${Icon} name=${streamIcon(n.stream)} size=${13} /></span>`}<span class="pid">${n.id}</span> ${n.name}</span>
+        <span class="tn">${!n.parentId && html`<span class="tree-ico"><${Icon} name=${streamIcon(n.stream)} size=${13} /></span>`}${String(n.name || '').startsWith(n.id) ? html`<span class="pid">${n.id}</span>${n.name.slice(n.id.length)}` : html`<span class="pid">${n.id}</span> ${n.name}`}</span>
         <span class="tp"><span class="num">${s.assessed}/${s.total}</span>${s.openGaps ? html`<span class="og" title="open gaps">${s.openGaps}</span>` : null}</span>
         <span class="tb"><i style=${`width:${pct}%`}></i></span>
       </button>
@@ -4462,21 +4502,21 @@ function PreparePage({ session, updateSession, toast }) {
 
 async function buildHandoverPackage(session) {
   const zip = new JSZip(); const base = exportFileName(session, 'handover');
-  const xlsx = (wb) => XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+  const xlsx = (wb) => polishXlsx(new Uint8Array(XLSX.write(wb, { bookType: 'xlsx', type: 'array' })), JSZip);
   const dev = deviationRows(session);
   const approved = dev.filter(r => r['Approval status'] === 'APPROVED');
-  const mk = (rows, name) => { const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows.length ? rows : [{ info: 'no rows' }]), name.slice(0, 31)); return wb; };
-  zip.file('01_deviation-log_full.xlsx', xlsx(buildDeviationLogWorkbook(session, XLSX)));
-  zip.file('02_deviation-log_approved.xlsx', xlsx(mk(approved, 'Approved deviations')));
-  zip.file('03_separate-variants_for-DTPs.xlsx', xlsx(mk(dev.filter(r => r['Resolution approach'] === 'Separate variant'), 'Separate variants')));
-  zip.file('04_initiative-candidates_PE-WP3.xlsx', xlsx(mk(initiativeRows(session), 'Initiative candidates')));
-  zip.file('05_taxonomy-change-requests.xlsx', xlsx(mk(taxonomyRows(session), 'Taxonomy change requests')));
+  const mk = (rows, name) => { const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, rows.length ? sheet(XLSX, rows, Object.keys(rows[0])) : XLSX.utils.json_to_sheet([{ info: 'no rows' }]), name.slice(0, 31)); return wb; };
+  zip.file('01_deviation-log_full.xlsx', await xlsx(buildDeviationLogWorkbook(session, XLSX)));
+  zip.file('02_deviation-log_approved.xlsx', await xlsx(mk(approved, 'Approved deviations')));
+  zip.file('03_separate-variants_for-DTPs.xlsx', await xlsx(mk(dev.filter(r => r['Resolution approach'] === 'Separate variant'), 'Separate variants')));
+  zip.file('04_initiative-candidates_PE-WP3.xlsx', await xlsx(mk(initiativeRows(session), 'Initiative candidates')));
+  zip.file('05_taxonomy-change-requests.xlsx', await xlsx(mk(taxonomyRows(session), 'Taxonomy change requests')));
   const q = qg2Readiness(session);
   const qgRows = q.streams.map(s => { const p = q.perStream[s]; return { Stream: s, 'QG2-ready': p.ready ? 'Y' : 'N', 'Activities': p.total, 'Assessed': p.assessed, 'Deviations': p.deviations, 'No owner': p.noOwner, 'Undecided approach': p.undecided, 'No approval': p.noApproval, 'No justification': p.noJustification, 'Open questions': p.openQuestions, 'Process Expert': p.signoff.pe.name, 'PE date': p.signoff.pe.date, 'GBS Operations': p.signoff.ops.name, 'Ops date': p.signoff.ops.date }; });
-  const qwb = mk(qgRows, 'QG2 sign-off'); XLSX.utils.book_append_sheet(qwb, XLSX.utils.json_to_sheet(q.cells.map(c => ({ Entity: session.entities[c.entityCode]?.displayName || c.entityCode, Stream: c.stream, Activities: c.total, Assessed: c.assessed, Deviations: c.deviations, 'No owner': c.noOwner, 'Undecided': c.undecided, 'No approval': c.noApproval, 'Open questions': c.openQuestions }))), 'Per entity x stream');
-  zip.file('06_qg2-signoff-summary.xlsx', xlsx(qwb));
-  zip.file('07_flat-export_all-assessments.xlsx', xlsx(buildFlatWorkbook(session, XLSX)));
-  zip.file('08_audit-trail.xlsx', xlsx(buildAuditWorkbook(session, XLSX)));
+  const qwb = mk(qgRows, 'QG2 sign-off'); XLSX.utils.book_append_sheet(qwb, sheet(XLSX, q.cells.map(c => ({ Entity: session.entities[c.entityCode]?.displayName || c.entityCode, Stream: c.stream, Activities: c.total, Assessed: c.assessed, Deviations: c.deviations, 'No owner': c.noOwner, 'Undecided': c.undecided, 'No approval': c.noApproval, 'Open questions': c.openQuestions }))), 'Per entity x stream');
+  zip.file('06_qg2-signoff-summary.xlsx', await xlsx(qwb));
+  zip.file('07_flat-export_all-assessments.xlsx', await xlsx(buildFlatWorkbook(session, XLSX)));
+  zip.file('08_audit-trail.xlsx', await xlsx(buildAuditWorkbook(session, XLSX)));
   zip.file('09_session.json', serializeSession(session));
   zip.file('README.txt', `GBS Fit-Gap Workbench – hand-over package\nClient: ${session.settings.clientName}\nCountry: ${session.settings.country}\nExported: ${new Date().toISOString()}\n\n01 deviation log (all gaps, + initiative candidates + taxonomy change requests)\n02 approved deviations only\n03 separate variants – input for the DTPs\n04 initiative candidates for PE / WP3\n05 taxonomy change requests for the agreed change path\n06 QG2 readiness and sign-off per stream\n07 flat export of every entity x activity incl. audit log\n08 audit trail\n09 session file – open with the workbench (3 Run → Data & exports → Load session)\n`);
   return { blob: await zip.generateAsync({ type: 'blob', compression: 'DEFLATE' }), name: `${base}.zip`, counts: { deviations: dev.length, approved: approved.length } };
@@ -4729,7 +4769,7 @@ function SavedIndicator({ save }) {
   return html`<span class="saved"><span class="dot" style="background:var(--line-strong)"></span>Not saved yet</span>`;
 }
 
-function TopBar({ crumbs, theme, setTheme, share, setShare, onPalette, onFeedback, save, onSave, onAi }) {
+function TopBar({ crumbs, theme, setTheme, share, setShare, onPalette, onFeedback, save, onSave, onAi, canUndo, canRedo, onUndo, onRedo }) {
   return html`<header class="topbar">
     <div class="crumb">${crumbs.map((c, i) => html`${i > 0 && html`<span class="sep">›</span>`}${i === crumbs.length - 1 ? html`<b>${c}</b>` : html`<span>${c}</span>`}`)}</div>
     <div class="search" role="button" tabindex="0" onClick=${onPalette} onKeyDown=${e => e.key === 'Enter' && onPalette()}><${Icon} name="search" size=${14} />Jump to entity, stream, process ID or activity<kbd>Ctrl K</kbd></div>
@@ -4739,8 +4779,8 @@ function TopBar({ crumbs, theme, setTheme, share, setShare, onPalette, onFeedbac
       <${IconButton} icon="save" label="Save session file (JSON)" onClick=${onSave} />
       <${IconButton} icon="feedback" label="Feedback" onClick=${onFeedback} />
       <${IconButton} icon="share" label=${share ? 'Screen-share mode on' : 'Screen-share mode'} onClick=${() => setShare(!share)} style=${share ? 'color:var(--accent)' : ''} />
-      <${IconButton} icon="undo" label="Undo" disabled />
-      <${IconButton} icon="redo" label="Redo" disabled />
+      <${IconButton} icon="undo" label="Undo last workshop change (Ctrl+Z)" disabled=${!canUndo} onClick=${onUndo} />
+      <${IconButton} icon="redo" label="Redo (Ctrl+Shift+Z)" disabled=${!canRedo} onClick=${onRedo} />
       <${IconButton} icon=${theme === 'dark' ? 'sun' : 'moon'} label="Toggle theme" onClick=${() => setTheme(theme === 'dark' ? 'light' : 'dark')} />
     </div>
   </header>`;
@@ -4813,7 +4853,15 @@ function App() {
   const onAsk = (key) => setAi({ open: true, key: key || null });
   useEffect(() => { store.set('fg.ws', { stream: wsUi.stream, l3: wsUi.l3, mode: wsUi.mode, entity: wsUi.entity }); }, [wsUi.stream, wsUi.l3, wsUi.mode, wsUi.entity]);
   const dirty = useRef(false);
-  const updateSession = useCallback((fn) => { setSession(s => { const n = { ...s }; fn(n); n.updatedAt = new Date().toISOString(); dirty.current = true; return n; }); }, []);
+  // Undo / redo: every update gets an action id (not saved); steps that wrote audit entries go on the undo stack.
+  const hist = useRef({ undo: [], redo: [] }); const [, setHistTick] = useState(0); const bumpHist = () => queueMicrotask(() => setHistTick(t => t + 1));
+  const updateSession = useCallback((fn) => { setSession(s => { const n = { ...s }; const actionId = newId('act'); Object.defineProperty(n, '_actionId', { value: actionId, configurable: true, writable: true, enumerable: false }); const before = n.audit.length; try { fn(n); } finally { delete n._actionId; } if (n.audit.length > before && n.audit.slice(before).some(e => e.actionId === actionId)) { hist.current.undo.push(actionId); if (hist.current.undo.length > 200) hist.current.undo.shift(); hist.current.redo = []; bumpHist(); } n.updatedAt = new Date().toISOString(); dirty.current = true; return n; }); }, []);
+  const stepHistory = (dir) => {
+    const h = hist.current; const from = dir === 'undo' ? h.undo : h.redo, to = dir === 'undo' ? h.redo : h.undo; let n = 0;
+    while (from.length && !n) { const id = from.pop(); setSession(s => { const x = { ...s }; n = dir === 'undo' ? undoAction(x, id, auditMeta(x)) : redoAction(x, id, auditMeta(x)); if (n) { x.updatedAt = new Date().toISOString(); dirty.current = true; } return n ? x : s; }); if (n) to.push(id); }
+    bumpHist(); toast(n ? `${dir === 'undo' ? 'Undone' : 'Redone'}: ${n} change${n === 1 ? '' : 's'}` : `Nothing to ${dir}`, { ttl: 2500 });
+  };
+  const stepRef = useRef(stepHistory); stepRef.current = stepHistory;
   useEffect(() => { (async () => { let loaded = null; try { loaded = await storageLoad(); } catch (e) { setSave({ status: 'unavailable', error: String(e) }); } if (loaded) setSave({ status: 'loaded', at: loaded.updatedAt ? new Date(loaded.updatedAt).toLocaleString([], { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '' }); setSession(loaded ? { ...createSession(), ...loaded } : createSession()); })(); }, []);
   useEffect(() => {
     if (!session || !dirty.current) return;
@@ -4837,7 +4885,12 @@ function App() {
   useEffect(() => { applyBrandColor(session?.settings?.brandColor); }, [session?.settings?.brandColor]);
   useEffect(() => { store.set('fg.page', page); store.set('fg.phase', phase); }, [page, phase]);
   useEffect(() => {
-    const onKey = (e) => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); setPalette(p => !p); } };
+    const onKey = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); setPalette(p => !p); return; }
+      // Ctrl+Z / Ctrl+Shift+Z / Ctrl+Y – outside text fields, where the browser's own text undo applies.
+      const inField = ['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName) || e.target.isContentEditable;
+      if (!inField && (e.ctrlKey || e.metaKey) && (e.key.toLowerCase() === 'z' || e.key.toLowerCase() === 'y')) { e.preventDefault(); stepRef.current(e.key.toLowerCase() === 'y' || e.shiftKey ? 'redo' : 'undo'); }
+    };
     const onGo = (e) => { if (e.detail?.page) setPage(e.detail.page); };
     const onToast = (e) => { if (e.detail?.text) toast(e.detail.text, { ttl: e.detail.ttl || 7000 }); };
     window.addEventListener('keydown', onKey); document.addEventListener('fg:go', onGo); document.addEventListener('fg:toast', onToast); return () => { window.removeEventListener('keydown', onKey); document.removeEventListener('fg:go', onGo); document.removeEventListener('fg:toast', onToast); };
@@ -4853,12 +4906,12 @@ function App() {
   const goActivity = (p) => { const l3 = p.level >= 4 ? p.parentId : p.id; setPage('phase'); setPhase('run'); setRunTab('workshop'); setWsUi(u => ({ ...u, stream: p.stream, l3, expanded: p.level >= 4 ? p.id : null, selected: p.level >= 4 ? p.id : null, entity: null })); };
   const paletteItems = [...Object.values(session.entities).map(e => ({ label: `${e.displayName || e.name} · ${e.code}`, kind: 'entity', icon: 'file', go: () => { setPage('phase'); setPhase('run'); setRunTab('workshop'); setWsUi(u => ({ ...u, entity: e.code })); } })), ...STREAMS.filter(s => summary.activitiesByStream[s]).map(s => ({ label: `${s} · ${summary.activitiesByStream[s]} activities`, kind: 'stream', icon: 'run', go: () => { setPage('phase'); setPhase('run'); setRunTab('workshop'); setWsUi(u => ({ ...u, stream: s, l3: null })); } })), ...Object.values(session.processes).filter(p => p.level >= 2).map(p => ({ label: `${p.id} ${p.name}`, kind: `L${p.level}`, icon: 'file', go: () => goActivity(p) })), ...NAV.map(p => ({ label: `${p.n} ${p.label}`, kind: 'page', icon: p.icon, go: () => { setPage('phase'); setPhase(p.key); } })), { label: 'Start here', kind: 'home', icon: 'info', go: () => setPage('home') }, { label: 'Style sheet', kind: 'design', icon: 'palette', go: () => setPage('styleguide') }, { label: 'Present', kind: 'present', icon: 'share', go: () => setPresent({ stream: session.processes[wsUi.l3]?.stream || 'R2R', entityFilter: null, l3: wsUi.l3 }) }, { label: theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme', kind: 'theme', icon: 'sun', go: () => setTheme(theme === 'dark' ? 'light' : 'dark') }];
   const logFeedback = (note) => { updateSession(s => { s.feedback = [...s.feedback, { ts: new Date().toISOString(), view: viewName, note, sessionId: s.activeSessionId }]; }); toast('Feedback logged'); };
-  const replaceSession = (loaded) => { setSession({ ...createSession(), ...loaded }); dirty.current = true; setRunTab(loaded.files?.length ? 'workshop' : 'import'); toast('Session loaded from file'); };
-  const clearAll = async () => { try { await storageClear(); } catch { /* ignore */ } setSession(createSession()); dirty.current = true; setRunTab('import'); toast('All data cleared'); };
+  const replaceSession = (loaded) => { hist.current = { undo: [], redo: [] }; bumpHist(); setSession({ ...createSession(), ...loaded }); dirty.current = true; setRunTab(loaded.files?.length ? 'workshop' : 'import'); toast('Session loaded from file'); };
+  const clearAll = async () => { hist.current = { undo: [], redo: [] }; bumpHist(); try { await storageClear(); } catch { /* ignore */ } setSession(createSession()); dirty.current = true; setRunTab('import'); toast('All data cleared'); };
   return html`<div class="app" data-rail=${rail ? '1' : '0'}>
     <${Sidebar} phase=${phase} setPhase=${setPhase} summary=${summary} rail=${rail} setRail=${setRail} session=${session} page=${page} setPage=${setPage} onPresent=${() => setPresent({ stream: session.processes[wsUi.l3]?.stream || 'R2R', entityFilter: null, l3: wsUi.l3 })} />
     <div class="content">
-      <${TopBar} crumbs=${crumbs} theme=${theme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')} setTheme=${setTheme} share=${share} setShare=${setShare} onPalette=${() => setPalette(true)} onFeedback=${() => setFeedback(f => !f)} save=${save} onSave=${() => { downloadSessionJson(session); toast('Session file downloaded'); }} onAi=${() => setAi(x => ({ open: !x.open, key: x.key || (wsUi.expanded && wsUi.expandedEntity ? assessmentKey(wsUi.expandedEntity, wsUi.expanded) : null) }))} />
+      <${TopBar} canUndo=${hist.current.undo.length > 0} canRedo=${hist.current.redo.length > 0} onUndo=${() => stepHistory('undo')} onRedo=${() => stepHistory('redo')} crumbs=${crumbs} theme=${theme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')} setTheme=${setTheme} share=${share} setShare=${setShare} onPalette=${() => setPalette(true)} onFeedback=${() => setFeedback(f => !f)} save=${save} onSave=${() => { downloadSessionJson(session); toast('Session file downloaded'); }} onAi=${() => setAi(x => ({ open: !x.open, key: x.key || (wsUi.expanded && wsUi.expandedEntity ? assessmentKey(wsUi.expandedEntity, wsUi.expanded) : null) }))} />
       <${KpiStrip} summary=${summary} session=${session} updateSession=${updateSession} toast=${toast} />
       <main class="main">${page === 'home' ? html`<${HomePage} session=${session} summary=${summary} updateSession=${updateSession} toast=${toast} go=${goStep} onReplaceSession=${replaceSession} />` : page === 'styleguide' ? html`<${StyleGuide} />` : phase === 'run' ? html`<${RunPage} session=${session} summary=${summary} updateSession=${updateSession} toast=${toast} onClearAll=${clearAll} tab=${tab} setTab=${setRunTab} ui=${wsUi} setUi=${setWsUi} onReplaceSession=${replaceSession} onPresent=${p => setPresent(p)} onAsk=${onAsk} />` : phase === 'plan' ? html`<${PlanView} session=${session} summary=${summary} updateSession=${updateSession} toast=${toast} />` : phase === 'results' ? html`<${EvaluatePage} session=${session} updateSession=${updateSession} toast=${toast} goActivity=${goActivity} />` : phase === 'signoff' ? html`<${Qg2Page} session=${session} updateSession=${updateSession} toast=${toast} /><div style="margin-top:2rem"><${HandoverPage} session=${session} toast=${toast} /></div>` : html`<${ComingNext} p=${current} />`}</main>
     </div>

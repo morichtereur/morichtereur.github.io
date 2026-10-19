@@ -7,7 +7,7 @@ import { tmpdir } from 'node:os';
 import * as XLSX from 'xlsx';
 import { parseCaptureWorkbook } from '../src/parser/capture.js';
 import { createSession, mergeParsedWorkbook } from '../src/model/session.js';
-import { applyChange, completeness, confirmFit, bulkConfirmNoGap, undoBulk, buildTree, activitiesOf, nodeStats, suggestGapType, applyToAllEntities, sessionPace } from '../src/model/workshop.js';
+import { applyChange, completeness, confirmFit, bulkConfirmNoGap, undoBulk, buildTree, activitiesOf, nodeStats, suggestGapType, applyToAllEntities, sessionPace, undoAction, redoAction } from '../src/model/workshop.js';
 
 let session;
 before(() => {
@@ -88,3 +88,22 @@ test('MD tree holds only master-data nodes across streams; pace uses planned min
   assert.equal(p.planned, 90); assert.equal(p.elapsed, 30); assert.equal(p.left, 60);
   assert.ok(p.remaining > 0 && p.secPerActivity > 0);
 });
+
+test('undo / redo revert and re-apply one user step as a whole, logged in the audit trail', () => {
+  const a = Object.values(session.assessments).find(x => x.asIs.gap === 'NO_GAP' && !x.scope.outOfScope && x.workshop.status === 'NOT_ASSESSED');
+  const before = JSON.stringify({ w: a.workshop.status, g: a.workshop.gapType, f: a.fitGap, d: a.detailedGap });
+  Object.defineProperty(session, '_actionId', { value: 'act_test', configurable: true, writable: true, enumerable: false });
+  assert.ok(confirmFit(session, a.key, session.processes[a.processId]));
+  delete session._actionId;
+  const step = session.audit.filter(e => e.actionId === 'act_test');
+  assert.ok(step.length >= 3, `one step, several fields (${step.length})`);
+  assert.ok(!JSON.parse(serializeLike(session)).hasOwnProperty('_actionId'), 'the action id is never saved');
+  const n = undoAction(session, 'act_test');
+  assert.equal(n, step.length);
+  assert.equal(JSON.stringify({ w: a.workshop.status, g: a.workshop.gapType, f: a.fitGap, d: a.detailedGap }), before);
+  assert.ok(session.audit.filter(e => e.actionId === 'undo:act_test').every(e => e.note === 'undo'));
+  assert.equal(redoAction(session, 'act_test'), step.length);
+  assert.equal(a.workshop.status, 'CONFIRMED_FIT');
+  assert.equal(undoAction(session, 'no_such_step'), 0);
+});
+function serializeLike(s) { return JSON.stringify(s); }

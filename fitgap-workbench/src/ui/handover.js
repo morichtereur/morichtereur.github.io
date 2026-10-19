@@ -2,21 +2,21 @@
 
 async function buildHandoverPackage(session) {
   const zip = new JSZip(); const base = exportFileName(session, 'handover');
-  const xlsx = (wb) => XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+  const xlsx = (wb) => polishXlsx(new Uint8Array(XLSX.write(wb, { bookType: 'xlsx', type: 'array' })), JSZip);
   const dev = deviationRows(session);
   const approved = dev.filter(r => r['Approval status'] === 'APPROVED');
-  const mk = (rows, name) => { const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows.length ? rows : [{ info: 'no rows' }]), name.slice(0, 31)); return wb; };
-  zip.file('01_deviation-log_full.xlsx', xlsx(buildDeviationLogWorkbook(session, XLSX)));
-  zip.file('02_deviation-log_approved.xlsx', xlsx(mk(approved, 'Approved deviations')));
-  zip.file('03_separate-variants_for-DTPs.xlsx', xlsx(mk(dev.filter(r => r['Resolution approach'] === 'Separate variant'), 'Separate variants')));
-  zip.file('04_initiative-candidates_PE-WP3.xlsx', xlsx(mk(initiativeRows(session), 'Initiative candidates')));
-  zip.file('05_taxonomy-change-requests.xlsx', xlsx(mk(taxonomyRows(session), 'Taxonomy change requests')));
+  const mk = (rows, name) => { const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, rows.length ? sheet(XLSX, rows, Object.keys(rows[0])) : XLSX.utils.json_to_sheet([{ info: 'no rows' }]), name.slice(0, 31)); return wb; };
+  zip.file('01_deviation-log_full.xlsx', await xlsx(buildDeviationLogWorkbook(session, XLSX)));
+  zip.file('02_deviation-log_approved.xlsx', await xlsx(mk(approved, 'Approved deviations')));
+  zip.file('03_separate-variants_for-DTPs.xlsx', await xlsx(mk(dev.filter(r => r['Resolution approach'] === 'Separate variant'), 'Separate variants')));
+  zip.file('04_initiative-candidates_PE-WP3.xlsx', await xlsx(mk(initiativeRows(session), 'Initiative candidates')));
+  zip.file('05_taxonomy-change-requests.xlsx', await xlsx(mk(taxonomyRows(session), 'Taxonomy change requests')));
   const q = qg2Readiness(session);
   const qgRows = q.streams.map(s => { const p = q.perStream[s]; return { Stream: s, 'QG2-ready': p.ready ? 'Y' : 'N', 'Activities': p.total, 'Assessed': p.assessed, 'Deviations': p.deviations, 'No owner': p.noOwner, 'Undecided approach': p.undecided, 'No approval': p.noApproval, 'No justification': p.noJustification, 'Open questions': p.openQuestions, 'Process Expert': p.signoff.pe.name, 'PE date': p.signoff.pe.date, 'GBS Operations': p.signoff.ops.name, 'Ops date': p.signoff.ops.date }; });
-  const qwb = mk(qgRows, 'QG2 sign-off'); XLSX.utils.book_append_sheet(qwb, XLSX.utils.json_to_sheet(q.cells.map(c => ({ Entity: session.entities[c.entityCode]?.displayName || c.entityCode, Stream: c.stream, Activities: c.total, Assessed: c.assessed, Deviations: c.deviations, 'No owner': c.noOwner, 'Undecided': c.undecided, 'No approval': c.noApproval, 'Open questions': c.openQuestions }))), 'Per entity x stream');
-  zip.file('06_qg2-signoff-summary.xlsx', xlsx(qwb));
-  zip.file('07_flat-export_all-assessments.xlsx', xlsx(buildFlatWorkbook(session, XLSX)));
-  zip.file('08_audit-trail.xlsx', xlsx(buildAuditWorkbook(session, XLSX)));
+  const qwb = mk(qgRows, 'QG2 sign-off'); XLSX.utils.book_append_sheet(qwb, sheet(XLSX, q.cells.map(c => ({ Entity: session.entities[c.entityCode]?.displayName || c.entityCode, Stream: c.stream, Activities: c.total, Assessed: c.assessed, Deviations: c.deviations, 'No owner': c.noOwner, 'Undecided': c.undecided, 'No approval': c.noApproval, 'Open questions': c.openQuestions }))), 'Per entity x stream');
+  zip.file('06_qg2-signoff-summary.xlsx', await xlsx(qwb));
+  zip.file('07_flat-export_all-assessments.xlsx', await xlsx(buildFlatWorkbook(session, XLSX)));
+  zip.file('08_audit-trail.xlsx', await xlsx(buildAuditWorkbook(session, XLSX)));
   zip.file('09_session.json', serializeSession(session));
   zip.file('README.txt', `GBS Fit-Gap Workbench – hand-over package\nClient: ${session.settings.clientName}\nCountry: ${session.settings.country}\nExported: ${new Date().toISOString()}\n\n01 deviation log (all gaps, + initiative candidates + taxonomy change requests)\n02 approved deviations only\n03 separate variants – input for the DTPs\n04 initiative candidates for PE / WP3\n05 taxonomy change requests for the agreed change path\n06 QG2 readiness and sign-off per stream\n07 flat export of every entity x activity incl. audit log\n08 audit trail\n09 session file – open with the workbench (3 Run → Data & exports → Load session)\n`);
   return { blob: await zip.generateAsync({ type: 'blob', compression: 'DEFLATE' }), name: `${base}.zip`, counts: { deviations: dev.length, approved: approved.length } };

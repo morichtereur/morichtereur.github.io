@@ -11,8 +11,8 @@ function getPath(obj, path) { return path.split('.').reduce((o, k) => (o == null
 function setPath(obj, path, value) { const ks = path.split('.'); let o = obj; for (const k of ks.slice(0, -1)) { if (o[k] == null || typeof o[k] !== 'object') o[k] = {}; o = o[k]; } o[ks[ks.length - 1]] = value; }
 const same = (a, b) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
 
-/** Meta for audit entries: { sessionId, editor, bulkId? }. */
-export function auditMeta(session, extra = {}) { return { sessionId: session.activeSessionId, editor: session.settings.editorInitials || '', ...extra }; }
+/** Meta for audit entries: { sessionId, editor, bulkId?, actionId? }. actionId groups every change of one user step. */
+export function auditMeta(session, extra = {}) { return { sessionId: session.activeSessionId, editor: session.settings.editorInitials || '', actionId: session._actionId || null, ...extra }; }
 
 /** Set one field of an assessment, record the change. Returns true when something changed. */
 export function applyChange(session, key, path, value, meta = auditMeta(session)) {
@@ -22,8 +22,21 @@ export function applyChange(session, key, path, value, meta = auditMeta(session)
   setPath(a, path, value);
   const ts = new Date().toISOString();
   a.workshop.changedAt = ts;
-  session.audit.push({ ts, key, field: path, old: old === undefined ? null : old, new: value, sessionId: meta.sessionId ?? null, editor: meta.editor ?? '', bulkId: meta.bulkId || null, note: meta.note || null });
+  session.audit.push({ ts, key, field: path, old: old === undefined ? null : old, new: value, sessionId: meta.sessionId ?? null, editor: meta.editor ?? '', bulkId: meta.bulkId || null, note: meta.note || null, actionId: meta.actionId ?? session._actionId ?? null });
   return true;
+}
+
+/** Undo every change of one user step (applied in reverse order); logged as new audit entries. Returns the count. */
+export function undoAction(session, actionId, meta = auditMeta(session)) {
+  const entries = session.audit.filter(e => e.actionId === actionId && e.key !== 'bulk' && session.assessments[e.key]);
+  let n = 0; for (const e of entries.slice().reverse()) if (applyChange(session, e.key, e.field, e.old, { ...meta, actionId: `undo:${actionId}`, note: 'undo' })) n++;
+  return n;
+}
+/** Re-apply one user step after an undo. Returns the count. */
+export function redoAction(session, actionId, meta = auditMeta(session)) {
+  const entries = session.audit.filter(e => e.actionId === actionId && e.key !== 'bulk' && session.assessments[e.key]);
+  let n = 0; for (const e of entries) if (applyChange(session, e.key, e.field, e.new, { ...meta, actionId: `redo:${actionId}`, note: 'redo' })) n++;
+  return n;
 }
 
 export function effectiveGap(a) { return a.workshop.gapType || a.asIs.gap || null; }

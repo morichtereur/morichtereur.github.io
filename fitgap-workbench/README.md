@@ -26,8 +26,11 @@ npm run package:replit # zips the project (no node_modules, no samples) for uplo
 
 ## Explanation video
 
-`npm run video` records a guided tour with demo data (captions, visible cursor, title cards) to
-`dist/video/walkthrough.mp4` (ffmpeg) and `.webm`. The tour is scripted in `scripts/walkthrough.mjs` – edit the
+`npm run video` records a guided tour with demo data (captions, visible cursor, title cards) to `dist/video/`:
+`walkthrough.mp4` (1920×1080, H.264, chapters per step, title metadata), `walkthrough.webm`, `thumbnail.png`
+(poster frame) and – with voice-over – `walkthrough.srt` / `.vtt` built from the spoken text
+(`scripts/subtitles.mjs`: ≤ 42 characters per line, ≤ 2 lines, split at sentence and clause breaks).
+`VIDEO_W` / `VIDEO_H` change the size. The tour is scripted in `scripts/walkthrough.mjs` – edit the
 captions there and re-record after UI changes. Uses the pre-installed Chromium; no network.
 
 Voice-over (English, Kokoro-82M, Apache-2.0, runs offline on CPU):
@@ -73,6 +76,10 @@ across modules – the build fails on duplicates.
 3. Session JSON save/load, backup prompt at session end
 4. Deviation log (+ initiative candidates, taxonomy change requests), flat export with audit log, audit export; acceptance run  ← pilot MVP complete
 5–11. flows, present mode, QG2, evaluate, swimlane, write-back, full PLAN/PREPARE/HAND-OVER, profile mapping UI
+13. Undo / redo for every workshop step (top bar, Ctrl+Z / Ctrl+Shift+Z outside text fields): each user step gets an
+    action id in the audit trail; undo and redo are written to the audit trail as their own entries. Client-ready
+    Excel: every export and every file of the hand-over package gets a frozen, formatted header row, column widths
+    and filters (`polishXlsx` patches the package XML – SheetJS CE cannot write styles) and is DEFLATE-compressed.
 12. Branding: tool mark (favicon, sidebar, welcome, present footer), client logo and brand colour (`src/ui/brand.js`).
     The client logo is picked up from the capture workbooks on import (every picture in every sheet is scored:
     first rows, a few cm wide, SVG preferred; cover backgrounds, header strips and flow screenshots lose), stored as a

@@ -47,7 +47,7 @@ function SavedIndicator({ save }) {
   return html`<span class="saved"><span class="dot" style="background:var(--line-strong)"></span>Not saved yet</span>`;
 }
 
-function TopBar({ crumbs, theme, setTheme, share, setShare, onPalette, onFeedback, save, onSave, onAi }) {
+function TopBar({ crumbs, theme, setTheme, share, setShare, onPalette, onFeedback, save, onSave, onAi, canUndo, canRedo, onUndo, onRedo }) {
   return html`<header class="topbar">
     <div class="crumb">${crumbs.map((c, i) => html`${i > 0 && html`<span class="sep">›</span>`}${i === crumbs.length - 1 ? html`<b>${c}</b>` : html`<span>${c}</span>`}`)}</div>
     <div class="search" role="button" tabindex="0" onClick=${onPalette} onKeyDown=${e => e.key === 'Enter' && onPalette()}><${Icon} name="search" size=${14} />Jump to entity, stream, process ID or activity<kbd>Ctrl K</kbd></div>
@@ -57,8 +57,8 @@ function TopBar({ crumbs, theme, setTheme, share, setShare, onPalette, onFeedbac
       <${IconButton} icon="save" label="Save session file (JSON)" onClick=${onSave} />
       <${IconButton} icon="feedback" label="Feedback" onClick=${onFeedback} />
       <${IconButton} icon="share" label=${share ? 'Screen-share mode on' : 'Screen-share mode'} onClick=${() => setShare(!share)} style=${share ? 'color:var(--accent)' : ''} />
-      <${IconButton} icon="undo" label="Undo" disabled />
-      <${IconButton} icon="redo" label="Redo" disabled />
+      <${IconButton} icon="undo" label="Undo last workshop change (Ctrl+Z)" disabled=${!canUndo} onClick=${onUndo} />
+      <${IconButton} icon="redo" label="Redo (Ctrl+Shift+Z)" disabled=${!canRedo} onClick=${onRedo} />
       <${IconButton} icon=${theme === 'dark' ? 'sun' : 'moon'} label="Toggle theme" onClick=${() => setTheme(theme === 'dark' ? 'light' : 'dark')} />
     </div>
   </header>`;
@@ -131,7 +131,15 @@ function App() {
   const onAsk = (key) => setAi({ open: true, key: key || null });
   useEffect(() => { store.set('fg.ws', { stream: wsUi.stream, l3: wsUi.l3, mode: wsUi.mode, entity: wsUi.entity }); }, [wsUi.stream, wsUi.l3, wsUi.mode, wsUi.entity]);
   const dirty = useRef(false);
-  const updateSession = useCallback((fn) => { setSession(s => { const n = { ...s }; fn(n); n.updatedAt = new Date().toISOString(); dirty.current = true; return n; }); }, []);
+  // Undo / redo: every update gets an action id (not saved); steps that wrote audit entries go on the undo stack.
+  const hist = useRef({ undo: [], redo: [] }); const [, setHistTick] = useState(0); const bumpHist = () => queueMicrotask(() => setHistTick(t => t + 1));
+  const updateSession = useCallback((fn) => { setSession(s => { const n = { ...s }; const actionId = newId('act'); Object.defineProperty(n, '_actionId', { value: actionId, configurable: true, writable: true, enumerable: false }); const before = n.audit.length; try { fn(n); } finally { delete n._actionId; } if (n.audit.length > before && n.audit.slice(before).some(e => e.actionId === actionId)) { hist.current.undo.push(actionId); if (hist.current.undo.length > 200) hist.current.undo.shift(); hist.current.redo = []; bumpHist(); } n.updatedAt = new Date().toISOString(); dirty.current = true; return n; }); }, []);
+  const stepHistory = (dir) => {
+    const h = hist.current; const from = dir === 'undo' ? h.undo : h.redo, to = dir === 'undo' ? h.redo : h.undo; let n = 0;
+    while (from.length && !n) { const id = from.pop(); setSession(s => { const x = { ...s }; n = dir === 'undo' ? undoAction(x, id, auditMeta(x)) : redoAction(x, id, auditMeta(x)); if (n) { x.updatedAt = new Date().toISOString(); dirty.current = true; } return n ? x : s; }); if (n) to.push(id); }
+    bumpHist(); toast(n ? `${dir === 'undo' ? 'Undone' : 'Redone'}: ${n} change${n === 1 ? '' : 's'}` : `Nothing to ${dir}`, { ttl: 2500 });
+  };
+  const stepRef = useRef(stepHistory); stepRef.current = stepHistory;
   useEffect(() => { (async () => { let loaded = null; try { loaded = await storageLoad(); } catch (e) { setSave({ status: 'unavailable', error: String(e) }); } if (loaded) setSave({ status: 'loaded', at: loaded.updatedAt ? new Date(loaded.updatedAt).toLocaleString([], { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '' }); setSession(loaded ? { ...createSession(), ...loaded } : createSession()); })(); }, []);
   useEffect(() => {
     if (!session || !dirty.current) return;
@@ -155,7 +163,12 @@ function App() {
   useEffect(() => { applyBrandColor(session?.settings?.brandColor); }, [session?.settings?.brandColor]);
   useEffect(() => { store.set('fg.page', page); store.set('fg.phase', phase); }, [page, phase]);
   useEffect(() => {
-    const onKey = (e) => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); setPalette(p => !p); } };
+    const onKey = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); setPalette(p => !p); return; }
+      // Ctrl+Z / Ctrl+Shift+Z / Ctrl+Y – outside text fields, where the browser's own text undo applies.
+      const inField = ['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName) || e.target.isContentEditable;
+      if (!inField && (e.ctrlKey || e.metaKey) && (e.key.toLowerCase() === 'z' || e.key.toLowerCase() === 'y')) { e.preventDefault(); stepRef.current(e.key.toLowerCase() === 'y' || e.shiftKey ? 'redo' : 'undo'); }
+    };
     const onGo = (e) => { if (e.detail?.page) setPage(e.detail.page); };
     const onToast = (e) => { if (e.detail?.text) toast(e.detail.text, { ttl: e.detail.ttl || 7000 }); };
     window.addEventListener('keydown', onKey); document.addEventListener('fg:go', onGo); document.addEventListener('fg:toast', onToast); return () => { window.removeEventListener('keydown', onKey); document.removeEventListener('fg:go', onGo); document.removeEventListener('fg:toast', onToast); };
@@ -171,12 +184,12 @@ function App() {
   const goActivity = (p) => { const l3 = p.level >= 4 ? p.parentId : p.id; setPage('phase'); setPhase('run'); setRunTab('workshop'); setWsUi(u => ({ ...u, stream: p.stream, l3, expanded: p.level >= 4 ? p.id : null, selected: p.level >= 4 ? p.id : null, entity: null })); };
   const paletteItems = [...Object.values(session.entities).map(e => ({ label: `${e.displayName || e.name} · ${e.code}`, kind: 'entity', icon: 'file', go: () => { setPage('phase'); setPhase('run'); setRunTab('workshop'); setWsUi(u => ({ ...u, entity: e.code })); } })), ...STREAMS.filter(s => summary.activitiesByStream[s]).map(s => ({ label: `${s} · ${summary.activitiesByStream[s]} activities`, kind: 'stream', icon: 'run', go: () => { setPage('phase'); setPhase('run'); setRunTab('workshop'); setWsUi(u => ({ ...u, stream: s, l3: null })); } })), ...Object.values(session.processes).filter(p => p.level >= 2).map(p => ({ label: `${p.id} ${p.name}`, kind: `L${p.level}`, icon: 'file', go: () => goActivity(p) })), ...NAV.map(p => ({ label: `${p.n} ${p.label}`, kind: 'page', icon: p.icon, go: () => { setPage('phase'); setPhase(p.key); } })), { label: 'Start here', kind: 'home', icon: 'info', go: () => setPage('home') }, { label: 'Style sheet', kind: 'design', icon: 'palette', go: () => setPage('styleguide') }, { label: 'Present', kind: 'present', icon: 'share', go: () => setPresent({ stream: session.processes[wsUi.l3]?.stream || 'R2R', entityFilter: null, l3: wsUi.l3 }) }, { label: theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme', kind: 'theme', icon: 'sun', go: () => setTheme(theme === 'dark' ? 'light' : 'dark') }];
   const logFeedback = (note) => { updateSession(s => { s.feedback = [...s.feedback, { ts: new Date().toISOString(), view: viewName, note, sessionId: s.activeSessionId }]; }); toast('Feedback logged'); };
-  const replaceSession = (loaded) => { setSession({ ...createSession(), ...loaded }); dirty.current = true; setRunTab(loaded.files?.length ? 'workshop' : 'import'); toast('Session loaded from file'); };
-  const clearAll = async () => { try { await storageClear(); } catch { /* ignore */ } setSession(createSession()); dirty.current = true; setRunTab('import'); toast('All data cleared'); };
+  const replaceSession = (loaded) => { hist.current = { undo: [], redo: [] }; bumpHist(); setSession({ ...createSession(), ...loaded }); dirty.current = true; setRunTab(loaded.files?.length ? 'workshop' : 'import'); toast('Session loaded from file'); };
+  const clearAll = async () => { hist.current = { undo: [], redo: [] }; bumpHist(); try { await storageClear(); } catch { /* ignore */ } setSession(createSession()); dirty.current = true; setRunTab('import'); toast('All data cleared'); };
   return html`<div class="app" data-rail=${rail ? '1' : '0'}>
     <${Sidebar} phase=${phase} setPhase=${setPhase} summary=${summary} rail=${rail} setRail=${setRail} session=${session} page=${page} setPage=${setPage} onPresent=${() => setPresent({ stream: session.processes[wsUi.l3]?.stream || 'R2R', entityFilter: null, l3: wsUi.l3 })} />
     <div class="content">
-      <${TopBar} crumbs=${crumbs} theme=${theme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')} setTheme=${setTheme} share=${share} setShare=${setShare} onPalette=${() => setPalette(true)} onFeedback=${() => setFeedback(f => !f)} save=${save} onSave=${() => { downloadSessionJson(session); toast('Session file downloaded'); }} onAi=${() => setAi(x => ({ open: !x.open, key: x.key || (wsUi.expanded && wsUi.expandedEntity ? assessmentKey(wsUi.expandedEntity, wsUi.expanded) : null) }))} />
+      <${TopBar} canUndo=${hist.current.undo.length > 0} canRedo=${hist.current.redo.length > 0} onUndo=${() => stepHistory('undo')} onRedo=${() => stepHistory('redo')} crumbs=${crumbs} theme=${theme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')} setTheme=${setTheme} share=${share} setShare=${setShare} onPalette=${() => setPalette(true)} onFeedback=${() => setFeedback(f => !f)} save=${save} onSave=${() => { downloadSessionJson(session); toast('Session file downloaded'); }} onAi=${() => setAi(x => ({ open: !x.open, key: x.key || (wsUi.expanded && wsUi.expandedEntity ? assessmentKey(wsUi.expandedEntity, wsUi.expanded) : null) }))} />
       <${KpiStrip} summary=${summary} session=${session} updateSession=${updateSession} toast=${toast} />
       <main class="main">${page === 'home' ? html`<${HomePage} session=${session} summary=${summary} updateSession=${updateSession} toast=${toast} go=${goStep} onReplaceSession=${replaceSession} />` : page === 'styleguide' ? html`<${StyleGuide} />` : phase === 'run' ? html`<${RunPage} session=${session} summary=${summary} updateSession=${updateSession} toast=${toast} onClearAll=${clearAll} tab=${tab} setTab=${setRunTab} ui=${wsUi} setUi=${setWsUi} onReplaceSession=${replaceSession} onPresent=${p => setPresent(p)} onAsk=${onAsk} />` : phase === 'plan' ? html`<${PlanView} session=${session} summary=${summary} updateSession=${updateSession} toast=${toast} />` : phase === 'results' ? html`<${EvaluatePage} session=${session} updateSession=${updateSession} toast=${toast} goActivity=${goActivity} />` : phase === 'signoff' ? html`<${Qg2Page} session=${session} updateSession=${updateSession} toast=${toast} /><div style="margin-top:2rem"><${HandoverPage} session=${session} toast=${toast} /></div>` : html`<${ComingNext} p=${current} />`}</main>
     </div>

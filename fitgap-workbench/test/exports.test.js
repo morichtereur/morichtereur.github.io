@@ -8,7 +8,8 @@ import * as XLSX from 'xlsx';
 import { parseCaptureWorkbook } from '../src/parser/capture.js';
 import { createSession, mergeParsedWorkbook, serializeSession, deserializeSession } from '../src/model/session.js';
 import { applyChange, confirmFit, bulkConfirmNoGap, completeness } from '../src/model/workshop.js';
-import { deviationRows, initiativeRows, flatRows, auditRows, buildDeviationLogWorkbook, buildFlatWorkbook } from '../src/model/exports.js';
+import { deviationRows, initiativeRows, flatRows, auditRows, buildDeviationLogWorkbook, buildFlatWorkbook, polishXlsx } from '../src/model/exports.js';
+import JSZip from 'jszip';
 
 let s;
 before(() => {
@@ -67,4 +68,19 @@ test('session JSON round-trip keeps workshop results, audit and plan data', () =
   const k = Object.values(s.assessments).find(a => a.deviation?.resolution === 'SEPARATE_VARIANT').key;
   assert.deepEqual(back.assessments[k].deviation, s.assessments[k].deviation);
   assert.equal(completeness(back.assessments[k]).complete, true);
+});
+
+test('polished workbooks: header row frozen and styled, data unchanged', async () => {
+  const raw = new Uint8Array(XLSX.write(buildDeviationLogWorkbook(s, XLSX), { bookType: 'xlsx', type: 'array' }));
+  const out = await polishXlsx(raw, JSZip);
+  const a = XLSX.read(raw, { type: 'array' }), b = XLSX.read(out, { type: 'array' });
+  assert.deepEqual(b.SheetNames, a.SheetNames);
+  for (const n of a.SheetNames) assert.deepEqual(XLSX.utils.sheet_to_json(b.Sheets[n]), XLSX.utils.sheet_to_json(a.Sheets[n]), n);
+  const zip = await JSZip.loadAsync(out); const styles = await zip.file('xl/styles.xml').async('string'); const sheet1 = await zip.file('xl/worksheets/sheet1.xml').async('string');
+  assert.match(sheet1, /<pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"\/>/);
+  const xf = Number(sheet1.match(/<row r="1"[^>]*>\s*<c [^>]*s="(\d+)"/)[1]);
+  const xfs = styles.match(/<cellXfs[^>]*>([\s\S]*?)<\/cellXfs>/)[1].match(/<xf /g).length;
+  assert.equal(xf, xfs - 1, 'header cells use the appended style');
+  assert.match(styles, /<fgColor rgb="FF1F4E79"\/>/);
+  assert.ok(out.length < raw.length, 'compressed');
 });

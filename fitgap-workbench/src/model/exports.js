@@ -71,7 +71,7 @@ function fmt(v) { if (v === null || v === undefined) return ''; if (typeof v ===
 
 export function feedbackRows(session) { return session.feedback.map(f => ({ 'Timestamp': ts(f.ts), 'View': f.view, 'Note': f.note, 'Session': sessionLabel(session, f.sessionId) })); }
 
-function sheet(XLSX, rows, header) {
+export function sheet(XLSX, rows, header = []) {
   const ws = XLSX.utils.json_to_sheet(rows.length ? rows : [Object.fromEntries(header.map(h => [h, '']))], { header: rows.length ? undefined : header });
   const cols = Object.keys(rows[0] || Object.fromEntries(header.map(h => [h, ''])));
   ws['!cols'] = cols.map(c => ({ wch: Math.min(60, Math.max(10, c.length + 2, ...rows.slice(0, 200).map(r => String(r[c] ?? '').length + 2))) }));
@@ -85,7 +85,7 @@ export function buildDeviationLogWorkbook(session, XLSX) {
   XLSX.utils.book_append_sheet(wb, sheet(XLSX, dev, ['Entity', 'Stream', 'Process ID']), 'Deviation log');
   XLSX.utils.book_append_sheet(wb, sheet(XLSX, initiativeRows(session), ['Entity', 'Stream', 'Process ID']), 'Initiative candidates');
   XLSX.utils.book_append_sheet(wb, sheet(XLSX, taxonomyRows(session), ['Process ID', 'Proposed change', 'Reason']), 'Taxonomy change requests');
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([['GBS Fit-Gap Workbench – deviation log'], ['Client', session.settings.clientName], ['Country', session.settings.country], ['Exported', new Date().toISOString().slice(0, 16).replace('T', ' ')], ['Deviations', dev.length], ['Entities', Object.keys(session.entities).length], ['Assessments', Object.keys(session.assessments).length]]), 'About');
+  { const about = XLSX.utils.aoa_to_sheet([['GBS Fit-Gap Workbench – deviation log'], ['Client', session.settings.clientName], ['Country', session.settings.country], ['Exported', new Date().toISOString().slice(0, 16).replace('T', ' ')], ['Deviations', dev.length], ['Entities', Object.keys(session.entities).length], ['Assessments', Object.keys(session.assessments).length]]); about['!cols'] = [{ wch: 30 }, { wch: 70 }]; XLSX.utils.book_append_sheet(wb, about, 'About'); }
   return wb;
 }
 
@@ -103,6 +103,33 @@ export function buildAuditWorkbook(session, XLSX) {
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, sheet(XLSX, auditRows(session), ['Timestamp', 'Field']), 'Audit log');
   return wb;
+}
+
+/**
+ * Client-ready polish that SheetJS CE cannot write: header row frozen, header cells bold white on the brand blue,
+ * wrapped and vertically centred. Patches the package XML (styles.xml + every worksheet). Bytes in, bytes out.
+ */
+export async function polishXlsx(bytes, JSZip, { fill = '1F4E79' } = {}) {
+  const zip = await JSZip.loadAsync(bytes);
+  const stylesFile = zip.file('xl/styles.xml'); if (!stylesFile) return bytes;
+  let styles = await stylesFile.async('string');
+  const count = (tag) => { const m = styles.match(new RegExp(`<${tag}[^>]*count="(\\d+)"`)); return m ? Number(m[1]) : (styles.match(new RegExp(`<${tag.slice(0, -1)}[ >/]`, 'g')) || []).length; };
+  const append = (tag, xml) => { const n = count(tag); if (new RegExp(`<${tag}[^>]*/>`).test(styles)) styles = styles.replace(new RegExp(`<${tag}[^>]*/>`), `<${tag} count="1">${xml}</${tag}>`); else styles = styles.replace(new RegExp(`<${tag}([^>]*)count="\\d+"([^>]*)>`), `<${tag}$1count="${n + 1}"$2>`).replace(`</${tag}>`, `${xml}</${tag}>`); return n; };
+  if (!/<fonts[\s>]/.test(styles) || !/<fills[\s>]/.test(styles) || !/<cellXfs[\s>]/.test(styles)) return bytes;
+  const fontId = append('fonts', '<font><b/><sz val="10"/><color rgb="FFFFFFFF"/><name val="Calibri"/><family val="2"/></font>');
+  const fillId = append('fills', `<fill><patternFill patternType="solid"><fgColor rgb="FF${fill}"/><bgColor indexed="64"/></patternFill></fill>`);
+  const xfId = append('cellXfs', `<xf numFmtId="0" fontId="${fontId}" fillId="${fillId}" borderId="0" xfId="0" applyFont="1" applyFill="1" applyAlignment="1"><alignment vertical="center" wrapText="1"/></xf>`);
+  zip.file('xl/styles.xml', styles);
+  const pane = '<sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/><selection pane="bottomLeft" activeCell="A2" sqref="A2"/></sheetView></sheetViews>';
+  for (const path of Object.keys(zip.files).filter(p => /^xl\/worksheets\/sheet\d+\.xml$/.test(p))) {
+    let xml = await zip.file(path).async('string');
+    if (!/<row r="2"/.test(xml)) continue; // nothing below the header – leave as is
+    xml = xml.replace(/<row r="1"([^>]*)>([\s\S]*?)<\/row>/, (m, attrs, cells) => `<row r="1"${attrs.replace(/\s(ht|customHeight)="[^"]*"/g, '')} ht="30" customHeight="1">${cells.replace(/<c ([^>]*?)(\/?)>/g, (c, a, close) => `<c ${a.replace(/\ss="\d+"/, '')} s="${xfId}"${close}>`)}</row>`);
+    if (/<sheetViews[\s>]/.test(xml)) xml = xml.replace(/<sheetViews[\s\S]*?<\/sheetViews>|<sheetViews\/>/, pane);
+    else xml = xml.replace(/(<dimension[^>]*\/>)/, `$1${pane}`).replace(/^((?![\s\S]*<sheetViews)[\s\S]*?)(<sheetFormatPr|<cols|<sheetData)/, (m, a, b) => m.includes('<sheetViews') ? m : `${a}${pane}${b}`);
+    zip.file(path, xml);
+  }
+  return zip.generateAsync({ type: 'uint8array', compression: 'DEFLATE' });
 }
 
 export function exportFileName(session, kind) {

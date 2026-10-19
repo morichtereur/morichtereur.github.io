@@ -19,7 +19,7 @@ Session {
   participants[]: { id, name, role, organisation: Local | GBS Ops | Transition | Process Expert }
   sessions[]:    { id, date, start, end, stream | 'MD', participantIds[], recording, note }
   activeSessionId,
-  audit[]:       { ts, key, field, old, new, sessionId, editor, bulkId? }   // every change, incl. bulk confirmations
+  audit[]:       { ts, key, field, old, new, sessionId, editor, bulkId?, note?, actionId? }   // every change, incl. bulk confirmations; actionId groups one user step (undo:/redo: prefixes for undo and redo)
   feedback[]:    { ts, view, note, sessionId }
   taxonomyChangeRequests[]: { id, processId, proposedChange, reason, raisedBy, sessionId }
   pendingEntityMatches[]:   entities without code that matched an existing one only fuzzily – user confirms

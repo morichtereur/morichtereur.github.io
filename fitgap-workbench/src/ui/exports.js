@@ -4,7 +4,7 @@ function downloadBlob(name, blob) {
   const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click();
   setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 2000);
 }
-function downloadWorkbook(name, wb) { const out = XLSX.write(wb, { bookType: 'xlsx', type: 'array' }); downloadBlob(`${name}.xlsx`, new Blob([out], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })); }
+async function downloadWorkbook(name, wb) { const out = await polishXlsx(new Uint8Array(XLSX.write(wb, { bookType: 'xlsx', type: 'array' })), JSZip); downloadBlob(`${name}.xlsx`, new Blob([out], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })); }
 function downloadSessionJson(session) { downloadBlob(`${exportFileName(session, 'session')}.json`, new Blob([serializeSession(session)], { type: 'application/json' })); }
 
 function ExportsCard({ session, summary, updateSession, toast, onReplaceSession }) {
