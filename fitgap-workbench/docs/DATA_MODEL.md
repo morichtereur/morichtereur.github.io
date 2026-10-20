@@ -1,6 +1,6 @@
 # Data model – proposal for sign-off (increment 1)
 
-Status: **implemented as proposed below, awaiting your OK.** Everything is a plain JSON object (one `Session`), so IndexedDB autosave, the JSON file and the later Replit/SQLite port use the same shape. Field names below are the ones in `src/js/30-model.js` and `src/js/20-parser.js`.
+Status: **approved (2026-10-20)**; additions from increment 2 marked ✚. Everything is a plain JSON object (one `Session`), so IndexedDB autosave, the JSON file and the later Replit/SQLite port use the same shape. Field names below are the ones in `src/js/30-model.js` and `src/js/20-parser.js`.
 
 ## Session (one per country transition)
 
@@ -14,13 +14,13 @@ Session {
   entities:     { [entityKey]: Entity },
   processes:    { [processId]: Process },
   assessments:  { [entityKey + '|' + processId]: Assessment },
-  participants: [ Participant ],           // increment 2
-  sessions:     [ WorkshopSession ],       // increment 2
+  participants: [ { id, name, role, organisation: 'Local'|'GBS Ops'|'Transition'|'Process Expert', email } ],   // ✚
+  sessions:     [ { id, date, start, end, stream, title, participants: [id], recording, notes, startedAt, endedAt, status: 'planned'|'running'|'done', source, country } ],  // ✚
   activeSessionId,
   pendingDiffs: [ Diff ],                  // re-import changes awaiting review
   audit:        [ AuditEntry ],
   feedback:     [ { id, ts, view, note, session } ],
-  taxonomyRequests: [ ]                    // increment 2
+  taxonomyRequests: [ { id, ts, processId, entityKey, change, reason, session, editor } ]   // ✚
 }
 ```
 
@@ -56,6 +56,7 @@ Assessment {
     detailedGap: { itSystems, workflowTools, currentProcess, externalParty, language, legal, controls, na },
     deviation: { dimensions: ['Business'|'IT Systems'|'Legal'], resolution: 'SEPARATE_VARIANT'|'CLOSE_BEFORE_GOLIVE'|'LIFT_AND_SHIFT',
                  justification, owner, targetDate, escalation: 'L1'|'L2'|'L3'|'STEERCO', approval: 'PROPOSED'|'APPROVED'|'REJECTED' } | null,
+    initiative,                                        // ✚ linked existing initiative or '__new' (STANDARDIZATION / BOTH)
     comment, nextStep, owner, due, changedAt, session },
   sources: [fileName], importedAt }
 ```
@@ -92,3 +93,9 @@ Assessment {
 3. A2R sub-streams are derived from L1/L2 names matching "fixed asset / asset accounting" vs. "inventory". If the real file uses other wording, the regex sits in `profile.streams.subStreams`.
 4. Master-data nodes: match on "Master Data" in the node name, inherited by children. Confirm this is enough for the MD session filter (or give me the L2/L3 IDs).
 5. Instruction-text detection is pattern-based (`to be copied`, `to be filled`, `please …`, `fill in`, `copy the/this`, `see sheet/tab`). Send me the real phrases and I extend the list.
+
+## ✚ FTE impact (increment 2)
+FTE is entered per activity × entity in the Fit-Gap step (as in the capture sheet). Aggregation per L3 / L2 / L1 / stream (`FG.workshop.progress`): the FTE of an activity is allocated to the lane(s) the workshop chose (Local / Other / GBS; split evenly when more than one lane is ticked; To-Be lane when not yet assessed). Reported as total, → GBS, local, other, and "planned GBS" (FTE of activities whose To-Be is GBS) so the delta between plan and workshop is visible. Shown in the L3 header and in the tree tooltips; feeds the Activity Split view (increment 7).
+
+## ✚ Completeness rule (increment 2)
+Fit-Gap split set · workshop gap type set · rationale when the gap type is not NO GAP or differs from Ops · Detailed Gap: at least one field for any gap, otherwise n/a or a field or confirmed fit · for a gap: dimension, resolution approach, accountable owner, justification for separate variant · status set · out of scope needs a reason in the comment.

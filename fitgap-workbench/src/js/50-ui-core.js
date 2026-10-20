@@ -147,9 +147,9 @@
   function navigate(view, params) { if (!VIEWS[view]) view = 'prepare.import'; state.view = view; state.params = params || {}; state.popover = null; render(); const c = document.querySelector('.content'); if (c) c.scrollTop = 0; }
 
   const PHASES = [
-    { id: 'plan', num: '1', label: 'Plan', view: 'plan', icon: 'plan', soon: true },
+    { id: 'plan', num: '1', label: 'Plan', view: 'plan', icon: 'plan', done: () => state.session.sessions.length > 0 && state.session.participants.length > 0 },
     { id: 'prepare', num: '2', label: 'Prepare', view: 'prepare.import', icon: 'prepare', subs: [{ label: 'Import capture sheets', view: 'prepare.import' }, { label: 'Readiness', view: 'prepare.readiness', soon: true }], done: () => hasData() },
-    { id: 'run', num: '3', label: 'Run', view: 'run', icon: 'run', soon: true },
+    { id: 'run', num: '3', label: 'Run', view: 'run', icon: 'run' },
     { id: 'evaluate', num: '4', label: 'Evaluate', view: 'evaluate', icon: 'evaluate', soon: true },
     { id: 'qg2', num: '5', label: 'QG2 sign-off', view: 'qg2', icon: 'qg2', soon: true },
     { id: 'handover', num: '6', label: 'Hand-over', view: 'handover', icon: 'handover', soon: true },
@@ -204,6 +204,7 @@
     crumb.forEach((x, i) => { if (i) c.appendChild(el('span.sep', '›')); c.appendChild(i === crumb.length - 1 ? el('b', x) : el('span', x)); });
     top.appendChild(c);
     top.appendChild(el('div.grow'));
+    top.appendChild(sessionControl());
     top.appendChild(el('button.searchbtn', { onClick: openCmdk, title: 'Jump to entity, stream, process ID or view' }, icon('search'), el('span', 'Jump to…'), el('kbd', 'Ctrl K')));
     const ss = el('div.savestate.' + state.saveStatus, el('span.dot'), el('span', '')); top.appendChild(ss);
     top.appendChild(el('button.iconbtn', { title: 'Save session as JSON (backup / continue on another laptop)', onClick: () => { FG.store.exportJson(state.session); toast('Session JSON downloaded'); } }, icon('download')));
@@ -214,6 +215,40 @@
     top.appendChild(el('button.btn.sm', { onClick: openFeedback, title: 'Log pilot feedback for this view' }, icon('feedback', 'ico'), 'Feedback'));
     renderSaveState();
   }
+  /* ---------- session control + timer (top bar) ------------------------------------- */
+  function fmtMMSS(sec) { const m = Math.floor(sec / 60), s2 = sec % 60; return (m < 100 ? String(m).padStart(2, '0') : m) + ':' + String(s2).padStart(2, '0'); }
+  function timerText() {
+    const t = FG.workshop.timer(state.session); if (!t) return '';
+    const parts = ['elapsed ' + fmtMMSS(t.elapsedS)];
+    if (t.leftS !== null) parts.push(t.overdue ? 'time is up' : fmtMMSS(t.leftS) + ' left');
+    parts.push(t.done + '/' + t.activities + ' done');
+    if (t.paceS !== null) parts.push('need ' + (t.paceS >= 60 ? Math.round(t.paceS / 60) + ' min' : t.paceS + ' s') + '/activity');
+    return parts.join(' · ');
+  }
+  function sessionControl() {
+    const s = state.session, W = FG.workshop;
+    const wrap = el('div.sess');
+    if (!s.sessions.length) { if (state.view !== 'plan' && hasData()) wrap.appendChild(el('button.link', { onClick: () => navigate('plan') }, 'Plan sessions')); return wrap; }
+    const act = W.activeSession(s);
+    if (act) {
+      const t = W.timer(s);
+      wrap.appendChild(el('span.chip.live' + (t && t.overdue ? '.over' : ''), { title: W.sessionLabel(act) + (act.title ? ' · ' + act.title : '') }, '● ', act.stream || act.title || 'Session'));
+      wrap.appendChild(el('span.mono.muted.timer', { title: 'Session timer: elapsed vs. planned, activities remaining, required pace' }, timerText()));
+      wrap.appendChild(el('button.btn.sm', { onClick: () => { W.endSession(s); touch(); render(); promptBackup(); } }, 'End session'));
+    } else {
+      const sel = el('select.select', s.sessions.map(x => el('option', { value: x.id }, W.sessionLabel(x) + (x.status === 'done' ? ' ✓' : ''))));
+      const pick = s.sessions.find(x => x.status !== 'done') || s.sessions[0]; if (pick) sel.value = pick.id;
+      wrap.appendChild(sel);
+      wrap.appendChild(el('button.btn.sm.primary', { onClick: () => { W.startSession(s, sel.value); touch(); const x = s.sessions.find(y => y.id === sel.value); if (state.view === 'run') render(); else navigate('run', { stream: x && x.stream && x.stream !== 'MD' ? x.stream : (x && x.stream === 'MD' ? 'MD' : undefined) }); } }, 'Start session'));
+    }
+    return wrap;
+  }
+  async function promptBackup() {
+    const ok = await confirmDialog('Session ended – download a JSON backup?', 'Recommended at the end of every session block, so the results survive a browser profile reset and can be continued on another laptop.', 'Download backup');
+    if (ok) { FG.store.exportJson(state.session); toast('Session JSON downloaded'); }
+  }
+  setInterval(() => { const n = document.querySelector('.sess .timer'); if (n && state.session) n.textContent = timerText(); }, 15000);
+
   function renderStrip() {
     const strip = clear(document.querySelector('.strip'));
     if (!hasData()) { strip.classList.add('hidden'); return; }
@@ -328,5 +363,5 @@
     return el('div.soon-card', el('div.eyebrow', 'Coming next · increment ' + num), el('h2', title), lede ? el('p.muted.small', { style: { marginTop: '.3rem' } }, lede) : null, el('ul', items.map(i => el('li', i))));
   }
 
-  FG.ui = { state, VIEWS, el, icon, clear, navigate, render, touch, toast, confirmDialog, gapPill, stackBar, legend, splitPill, gapOrder, PILL_LABEL, applyTheme, toggleTheme, newSession, loadSessionObject, loadJsonFile, hasData, showWelcome, openCmdk, openFeedback, pageHead, soonCard, PHASES };
+  FG.ui = { promptBackup, state, VIEWS, el, icon, clear, navigate, render, touch, toast, confirmDialog, gapPill, stackBar, legend, splitPill, gapOrder, PILL_LABEL, applyTheme, toggleTheme, newSession, loadSessionObject, loadJsonFile, hasData, showWelcome, openCmdk, openFeedback, pageHead, soonCard, PHASES };
 })(typeof globalThis !== 'undefined' ? globalThis : window);

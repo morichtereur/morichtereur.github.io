@@ -36,10 +36,14 @@ src/js/10-profile.js  template profile #1 – how the capture-sheet layout is de
 src/js/15-demo.js     demo data generator ("Demo Group", 3 entities) with the real files' quirks
 src/js/20-parser.js   SheetJS workbook → entities, processes, assessments, structure, warnings
 src/js/30-model.js    session model: merge, re-import diffs, audit trail, derived totals
+src/js/32-workshop.js workshop logic: edits with audit, completeness, suggestions, bulk confirm, FTE impact, participants, sessions, timer
+src/js/35-planning.js planning-workbook import (free-text dates/times → sessions for review)
 src/js/40-store.js    IndexedDB autosave, JSON save/load
 src/js/50-ui-core.js  app shell, sidebar, top bar, KPI strip, dialogs, command palette, feedback
 src/js/60-ui-import.js  PREPARE › Import view and summary
-src/js/65-ui-phases.js  PLAN / RUN (read-only browser) / EVALUATE / QG2 / HAND-OVER states, Settings, Feedback log
+src/js/62-ui-plan.js    PLAN-lite: country set-up, participants, sessions, planning-workbook review
+src/js/65-ui-phases.js  PREPARE readiness / EVALUATE / QG2 / HAND-OVER states, Settings, Feedback log
+src/js/66-ui-workshop.js RUN: workshop mode
 src/js/70-ui-stylesheet.js  one-page style sheet for sign-off
 src/js/90-main.js     boot
 scripts/              build, demo workbooks, structure inspector, smoke test
@@ -53,13 +57,13 @@ Parser, model and UI are separate modules on a single `FG` namespace so the Repl
 
 | # | Scope | Status |
 |---|---|---|
-| 1 | App shell with all six lifecycle phases, design system + style sheet, template profile #1 parser, import summary, autosave + JSON save/load, feedback button | **done** (this build) |
-| 2 | PLAN-lite (country set-up, participants, session list, planning-workbook import) · RUN workshop mode (Fit-Gap, Detailed Gap, deviation block, bulk confirm, keyboard flow, audit trail per activity) | next |
+| 1 | App shell with all six lifecycle phases, design system + style sheet, template profile #1 parser, import summary, autosave + JSON save/load, feedback button | **done** |
+| 2 | PLAN-lite (country set-up, participants, session list, planning-workbook import) · RUN workshop mode (Fit-Gap + FTE impact, Detailed Gap, gap type + rationale, deviation block, bulk confirm with undo, keyboard flow, session timer, audit trail per activity, taxonomy change requests) | **done** |
 | 3 | Session save/load hardening (backup prompt at session end) | partly in 1 |
 | 4 | Deviation log + flat export (.xlsx) | next |
 | 5–8 | Flow image extraction · present mode + QG2 view · EVALUATE board, activity split, analysis dashboard · entity swimlane | pilot week |
 | 9–11 | Write-back into original workbooks · full PLAN/PREPARE/HAND-OVER · profile mapping UI, Replit port | after the pilot |
 
-## What works, what is missing, edge cases (increment 1)
+## What works, what is missing (after increment 2)
 
-Works: everything in `docs/ACCEPTANCE.md`. Missing: all of increment 2 onwards (phases show a "coming next" state); the RUN tab is a read-only taxonomy browser to verify the parsing. Parsing edge cases handled and tested: see `docs/PARSER.md`. Not yet seen: the real pilot files – the first thing to do with them is `node scripts/inspect.mjs`.
+Works: everything in `docs/ACCEPTANCE.md`. Workshop flow: pick a stream and L3 → "Confirm Ops NO GAP for this L3" → discuss the flagged rows (click or ↑/↓ + Enter), per entity side by side; keys 1–5 set the status, C confirms as fit. Missing: exports (increment 4), flow images, present mode, QG2 view, EVALUATE board, swimlane, write-back. Not yet seen: the real pilot files – run `node scripts/inspect.mjs` on them first.
