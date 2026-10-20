@@ -32,3 +32,6 @@ pnpm-debug.log*
 # Local tooling config, not part of the site.
 .claude/
 CLAUDE.md
+
+# The fit-gap workbench build is the deliverable (one offline HTML file), so it is tracked.
+!/fitgap-workbench/dist/

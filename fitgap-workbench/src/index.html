@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- Zero network at runtime: everything is inlined. The CSP below makes any accidental external request fail loudly. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; font-src data:; connect-src 'none'; form-action 'none'; base-uri 'none'">
+<title>GBS Fit-Gap Workbench</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%231f4e79'/%3E%3Ctext x='16' y='21' font-family='monospace' font-size='13' font-weight='700' fill='%23fff' text-anchor='middle'%3EFG%3C/text%3E%3C/svg%3E">
+<style>
+/* @fonts */
+</style>
+<style>
+/* @css */
+</style>
+</head>
+<body>
+<div id="app" class="app">
+  <aside class="side" aria-label="Navigation"></aside>
+  <div class="main">
+    <header class="topbar"></header>
+    <div class="strip hidden"></div>
+    <main class="content"></main>
+  </div>
+</div>
+<noscript>This tool needs JavaScript. Open dist/index.html in Edge or Chrome.</noscript>
+<!-- @vendor -->
+<script>window.FG_BUILD = "/* @build */";</script>
+<!-- @app -->
+</body>
+</html>

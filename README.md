@@ -77,3 +77,9 @@ npm run sync:dashboards
 
 The script reports `updated`, `unchanged` or `FAILED to fetch` per dashboard and
 exits non-zero if any fetch failed.
+
+## Other projects in this repository
+
+`fitgap-workbench/` is an internal consulting tool (GBS fit-gap workbench) that
+builds to a single offline HTML file. It is not part of the site and is not
+published under `public/`; see its own README.
