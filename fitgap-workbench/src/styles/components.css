@@ -563,6 +563,15 @@ dialog.welcome { max-width: 40rem; }
 .fte-row .fte-input { width: 5.2rem; text-align: right; font-family: var(--font-mono); } .fte-row .fte-input::placeholder { color: var(--ink-3); opacity: .6; }
 .fte-row.compact .fte-input { width: 4.2rem; padding: .1rem .35rem; }
 .fte-row .chips { gap: .25rem; } .fte-row .chip { font-family: var(--font-mono); }
+/* Who performs it: Local · GBS · Other side by side, one cell each; the cell lights up when answered "Y". */
+.performers { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .35rem; }
+.performer { display: flex; flex-direction: column; align-items: center; gap: .25rem; padding: .3rem .2rem .35rem; border: 1px solid var(--line); border-radius: var(--radius); white-space: nowrap; font-size: .78rem; font-weight: 600; color: var(--ink-2); min-width: 0; }
+.performer.on { border-color: var(--accent); background: var(--accent-soft); color: var(--ink); }
+.performer .yn button { min-width: 1.7rem; }
+/* Hours quick picks in the flow-board panel: one row, equal widths. */
+.board-detail .fte-row .chips { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); width: 100%; }
+.board-detail .fte-row .chip { padding: .12rem 0; text-align: center; white-space: nowrap; }
+.present .performer { font-size: .9cqw; }
 .fte-badge { font-family: var(--font-mono); font-size: .62rem; padding: .02rem .3rem; border-radius: 3px; background: var(--accent-soft); color: var(--accent); white-space: nowrap; }
 .fte-total { font-family: var(--font-mono); font-size: .74rem; color: var(--accent); background: var(--accent-soft); padding: .1rem .45rem; border-radius: 999px; white-space: nowrap; }
 .present .fte-total { font-size: .9cqw; } .present .fte-badge { font-size: .75cqw; }
