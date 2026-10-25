@@ -108,7 +108,9 @@ export function mergeParsedWorkbook(session, parsed, opts = {}) {
     if (e.unlabeled) {
       // Single-entity file without label: the one entity of this country, else a placeholder the labelled file takes over.
       const real = sameCountry().filter(x => !x.placeholder), ph = sameCountry().filter(x => x.placeholder);
+      const coded = real.filter(x => x.hasCode);
       if (real.length === 1) { target = real[0]; report.entities.merged.push({ from: '(no label)', to: target.name, auto: true, reason: 'single-entity file' }); }
+      else if (coded.length === 1) { target = coded[0]; report.entities.merged.push({ from: '(no label)', to: target.name, auto: true, reason: 'only entity of this country with a code' }); report.warnings.push({ level: 'info', code: 'ENTITY_BY_CODE', message: `${parsed.fileName} has no entity label – assigned to ${target.code} ${target.name}, the only entity of ${fileCountry || 'this country'} with an entity code.` }); }
       else if (ph.length) target = ph[0];
       else {
         const code = `unlabeled:${fuzzyKey(fileCountry || 'entity')}`;

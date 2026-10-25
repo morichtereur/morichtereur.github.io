@@ -65,3 +65,26 @@ test('a sheet range stretched to row 1,048,576 is read only up to the last fille
   const t = Date.now(); const g = sheetToGrid(ws, XLSX);
   assert.equal(g.rows.length, 2); assert.ok(Date.now() - t < 500);
 });
+
+test('an entity label without code is recognised by its position above the block', () => {
+  const f = files.find(f => /R2R/.test(f)); const base = parse(f);
+  const second = base.layout.blocks.filter(b => b.kind === 'ASIS')[1];
+  const p = parse(f, wb => { const ws = wb.Sheets[base.sheetName]; for (const b of base.layout.blocks) if (b.labelCell && b.entity?.code === second.entity.code) ws[b.labelCell].v = 'AP Hub'; });
+  assert.ok(p.entities.some(e => e.name === 'AP Hub'), 'second entity kept, not merged into its neighbour');
+  assert.equal(p.entities.length, base.entities.length);
+  assert.equal(p.assessments.length, base.assessments.length);
+  assert.ok(p.warnings.some(w => w.code === 'ENTITY_BY_POSITION'));
+});
+
+test('pre-assessment check: summary per entity × stream and one finding per empty GAP cell', async () => {
+  const { preAssessmentQC } = await import('../src/model/qc.js');
+  const f = files.find(f => /R2R/.test(f)); const base = parse(f);
+  const victim = base.assessments.find(a => !a.scope.outOfScope && a.asIs.gap && a.sources[0].cells.asIs?.gap);
+  const p = parse(f, wb => { const c = wb.Sheets[base.sheetName][victim.sources[0].cells.asIs.gap]; c.v = ''; c.t = 's'; });
+  const s = createSession(); mergeParsedWorkbook(s, p);
+  const qc = preAssessmentQC(s);
+  assert.equal(qc.summary.length, p.entities.length, 'one row per entity for the stream');
+  const hit = qc.issues.find(i => i.code === 'GAP_MISSING' && i.processId === victim.processId);
+  assert.ok(hit, 'empty GAP reported'); assert.equal(hit.cell, victim.sources[0].cells.asIs.gap);
+  assert.ok(qc.summary.every(r => ['Green', 'Amber', 'Red', 'n/a'].includes(r.readiness)));
+});

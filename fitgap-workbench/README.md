@@ -76,6 +76,15 @@ across modules – the build fails on duplicates.
 3. Session JSON save/load, backup prompt at session end
 4. Deviation log (+ initiative candidates, taxonomy change requests), flat export with audit log, audit export; acceptance run  ← pilot MVP complete
 5–11. flows, present mode, QG2, evaluate, swimlane, write-back, full PLAN/PREPARE/HAND-OVER, profile mapping UI
+16. Pre-assessment check before the workshop (`src/model/qc.js`; button under Files & exports, or
+    `node scripts/qc-preassessment.mjs <country-folder> [--reference <other-country-folder> ...] [--out file.xlsx]`):
+    readiness per entity × stream (GAP filled, As-Is/To-Be split filled, system filled, gaps explained → Green / Amber /
+    Red) and one finding per cell with file, sheet and cell address – empty GAP / split / system, gap or N/A without
+    reason, split vs. GAP contradictions, duplicate IDs, rows without ID, missing level, entity without label or code,
+    entity code used twice, workshop columns already filled; with `--reference` also activities missing or added
+    against other countries. Excel with Summary, Issues (Status / Comment Ops columns for GBS Ops), Checks, About.
+    Parser: entity labels without a code are recognised by their position above the block (e.g. a hub next to the
+    legal entity), and a second block for the same entity is reported and skipped instead of overwriting the first.
 15. Effort in hours: local teams estimate hours per month (quick picks 1–40 h, free entry with comma or point);
     FTE = hours ÷ productive hours per FTE per month (default 140 ≈ 1,680 h a year, set under Plan & prepare → More
     settings; changing it recalculates every FTE derived from hours, logged in the audit trail). Both are stored

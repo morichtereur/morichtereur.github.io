@@ -1,16 +1,16 @@
 # Acceptance test – pilot dry run
 
-Run: 2026-10-25 05:28 UTC · build 0.1.0 · headless Chromium, network blocked, file:// · 11 s
+Run: 2026-10-25 10:15 UTC · build 0.1.0 · headless Chromium, network blocked, file:// · 11 s
 Result: **PASSED** (8/8)
 
 | # | Step | Result | Detail |
 |---|---|---|---|
 | 1 | Import 6 capture workbooks with network disabled | pass | entities=3 activities=180 assessments=540 outOfScope=54 failed=0 |
 | 2 | PLAN-lite: client, country, initials, participant, session | pass |  |
-| 3 | Simulated R2R session: bulk confirm + 3 deviations with owner and resolution | pass | "7 activities confirmed as fit", deviations=3, audit=123 |
-| 4 | Close browser and reopen: data still there (IndexedDB) | pass | assessments=540 audit=123 deviations=3 |
-| 5 | JSON save on laptop A, load on laptop B (fresh browser) | pass | Demo_Group_France_session_20261025-0527.json (763 KB), audit=123 |
-| 6 | Deviation log .xlsx: valid package, 4 sheets, decided deviations carry owner / approach / session | pass | Demo_Group_France_deviation-log_20261025-0527.xlsx: 207 rows, 3 decided, sheets=Deviation log/Initiative candidates/Taxonomy change requests/About |
+| 3 | Simulated R2R session: bulk confirm + 3 deviations with owner and resolution | pass | "7 activities confirmed as fit", deviations=3, audit=124 |
+| 4 | Close browser and reopen: data still there (IndexedDB) | pass | assessments=540 audit=124 deviations=3 |
+| 5 | JSON save on laptop A, load on laptop B (fresh browser) | pass | Demo_Group_France_session_20261025-1015.json (763 KB), audit=124 |
+| 6 | Deviation log .xlsx: valid package, 4 sheets, decided deviations carry owner / approach / session | pass | Demo_Group_France_deviation-log_20261025-1015.xlsx: 207 rows, 3 decided, sheets=Deviation log/Initiative candidates/Taxonomy change requests/About |
 | 7 | Flat export .xlsx: one row per entity × activity + audit log | pass |  |
 | 8 | Zero network requests, zero console errors during the whole run | pass | network=0 errors=0 |
 

@@ -572,3 +572,6 @@ dialog.welcome { max-width: 40rem; }
 
 .fte-note { font-family: var(--font-mono); font-size: .72rem; color: var(--accent); white-space: nowrap; }
 .present .fte-note { font-size: .85cqw; } .fte-row.compact .small { font-size: .7rem; }
+
+.qc-light { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: .35rem; vertical-align: 0; background: var(--none); }
+.qc-green { background: var(--ok); } .qc-amber { background: var(--g-harm); } .qc-red { background: var(--flag); }

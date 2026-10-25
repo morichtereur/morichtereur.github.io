@@ -714,6 +714,9 @@ dialog.welcome { max-width: 40rem; }
 .fte-note { font-family: var(--font-mono); font-size: .72rem; color: var(--accent); white-space: nowrap; }
 .present .fte-note { font-size: .85cqw; } .fte-row.compact .small { font-size: .7rem; }
 
+.qc-light { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: .35rem; vertical-align: 0; background: var(--none); }
+.qc-green { background: var(--ok); } .qc-amber { background: var(--g-harm); } .qc-red { background: var(--flag); }
+
 </style>
 </head>
 <body>
@@ -759,7 +762,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 </script>
 <script id="app">
 'use strict';
-const BUILD = { version: '0.1.0', builtAt: '2026-10-25T05:35:30.221Z' };
+const BUILD = { version: '0.1.0', builtAt: '2026-10-25T10:18:35.203Z' };
 
 /* ---- src/model/constants.js ---- */
 // Domain constants. Pure data – no client-specific values anywhere in here.
@@ -1273,6 +1276,19 @@ function scanBand(grid, headerRow, profile, minCol = 0) {
       }
     }
   }
+  // Labels without code or legal form ("AP Hub") are recognised by position: same band row as a recognised label,
+  // and sitting exactly above where a per-entity block starts (an As-Is / Fit-Gap / Detailed title column).
+  const labelRows = new Set(labels.map(l => l.row));
+  const blockCols = new Set(titles.filter(t => profile.blocks[t.kind]?.perEntity).map(t => t.col));
+  for (const r of labelRows) {
+    const row = grid.rows[r] || [];
+    for (let c = minCol; c < row.length; c++) {
+      if (!blockCols.has(c) || labels.some(l => l.row === r && l.col === c)) continue;
+      const text = normText(row[c]); if (!text || text.length > 60 || /^\d+$/.test(text) || titles.some(t => t.row === r && t.col === c)) continue;
+      const parsed = parseEntityLabel(text); const merge = grid.merges.get(`${r},${c}`);
+      if (parsed) labels.push({ row: r, col: c, colEnd: merge ? merge.c1 : c, ...parsed, byPosition: true });
+    }
+  }
   return { titles, subHeaders, labels, top };
 }
 
@@ -1337,6 +1353,11 @@ function buildBlocks(grid, headerRow, band, core, profile, warnings) {
     if (guess) { b.entity = guess; b.entityGuessed = true; warnings.push({ level: 'warn', code: 'ENTITY_BY_ORDINAL', message: `${b.kind} block at column ${colLetter(b.col)} has no entity label – assigned to "${guess.name}" by position (${b.ordinal}). Please verify.` }); }
     else { b.entity = { code: null, name: `Unknown entity ${b.ordinal}`, raw: '' }; b.entityGuessed = true; warnings.push({ level: 'error', code: 'ENTITY_UNKNOWN', message: `${b.kind} block at column ${colLetter(b.col)} has no entity label and no other block to pair with.` }); }
   }
+  // The same block kind twice for one entity would let the right block overwrite the left one row by row.
+  const seenKind = new Map();
+  for (const b of blocks) { if (!profile.blocks[b.kind].perEntity || !b.entity) continue; const k = `${b.kind}|${b.entity.unlabeled ? 'unlabeled' : (b.entity.code || fuzzyKey(b.entity.name))}`; if (seenKind.has(k)) { b.duplicateOf = seenKind.get(k); warnings.push({ level: 'warn', code: 'DUPLICATE_ENTITY_BLOCK', message: `Two ${b.kind} blocks belong to "${b.entity.name || 'the entity'}" (${colLetter(seenKind.get(k).col)}–${colLetter(seenKind.get(k).colEnd)} and ${colLetter(b.col)}–${colLetter(b.colEnd)}) – the left one is read. If the right one is another entity, add its label above it.` }); } else seenKind.set(k, b); }
+  const byPos = band.labels.filter(l => l.byPosition);
+  if (byPos.length) warnings.push({ level: 'info', code: 'ENTITY_BY_POSITION', message: `Entity label${byPos.length > 1 ? 's' : ''} ${[...new Set(byPos.map(l => `"${l.raw}"`))].join(', ')} recognised by position (no 6-digit code) – please add the entity code in the template.` });
   const inherited = blocks.filter(b => b.entityInherited).length;
   if (inherited) warnings.push({ level: 'info', code: 'ENTITY_INHERITED', message: `${inherited} block(s) without their own entity label took the entity of the block to their left (labels are written once per entity group).` });
   for (const b of blocks) if (b.entity?.outOfScope) warnings.push({ level: 'warn', code: 'ENTITY_OUT_OF_SCOPE', message: `Entity label "${b.entity.raw}" says out of scope – all ${b.kind === 'ASIS' ? 'its' : 'its'} activities in this file are imported as out of scope (can be included in the workshop).` });
@@ -1463,7 +1484,7 @@ function parseCaptureWorkbook(wb, opts) {
     const valid = Number.isInteger(level) && level >= profile.dataRow.levelMin && level <= profile.dataRow.levelMax && idRx.test(id);
     if (!valid) {
       const name = normText(readCell(grid, r, layout.core.name?.col));
-      if (!isEmpty(rawLevel) || id || name) { skippedCount++; if (skipped.length < 8) skipped.push({ row: r + 1, level: normText(rawLevel), id, name }); }
+      if (!isEmpty(rawLevel) || id || name) { skippedCount++; if (skipped.length < 500) skipped.push({ row: r + 1, level: normText(rawLevel), id, name }); }
       continue;
     }
     const name = normText(readCell(grid, r, layout.core.name?.col));
@@ -1491,6 +1512,7 @@ function parseCaptureWorkbook(wb, opts) {
 
     const byEntity = new Map();
     for (const b of perEntity) {
+      if (b.duplicateOf) continue;
       const ek = entityOf(b);
       if (!byEntity.has(ek)) byEntity.set(ek, { entity: b.entity, blocks: {} });
       byEntity.get(ek).blocks[b.kind] = b;
@@ -1540,14 +1562,14 @@ function parseCaptureWorkbook(wb, opts) {
   const byId = new Map(processes.map(p => [p.id, p])); let reparented = 0;
   for (const p of processes) { if (p.structuralParentId && p.structuralParentId !== p.parentId && byId.has(p.structuralParentId) && byId.get(p.structuralParentId).level < p.level) { p.parentId = p.structuralParentId; reparented++; } }
   if (reparented) warnings.push({ level: 'info', code: 'REPARENTED', message: `${reparented} row(s) attached to the parent implied by their Process ID instead of the row above.` });
-  if (levelInferred.length) warnings.push({ level: 'info', code: 'LEVEL_INFERRED', message: `${levelInferred.length} row(s) without a Process Level – level taken from the Process ID (e.g. ${levelInferred[0].id} → L${levelInferred[0].level}, row ${levelInferred[0].row}).`, examples: levelInferred.slice(0, 10) });
+  if (levelInferred.length) warnings.push({ level: 'info', code: 'LEVEL_INFERRED', message: `${levelInferred.length} row(s) without a Process Level – level taken from the Process ID (e.g. ${levelInferred[0].id} → L${levelInferred[0].level}, row ${levelInferred[0].row}).`, examples: levelInferred.slice(0, 500) });
   const dupActs = duplicates.filter(d => d.activity), dupNodes = duplicates.filter(d => !d.activity);
-  if (dupActs.length) warnings.push({ level: 'warn', code: 'DUPLICATE_ID', message: `${dupActs.length} activity ID(s) appear more than once in this sheet – the later rows are kept as separate activities with " (2)" added to the ID (e.g. ${dupActs[0].keptAs}, row ${dupActs[0].row}: "${dupActs[0].name}"). Please correct the IDs in the template.`, examples: dupActs.slice(0, 10) });
+  if (dupActs.length) warnings.push({ level: 'warn', code: 'DUPLICATE_ID', message: `${dupActs.length} activity ID(s) appear more than once in this sheet – the later rows are kept as separate activities with " (2)" added to the ID (e.g. ${dupActs[0].keptAs}, row ${dupActs[0].row}: "${dupActs[0].name}"). Please correct the IDs in the template.`, examples: dupActs.slice(0, 500) });
   if (dupNodes.length) warnings.push({ level: 'info', code: 'DUPLICATE_NODE', message: `${dupNodes.map(d => `"${d.id}" is used for "${d.first}" and "${d.name}" (row ${d.row})`).join('; ')} – kept as separate process groups.`, examples: dupNodes });
   const skippedNamed = skipped.filter(x => x.name).length;
   if (skippedCount) warnings.push({ level: skippedNamed ? 'warn' : 'info', code: 'ROWS_SKIPPED', message: `${skippedCount} non-data row(s) skipped (no numeric level 0–5 with a stream process ID).`, examples: skipped });
   if (hierarchyMismatch - reparented > 0) warnings.push({ level: 'info', code: 'HIERARCHY', message: `${hierarchyMismatch - reparented} row(s) where the parent implied by the Process ID does not exist – kept under the row above.` });
-  if (unmappedGap.length) warnings.push({ level: 'warn', code: 'GAP_UNMAPPED', message: `${unmappedGap.length} GAP value(s) could not be mapped (set to UNCLEAR).`, examples: unmappedGap.slice(0, 10) });
+  if (unmappedGap.length) warnings.push({ level: 'warn', code: 'GAP_UNMAPPED', message: `${unmappedGap.length} GAP value(s) could not be mapped (set to UNCLEAR).`, examples: unmappedGap.slice(0, 500) });
   if (notes.length) warnings.push({ level: 'info', code: 'INSTRUCTION_TEXT', message: `${notes.length} cell(s) with instruction text imported as notes, not values.`, examples: notes.slice(0, 10) });
 
   const entities = layout.entities.map(e => (e.unlabeled ? { code: 'unlabeled', name: '', raw: '', hasCode: false, unlabeled: true } : { code: e.code || `name:${fuzzyKey(e.name)}`, name: e.name, raw: e.raw, hasCode: !!e.code }));
@@ -1782,7 +1804,9 @@ function mergeParsedWorkbook(session, parsed, opts = {}) {
     if (e.unlabeled) {
       // Single-entity file without label: the one entity of this country, else a placeholder the labelled file takes over.
       const real = sameCountry().filter(x => !x.placeholder), ph = sameCountry().filter(x => x.placeholder);
+      const coded = real.filter(x => x.hasCode);
       if (real.length === 1) { target = real[0]; report.entities.merged.push({ from: '(no label)', to: target.name, auto: true, reason: 'single-entity file' }); }
+      else if (coded.length === 1) { target = coded[0]; report.entities.merged.push({ from: '(no label)', to: target.name, auto: true, reason: 'only entity of this country with a code' }); report.warnings.push({ level: 'info', code: 'ENTITY_BY_CODE', message: `${parsed.fileName} has no entity label – assigned to ${target.code} ${target.name}, the only entity of ${fileCountry || 'this country'} with an entity code.` }); }
       else if (ph.length) target = ph[0];
       else {
         const code = `unlabeled:${fuzzyKey(fileCountry || 'entity')}`;
@@ -2436,6 +2460,139 @@ async function polishXlsx(bytes, JSZip, { fill = '1F4E79' } = {}) {
 function exportFileName(session, kind) {
   const c = (session.settings.clientName || 'FitGap').replace(/[^\w-]+/g, '_'), k = (session.settings.country || '').replace(/[^\w-]+/g, '_');
   return `${c}${k ? '_' + k : ''}_${kind}_${new Date().toISOString().slice(0, 16).replace(/[-:]/g, '').replace('T', '-')}`;
+}
+
+
+/* ---- src/model/qc.js ---- */
+// Pre-assessment quality check: what GBS Operations should fix in the capture sheets before the fit-gap workshop.
+// Pure functions on the session (browser and Node). One finding per row/cell where possible, so Ops can work the list.
+
+
+
+const QC_SEV = { HIGH: 'High', MEDIUM: 'Medium', LOW: 'Low', INFO: 'Info' };
+const QC_SEV_ORDER = { High: 0, Medium: 1, Low: 2, Info: 3 };
+const QC_GAPS_DEV = new Set([GAP.HARMONIZATION, GAP.STANDARDIZATION, GAP.BOTH]);
+const qcYn = (v) => (v === true ? 'Y' : v === false ? 'N' : '');
+const qcLanes = (le, gbs) => (le === null && gbs === null ? null : `${le ? 'LE' : ''}${le && gbs ? '+' : ''}${gbs ? 'GBS' : ''}` || 'none');
+
+const QC_CHECKS = {
+  ENTITY_NO_LABEL: { sev: QC_SEV.MEDIUM, title: 'No entity label', action: 'Write the entity code and name above the As-Is block (e.g. "100100 Alpha Pharma Ltd").' },
+  ENTITY_NO_CODE: { sev: QC_SEV.MEDIUM, title: 'Entity without 6-digit code', action: 'Add the 6-digit entity code to the label.' },
+  ENTITY_CODE_SHARED: { sev: QC_SEV.HIGH, title: 'Entity code also used by another country', action: 'Check the entity code – the same code appears in another country\'s files.' },
+  DUPLICATE_BLOCK: { sev: QC_SEV.HIGH, title: 'Two blocks for the same entity', action: 'Label each As-Is / Fit-Gap block with its own entity.' },
+  DUPLICATE_ID: { sev: QC_SEV.HIGH, title: 'Process ID used twice', action: 'Give the activity its own Process ID (template copy error).' },
+  ROW_WITHOUT_ID: { sev: QC_SEV.MEDIUM, title: 'Row without Process ID', action: 'Add the Process ID or delete the row if it is not an activity.' },
+  LEVEL_MISSING: { sev: QC_SEV.LOW, title: 'Process Level empty', action: 'Fill the Process Level (taken from the ID for now).' },
+  GAP_UNKNOWN: { sev: QC_SEV.HIGH, title: 'GAP value not recognised', action: 'Use one of: No Gap, Harmonization Gap, Standardization Gap, Both Gaps, N/A, Out of scope.' },
+  NOT_PREASSESSED: { sev: QC_SEV.HIGH, title: 'Pre-assessment not done for this entity / stream', action: 'Fill the As-Is block (who performs it, systems, GAP) before the workshop.' },
+  GAP_MISSING: { sev: QC_SEV.HIGH, title: 'GAP missing', action: 'Fill the initial GAP assessment.' },
+  SPLIT_NOT_FILLED: { sev: QC_SEV.HIGH, title: 'As-Is split not filled in this stream', action: 'Fill "LE / Country / Other" and "GBS" (Y/N) for every in-scope activity – the workshop compares it with the To-Be split.' },
+  SYSTEM_NOT_FILLED: { sev: QC_SEV.MEDIUM, title: 'As-Is systems not filled in this stream', action: 'Fill "Used Systems" for every in-scope activity.' },
+  SPLIT_MISSING: { sev: QC_SEV.MEDIUM, title: 'As-Is split missing (LE / GBS)', action: 'Mark who performs the activity today (Y/N for LE and GBS).' },
+  SYSTEM_MISSING: { sev: QC_SEV.LOW, title: 'As-Is system missing', action: 'Name the system or tool used today.' },
+  GAP_NO_REASON: { sev: QC_SEV.LOW, title: 'Gap without explanation', action: 'Add one line in "Additional Information" on what differs.' },
+  NA_NO_REASON: { sev: QC_SEV.LOW, title: 'N/A without reason', action: 'Say why the activity does not apply (e.g. "no leasing contracts").' },
+  SPLIT_VS_GAP: { sev: QC_SEV.MEDIUM, title: 'As-Is split differs from To-Be, GAP without harmonization', action: 'Check the GAP: a different split than To-Be is a harmonization gap.' },
+  GAP_VS_SPLIT: { sev: QC_SEV.LOW, title: 'Harmonization although As-Is split equals To-Be', action: 'Check the GAP or the As-Is split – they contradict each other.' },
+  WORKSHOP_PREFILLED: { sev: QC_SEV.INFO, title: 'Workshop columns already filled', action: 'Fit-Gap / Detailed Gap are filled in the workshop – confirm these values there.' },
+  MISSING_VS_REFERENCE: { sev: QC_SEV.INFO, title: 'Activity in other countries\' templates but not here', action: 'Check whether rows were deleted from the template.' },
+  EXTRA_VS_REFERENCE: { sev: QC_SEV.INFO, title: 'Activity not in other countries\' templates', action: 'Check whether the ID / row was added or renamed locally.' },
+};
+
+/**
+ * @param session  workbench session after import
+ * @param opts.reference  optional { name, entityCodes:Set, processIds:Map<stream,Set<id>> } of other countries
+ * @returns { summary[], issues[], totals }
+ */
+function preAssessmentQC(session, { reference = null } = {}) {
+  const issues = []; const push = (code, f) => issues.push({ code, severity: QC_CHECKS[code].sev, check: QC_CHECKS[code].title, action: QC_CHECKS[code].action, ...f });
+  const entityName = (code) => session.entities[code]?.displayName || session.entities[code]?.name || code;
+
+  // ---- structure, from the parser warnings of every imported file
+  for (const f of session.files) {
+    for (const w of f.warnings || []) {
+      const base = { file: f.name, sheet: f.sheet };
+      if (w.code === 'SINGLE_ENTITY_NO_LABEL') push('ENTITY_NO_LABEL', { ...base, finding: 'No entity label anywhere in the sheet – assigned to the country\'s entity on import.' });
+      if (w.code === 'ENTITY_BY_POSITION' || w.code === 'ENTITY_NO_CODE') { const label = (w.message.match(/"([^"]+)"/) || [])[1] || ''; if (!issues.some(i => i.code === 'ENTITY_NO_CODE' && i.file === f.name && i.entity === label)) push('ENTITY_NO_CODE', { ...base, entity: label, finding: `Entity label "${label}" has no 6-digit entity code.` }); }
+      if (w.code === 'DUPLICATE_ENTITY_BLOCK') push('DUPLICATE_BLOCK', { ...base, finding: w.message });
+      if (w.code === 'DUPLICATE_ID') for (const e of w.examples || []) push('DUPLICATE_ID', { ...base, row: e.row, processId: e.id, activity: e.name, finding: `Row ${e.row} "${e.name}" has the same ID as "${e.first}" – imported as ${e.keptAs}.` });
+      if (w.code === 'ROWS_SKIPPED') for (const e of (w.examples || []).filter(x => x.name)) push('ROW_WITHOUT_ID', { ...base, row: e.row, activity: e.name, finding: `Level "${e.level || '–'}", no Process ID – not imported.` });
+      if (w.code === 'LEVEL_INFERRED') for (const e of w.examples || []) push('LEVEL_MISSING', { ...base, row: e.row, processId: e.id, finding: `Level taken from the ID: L${e.level}.` });
+      if (w.code === 'GAP_UNMAPPED') for (const e of w.examples || []) push('GAP_UNKNOWN', { ...base, row: e.row, cell: e.cell, processId: e.processId, value: e.raw, finding: `"${e.raw}" is not a GAP value – imported as UNCLEAR.` });
+    }
+  }
+  if (reference?.entityCodes) for (const e of Object.values(session.entities)) if (e.hasCode && reference.entityCodes.has(e.code)) push('ENTITY_CODE_SHARED', { entity: `${e.code} ${e.name}`, finding: `${e.code} is also the entity code in ${reference.name}.` });
+
+  // ---- content, per entity × stream
+  const groups = new Map();
+  for (const a of Object.values(session.assessments)) { const k = `${a.entityCode}|${a.stream}`; if (!groups.has(k)) groups.set(k, []); groups.get(k).push(a); }
+  const summary = [];
+  for (const [k, list] of [...groups].sort()) {
+    const [code, stream] = k.split('|'); const inScope = list.filter(a => !a.scope.outOfScope);
+    const gapFilled = inScope.filter(a => a.asIs.gap && a.asIs.gap !== GAP.UNCLEAR).length;
+    const splitFilled = inScope.filter(a => a.asIs.le !== null || a.asIs.gbs !== null).length;
+    const sysFilled = inScope.filter(a => a.asIs.systems).length;
+    const gaps = inScope.filter(a => QC_GAPS_DEV.has(a.asIs.gap)); const gapsExplained = gaps.filter(a => a.asIs.info).length;
+    const notDone = inScope.length > 0 && gapFilled / inScope.length < 0.5;
+    // A column (almost) empty for the whole stream is one finding, not hundreds of rows.
+    const splitEmpty = !notDone && inScope.length > 0 && splitFilled / inScope.length < 0.1, sysEmpty = !notDone && inScope.length > 0 && sysFilled / inScope.length < 0.1;
+    const before = issues.length;
+    const where = (a, field) => ({ file: a.sources[0]?.file, sheet: a.sources[0]?.sheet, row: a.sources[0]?.row, cell: a.sources[0]?.cells?.asIs?.[field] || '', entity: entityName(code), stream, processId: a.processId, activity: session.processes[a.processId]?.name || '' });
+    const col = (f) => { const c = inScope.find(a => a.sources[0]?.cells?.asIs?.[f])?.sources[0].cells.asIs[f]; return c ? c.replace(/\d+$/, '') : ''; };
+    if (splitEmpty) push('SPLIT_NOT_FILLED', { entity: entityName(code), stream, file: list[0].sources[0]?.file, sheet: list[0].sources[0]?.sheet, cell: `${col('le')} / ${col('gbs')}`, finding: `${inScope.length - splitFilled} of ${inScope.length} in-scope activities have no As-Is split.` });
+    if (sysEmpty) push('SYSTEM_NOT_FILLED', { entity: entityName(code), stream, file: list[0].sources[0]?.file, sheet: list[0].sources[0]?.sheet, cell: col('systems'), finding: `${inScope.length - sysFilled} of ${inScope.length} in-scope activities have no system.` });
+    if (notDone) push('NOT_PREASSESSED', { entity: entityName(code), stream, file: list[0].sources[0]?.file, sheet: list[0].sources[0]?.sheet, finding: `${inScope.length - gapFilled} of ${inScope.length} in-scope activities have no GAP${splitFilled ? '' : ' and no As-Is split'}.` });
+    for (const a of inScope) {
+      const p = session.processes[a.processId] || {}; const tb = p.toBe || {};
+      if (!notDone) {
+        if (!a.asIs.gap) push('GAP_MISSING', where(a, 'gap'));
+        if (!splitEmpty && a.asIs.le === null && a.asIs.gbs === null) push('SPLIT_MISSING', where(a, 'le'));
+        if (!sysEmpty && !a.asIs.systems) push('SYSTEM_MISSING', where(a, 'systems'));
+      }
+      if (QC_GAPS_DEV.has(a.asIs.gap) && !a.asIs.info) push('GAP_NO_REASON', { ...where(a, 'info'), value: a.asIs.gapRaw });
+      if (a.asIs.gap === GAP.NA && !a.asIs.info && !/[a-z]{4,}/i.test((a.asIs.gapRaw || '').replace(/^n\/?a/i, ''))) push('NA_NO_REASON', { ...where(a, 'info'), value: a.asIs.gapRaw });
+      const asIs = qcLanes(a.asIs.le, a.asIs.gbs), toBe = qcLanes(tb.le ?? null, tb.gbs ?? null);
+      if (asIs && toBe && asIs !== toBe && (a.asIs.gap === GAP.NO_GAP || a.asIs.gap === GAP.STANDARDIZATION)) push('SPLIT_VS_GAP', { ...where(a, 'gap'), value: a.asIs.gapRaw, finding: `As-Is ${asIs} · To-Be ${toBe} · GAP "${a.asIs.gapRaw}".` });
+      if (asIs && toBe && asIs === toBe && (a.asIs.gap === GAP.HARMONIZATION || a.asIs.gap === GAP.BOTH)) push('GAP_VS_SPLIT', { ...where(a, 'gap'), value: a.asIs.gapRaw, finding: `As-Is and To-Be both ${asIs} · GAP "${a.asIs.gapRaw}".` });
+      const fg = a.fitGap || {}; const dgFilled = Object.entries(a.detailedGap || {}).filter(([f, v]) => f !== 'extra' && v).length;
+      if (fg.local !== null || fg.gbs !== null || fg.other !== null || dgFilled) push('WORKSHOP_PREFILLED', { ...where(a, 'gap'), finding: `Fit-Gap split ${qcYn(fg.local) || '–'}/${qcYn(fg.other) || '–'}/${qcYn(fg.gbs) || '–'}${dgFilled ? `, ${dgFilled} Detailed Gap field(s)` : ''}${fg.fte !== null && fg.fte !== undefined ? `, FTE ${fg.fte}` : ''}.` });
+    }
+    const mine = issues.slice(before);
+    const pct = (n) => (inScope.length ? Math.round(100 * n / inScope.length) : 0);
+    const readiness = !inScope.length ? 'n/a' : notDone ? 'Red' : pct(gapFilled) >= 95 && pct(splitFilled) >= 90 ? 'Green' : pct(gapFilled) >= 80 && pct(splitFilled) >= 50 ? 'Amber' : 'Red';
+    summary.push({ entityCode: code, entity: entityName(code), stream, activities: list.length, outOfScope: list.length - inScope.length, inScope: inScope.length, gapPct: pct(gapFilled), splitPct: pct(splitFilled), systemPct: pct(sysFilled), gaps: gaps.length, gapsExplainedPct: gaps.length ? Math.round(100 * gapsExplained / gaps.length) : 100, high: mine.filter(i => i.severity === QC_SEV.HIGH).length, medium: mine.filter(i => i.severity === QC_SEV.MEDIUM).length, low: mine.filter(i => i.severity === QC_SEV.LOW).length, readiness });
+  }
+
+  // ---- template completeness against other countries
+  if (reference?.processIds) {
+    const own = new Map(); for (const p of Object.values(session.processes)) { if (p.level < 4 || / \(\d+\)$/.test(p.id)) continue; if (!own.has(p.stream)) own.set(p.stream, new Set()); own.get(p.stream).add(p.id); }
+    for (const [stream, ref] of reference.processIds) {
+      const mine = own.get(stream); if (!mine) continue;
+      for (const id of [...ref].filter(x => !mine.has(x)).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))) push('MISSING_VS_REFERENCE', { stream, processId: id, activity: reference.names?.get(id) || '', finding: `In ${reference.name}, not in this country's sheet.` });
+      for (const id of [...mine].filter(x => !ref.has(x)).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))) push('EXTRA_VS_REFERENCE', { stream, processId: id, activity: session.processes[id]?.name || '', finding: `Not in ${reference.name}.` });
+    }
+  }
+  issues.sort((a, b) => QC_SEV_ORDER[a.severity] - QC_SEV_ORDER[b.severity] || String(a.file || '').localeCompare(String(b.file || '')) || (a.row || 0) - (b.row || 0));
+  const totals = { high: issues.filter(i => i.severity === QC_SEV.HIGH).length, medium: issues.filter(i => i.severity === QC_SEV.MEDIUM).length, low: issues.filter(i => i.severity === QC_SEV.LOW).length, info: issues.filter(i => i.severity === QC_SEV.INFO).length };
+  return { summary, issues, totals };
+}
+
+/** Excel for GBS Operations: Summary · Issues (one row per cell to fix) · Checks (what each check means). */
+function buildQcWorkbook(session, XLSX, qc) {
+  const wb = XLSX.utils.book_new(); const st = session.settings;
+  const summaryRows = qc.summary.map(s => ({ 'Entity code': session.entities[s.entityCode]?.hasCode ? s.entityCode : '', 'Entity': s.entity, 'Stream': s.stream, 'Readiness': s.readiness, 'Activities': s.activities, 'Out of scope': s.outOfScope, 'In scope': s.inScope, 'GAP filled %': s.gapPct, 'As-Is split filled %': s.splitPct, 'System filled %': s.systemPct, 'Gaps (H/S/B)': s.gaps, 'Gaps explained %': s.gapsExplainedPct, 'High': s.high, 'Medium': s.medium, 'Low': s.low }));
+  XLSX.utils.book_append_sheet(wb, sheet(XLSX, summaryRows, ['Entity', 'Stream']), 'Summary');
+  const issueRows = qc.issues.map((i, n) => ({ '#': n + 1, 'Severity': i.severity, 'Check': i.check, 'File': i.file || '', 'Sheet': i.sheet || '', 'Row': i.row || '', 'Cell': i.cell || '', 'Entity': i.entity || '', 'Stream': i.stream || '', 'Process ID': i.processId || '', 'Activity': i.activity || '', 'Value': i.value || '', 'Finding': i.finding || '', 'Action for GBS Ops': i.action, 'Status': '', 'Comment Ops': '' }));
+  XLSX.utils.book_append_sheet(wb, sheet(XLSX, issueRows, ['#', 'Severity', 'Check']), 'Issues');
+  XLSX.utils.book_append_sheet(wb, sheet(XLSX, Object.values(QC_CHECKS).map(c => ({ 'Severity': c.sev, 'Check': c.title, 'What to do': c.action })), ['Severity', 'Check', 'What to do']), 'Checks');
+  const about = XLSX.utils.aoa_to_sheet([['Pre-assessment quality check'], ['Client', st.clientName], ['Country', st.country], ['Files', session.files.map(f => f.name).join('; ')], ['Checked', new Date().toISOString().slice(0, 16).replace('T', ' ')], ['Findings', `${qc.totals.high} high · ${qc.totals.medium} medium · ${qc.totals.low} low · ${qc.totals.info} info`], ['Readiness', 'Green: GAP ≥ 95 % and As-Is split ≥ 90 % of in-scope activities · Amber: GAP ≥ 80 % and split ≥ 50 % · Red: below, or the pre-assessment was not done'], ['How to use', 'Work the Issues sheet top-down (High first), set Status, send the corrected workbooks back before the workshop.']]);
+  about['!cols'] = [{ wch: 18 }, { wch: 110 }];
+  XLSX.utils.book_append_sheet(wb, about, 'About');
+  return wb;
+}
+
+async function qcWorkbookBytes(session, XLSX, JSZip, qc) {
+  return polishXlsx(new Uint8Array(XLSX.write(buildQcWorkbook(session, XLSX, qc), { bookType: 'xlsx', type: 'array' })), JSZip);
 }
 
 
@@ -3301,7 +3458,7 @@ async function downloadWorkbook(name, wb) { const out = await polishXlsx(new Uin
 function downloadSessionJson(session) { downloadBlob(`${exportFileName(session, 'session')}.json`, new Blob([serializeSession(session)], { type: 'application/json' })); }
 
 function ExportsCard({ session, summary, updateSession, toast, onReplaceSession }) {
-  const inp = useRef(); const [confirmLoad, setConfirmLoad] = useState(null);
+  const inp = useRef(); const [confirmLoad, setConfirmLoad] = useState(null); const [qc, setQc] = useState(null);
   const devCount = deviationRows(session).length;
   const onLoad = async (e) => { const f = e.target.files[0]; e.target.value = ''; if (!f) return; try { const loaded = deserializeSession(await f.text()); setConfirmLoad({ name: f.name, session: loaded }); } catch (err) { toast(`Not a session file: ${err.message}`); } };
   const hasData = Object.keys(session.assessments).length > 0;
@@ -3310,6 +3467,11 @@ function ExportsCard({ session, summary, updateSession, toast, onReplaceSession 
     <p class="muted small">Autosave keeps the session in this browser. Download the JSON at the end of every session block and to continue on another laptop.</p>
     <div class="sg-row"><${Button} variant="primary" icon="save" onClick=${() => { downloadSessionJson(session); toast('Session file downloaded'); }}>Save session</${Button}><${Button} variant="outline" icon="upload" onClick=${() => inp.current.click()}>Load session…</${Button}><input ref=${inp} type="file" accept=".json" style="display:none" onChange=${onLoad} /><span class="muted small">${session.updatedAt ? `last change ${new Date(session.updatedAt).toLocaleString()}` : ''}</span></div>
     ${confirmLoad && html`<div class="entity-choice" style="margin:.6rem 0"><span><b>${confirmLoad.name}</b>: ${Object.keys(confirmLoad.session.entities).length} entities, ${Object.keys(confirmLoad.session.assessments).length} assessments, ${confirmLoad.session.audit.length} audit entries. Replace the current session in this browser?</span><span class="sg-row" style="margin:0"><${Button} variant="primary" size="sm" onClick=${() => { onReplaceSession(confirmLoad.session); setConfirmLoad(null); }}>Replace</${Button}><${Button} variant="text" size="sm" onClick=${() => setConfirmLoad(null)}>Cancel</${Button}></span></div>`}
+    <hr />
+    <div class="eyebrow" style="margin-bottom:.4rem">Before the workshop · pre-assessment check</div>
+    <p class="muted small">Checks the Ops pre-assessment in the imported capture sheets – GAP, As-Is split, systems, explanations, duplicate IDs, missing labels – and lists every cell GBS Operations should fix.</p>
+    <div class="sg-row"><${Button} variant="outline" icon="clipboard" disabled=${!hasData} onClick=${async () => { const qc = preAssessmentQC(session); setQc(qc); const bytes = await qcWorkbookBytes(session, XLSX, JSZip, qc); downloadBlob(`${exportFileName(session, 'pre-assessment-QC')}.xlsx`, new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })); toast(`Pre-assessment check: ${qc.totals.high} high · ${qc.totals.medium} medium · ${qc.totals.low} low`); }}>Pre-assessment check (.xlsx)</${Button}></div>
+    ${qc && html`<table class="matrix qc-table" style="margin-top:.6rem"><thead><tr><th style="text-align:left">Entity</th><th>Stream</th><th>Ready</th><th class="num">In scope</th><th class="num">GAP</th><th class="num">Split</th><th class="num">System</th><th class="num">High</th><th class="num">Medium</th></tr></thead><tbody>${qc.summary.map(r => html`<tr key=${r.entityCode + r.stream}><td style="text-align:left">${r.entity}</td><td>${r.stream}</td><td><span class=${`qc-light qc-${r.readiness.toLowerCase()}`}></span>${r.readiness}</td><td class="num">${r.inScope}</td><td class="num">${r.gapPct}%</td><td class="num">${r.splitPct}%</td><td class="num">${r.systemPct}%</td><td class="num">${r.high}</td><td class="num">${r.medium}</td></tr>`)}</tbody></table>`}
     <hr />
     <div class="eyebrow" style="margin-bottom:.4rem">Workshop outputs (.xlsx)</div>
     <div class="sg-row">

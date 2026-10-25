@@ -150,6 +150,19 @@ function scanBand(grid, headerRow, profile, minCol = 0) {
       }
     }
   }
+  // Labels without code or legal form ("AP Hub") are recognised by position: same band row as a recognised label,
+  // and sitting exactly above where a per-entity block starts (an As-Is / Fit-Gap / Detailed title column).
+  const labelRows = new Set(labels.map(l => l.row));
+  const blockCols = new Set(titles.filter(t => profile.blocks[t.kind]?.perEntity).map(t => t.col));
+  for (const r of labelRows) {
+    const row = grid.rows[r] || [];
+    for (let c = minCol; c < row.length; c++) {
+      if (!blockCols.has(c) || labels.some(l => l.row === r && l.col === c)) continue;
+      const text = normText(row[c]); if (!text || text.length > 60 || /^\d+$/.test(text) || titles.some(t => t.row === r && t.col === c)) continue;
+      const parsed = parseEntityLabel(text); const merge = grid.merges.get(`${r},${c}`);
+      if (parsed) labels.push({ row: r, col: c, colEnd: merge ? merge.c1 : c, ...parsed, byPosition: true });
+    }
+  }
   return { titles, subHeaders, labels, top };
 }
 
@@ -214,6 +227,11 @@ function buildBlocks(grid, headerRow, band, core, profile, warnings) {
     if (guess) { b.entity = guess; b.entityGuessed = true; warnings.push({ level: 'warn', code: 'ENTITY_BY_ORDINAL', message: `${b.kind} block at column ${colLetter(b.col)} has no entity label – assigned to "${guess.name}" by position (${b.ordinal}). Please verify.` }); }
     else { b.entity = { code: null, name: `Unknown entity ${b.ordinal}`, raw: '' }; b.entityGuessed = true; warnings.push({ level: 'error', code: 'ENTITY_UNKNOWN', message: `${b.kind} block at column ${colLetter(b.col)} has no entity label and no other block to pair with.` }); }
   }
+  // The same block kind twice for one entity would let the right block overwrite the left one row by row.
+  const seenKind = new Map();
+  for (const b of blocks) { if (!profile.blocks[b.kind].perEntity || !b.entity) continue; const k = `${b.kind}|${b.entity.unlabeled ? 'unlabeled' : (b.entity.code || fuzzyKey(b.entity.name))}`; if (seenKind.has(k)) { b.duplicateOf = seenKind.get(k); warnings.push({ level: 'warn', code: 'DUPLICATE_ENTITY_BLOCK', message: `Two ${b.kind} blocks belong to "${b.entity.name || 'the entity'}" (${colLetter(seenKind.get(k).col)}–${colLetter(seenKind.get(k).colEnd)} and ${colLetter(b.col)}–${colLetter(b.colEnd)}) – the left one is read. If the right one is another entity, add its label above it.` }); } else seenKind.set(k, b); }
+  const byPos = band.labels.filter(l => l.byPosition);
+  if (byPos.length) warnings.push({ level: 'info', code: 'ENTITY_BY_POSITION', message: `Entity label${byPos.length > 1 ? 's' : ''} ${[...new Set(byPos.map(l => `"${l.raw}"`))].join(', ')} recognised by position (no 6-digit code) – please add the entity code in the template.` });
   const inherited = blocks.filter(b => b.entityInherited).length;
   if (inherited) warnings.push({ level: 'info', code: 'ENTITY_INHERITED', message: `${inherited} block(s) without their own entity label took the entity of the block to their left (labels are written once per entity group).` });
   for (const b of blocks) if (b.entity?.outOfScope) warnings.push({ level: 'warn', code: 'ENTITY_OUT_OF_SCOPE', message: `Entity label "${b.entity.raw}" says out of scope – all ${b.kind === 'ASIS' ? 'its' : 'its'} activities in this file are imported as out of scope (can be included in the workshop).` });
@@ -340,7 +358,7 @@ export function parseCaptureWorkbook(wb, opts) {
     const valid = Number.isInteger(level) && level >= profile.dataRow.levelMin && level <= profile.dataRow.levelMax && idRx.test(id);
     if (!valid) {
       const name = normText(readCell(grid, r, layout.core.name?.col));
-      if (!isEmpty(rawLevel) || id || name) { skippedCount++; if (skipped.length < 8) skipped.push({ row: r + 1, level: normText(rawLevel), id, name }); }
+      if (!isEmpty(rawLevel) || id || name) { skippedCount++; if (skipped.length < 500) skipped.push({ row: r + 1, level: normText(rawLevel), id, name }); }
       continue;
     }
     const name = normText(readCell(grid, r, layout.core.name?.col));
@@ -368,6 +386,7 @@ export function parseCaptureWorkbook(wb, opts) {
 
     const byEntity = new Map();
     for (const b of perEntity) {
+      if (b.duplicateOf) continue;
       const ek = entityOf(b);
       if (!byEntity.has(ek)) byEntity.set(ek, { entity: b.entity, blocks: {} });
       byEntity.get(ek).blocks[b.kind] = b;
@@ -417,14 +436,14 @@ export function parseCaptureWorkbook(wb, opts) {
   const byId = new Map(processes.map(p => [p.id, p])); let reparented = 0;
   for (const p of processes) { if (p.structuralParentId && p.structuralParentId !== p.parentId && byId.has(p.structuralParentId) && byId.get(p.structuralParentId).level < p.level) { p.parentId = p.structuralParentId; reparented++; } }
   if (reparented) warnings.push({ level: 'info', code: 'REPARENTED', message: `${reparented} row(s) attached to the parent implied by their Process ID instead of the row above.` });
-  if (levelInferred.length) warnings.push({ level: 'info', code: 'LEVEL_INFERRED', message: `${levelInferred.length} row(s) without a Process Level – level taken from the Process ID (e.g. ${levelInferred[0].id} → L${levelInferred[0].level}, row ${levelInferred[0].row}).`, examples: levelInferred.slice(0, 10) });
+  if (levelInferred.length) warnings.push({ level: 'info', code: 'LEVEL_INFERRED', message: `${levelInferred.length} row(s) without a Process Level – level taken from the Process ID (e.g. ${levelInferred[0].id} → L${levelInferred[0].level}, row ${levelInferred[0].row}).`, examples: levelInferred.slice(0, 500) });
   const dupActs = duplicates.filter(d => d.activity), dupNodes = duplicates.filter(d => !d.activity);
-  if (dupActs.length) warnings.push({ level: 'warn', code: 'DUPLICATE_ID', message: `${dupActs.length} activity ID(s) appear more than once in this sheet – the later rows are kept as separate activities with " (2)" added to the ID (e.g. ${dupActs[0].keptAs}, row ${dupActs[0].row}: "${dupActs[0].name}"). Please correct the IDs in the template.`, examples: dupActs.slice(0, 10) });
+  if (dupActs.length) warnings.push({ level: 'warn', code: 'DUPLICATE_ID', message: `${dupActs.length} activity ID(s) appear more than once in this sheet – the later rows are kept as separate activities with " (2)" added to the ID (e.g. ${dupActs[0].keptAs}, row ${dupActs[0].row}: "${dupActs[0].name}"). Please correct the IDs in the template.`, examples: dupActs.slice(0, 500) });
   if (dupNodes.length) warnings.push({ level: 'info', code: 'DUPLICATE_NODE', message: `${dupNodes.map(d => `"${d.id}" is used for "${d.first}" and "${d.name}" (row ${d.row})`).join('; ')} – kept as separate process groups.`, examples: dupNodes });
   const skippedNamed = skipped.filter(x => x.name).length;
   if (skippedCount) warnings.push({ level: skippedNamed ? 'warn' : 'info', code: 'ROWS_SKIPPED', message: `${skippedCount} non-data row(s) skipped (no numeric level 0–5 with a stream process ID).`, examples: skipped });
   if (hierarchyMismatch - reparented > 0) warnings.push({ level: 'info', code: 'HIERARCHY', message: `${hierarchyMismatch - reparented} row(s) where the parent implied by the Process ID does not exist – kept under the row above.` });
-  if (unmappedGap.length) warnings.push({ level: 'warn', code: 'GAP_UNMAPPED', message: `${unmappedGap.length} GAP value(s) could not be mapped (set to UNCLEAR).`, examples: unmappedGap.slice(0, 10) });
+  if (unmappedGap.length) warnings.push({ level: 'warn', code: 'GAP_UNMAPPED', message: `${unmappedGap.length} GAP value(s) could not be mapped (set to UNCLEAR).`, examples: unmappedGap.slice(0, 500) });
   if (notes.length) warnings.push({ level: 'info', code: 'INSTRUCTION_TEXT', message: `${notes.length} cell(s) with instruction text imported as notes, not values.`, examples: notes.slice(0, 10) });
 
   const entities = layout.entities.map(e => (e.unlabeled ? { code: 'unlabeled', name: '', raw: '', hasCode: false, unlabeled: true } : { code: e.code || `name:${fuzzyKey(e.name)}`, name: e.name, raw: e.raw, hasCode: !!e.code }));
