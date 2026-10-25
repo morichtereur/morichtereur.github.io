@@ -95,6 +95,9 @@ across modules – the build fails on duplicates.
     KPIs, results, QC, exports – reads `countryView(session, settings.countryFilter)`; changes still go to the full
     session and "Save session" always saves all countries. Present mode shows only entities with activities in the
     stream on screen.
+    Demo data: the workbooks carry their country in the file name (`…_R2R_France.xlsx`); `generateDemoWorkbooks(XLSX,
+    JSZip, { country, entities })` builds a second fictional country – the walkthrough video uses it for the country
+    prompt and filter, after the pre-assessment check scene.
 15. Effort in hours: local teams estimate hours per month (quick picks 1–40 h, free entry with comma or point);
     FTE = hours ÷ productive hours per FTE per month (default 140 ≈ 1,680 h a year, set under Plan & prepare → More
     settings; changing it recalculates every FTE derived from hours, logged in the audit trail). Both are stored

@@ -16,7 +16,7 @@ before(() => {
   execFileSync(process.execPath, ['scripts/generate-demo.mjs', dir], { stdio: 'ignore' });
   for (const f of readdirSync(dir)) {
     const wb = XLSX.read(readFileSync(join(dir, f)), { type: 'buffer' });
-    const stream = f.match(/Template_([A-Z0-9_]+?)_Demo/)[1];
+    const stream = f.match(/Template_([A-Z0-9_]+?)_France/)[1];
     parsed[stream] = parseCaptureWorkbook(wb, { XLSX, fileName: f });
   }
 });

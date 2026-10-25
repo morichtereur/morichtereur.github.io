@@ -764,7 +764,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 </script>
 <script id="app">
 'use strict';
-const BUILD = { version: '0.1.0', builtAt: '2026-10-25T11:59:48.748Z' };
+const BUILD = { version: '0.1.0', builtAt: '2026-10-25T14:05:49.340Z' };
 
 /* ---- src/model/constants.js ---- */
 // Domain constants. Pure data – no client-specific values anywhere in here.
@@ -3038,28 +3038,29 @@ async function addFlowImages(buffer, flowSheetNames, JSZip) {
 
 
 const rot = (arr, n) => arr.slice(n).concat(arr.slice(0, n));
-const files = [
-  ['R2R', { headerRow: 8, entities: ENTITIES, asIsTitle: null, fitGapTitle: 'FIT-GAP ASSESSMENT', sheetName: 'Fit-Gap Template_R2R', oldCopy: true, flows: [{ tab: 'GL', id: 'R2R 1.1', name: 'Journal Entries' }] }],
-  ['A2R', { headerRow: 9, entities: rot(ENTITIES, 1), asIsTitle: 'PRE-FILLED AS-IS PROCESS SPECIFICATION', fitGapTitle: 'FIT-GAP ASSSSMENT', oosL2: 'A2R 2', sheetName: 'Fit-gap Template_A2R ', flows: [{ tab: 'FAA', id: 'A2R 1.1', name: 'Asset Acquisition' }] }],
-  ['I2P', { headerRow: 6, entities: rot(ENTITIES, 2), asIsTitle: 'PRE-FILLED AS-IS PROCESS SPECIFICATION', fitGapTitle: 'FIT-GAP ASSESSMENT', oosL2: 'I2P 4', sheetName: 'Fit-Gap Template_I2P', oldCopy: true }],
-  ['I2C', { headerRow: 8, entities: ENTITIES.map((e, i) => i === 2 ? { ...e, suffix: ' (incl. branch Lyon)' } : e), asIsTitle: 'PRE-FILLED AS-IS PROCESS SPECIFICATION', fitGapTitle: 'FIT-GAP ASSESSMENT', sheetName: 'Fit-Gap Template_I2C' }],
-  ['ICO', { headerRow: 8, entities: rot(ENTITIES, 1), asIsTitle: 'PRE-FILLED AS-IS PROCESS SPECIFICATION', fitGapTitle: 'FIT-GAP ASSESSMENT', sheetName: 'Fit-Gap Template_ICO' }],
+const demoFiles = (ents) => [
+  ['R2R', { headerRow: 8, entities: ents, asIsTitle: null, fitGapTitle: 'FIT-GAP ASSESSMENT', sheetName: 'Fit-Gap Template_R2R', oldCopy: true, flows: [{ tab: 'GL', id: 'R2R 1.1', name: 'Journal Entries' }] }],
+  ['A2R', { headerRow: 9, entities: rot(ents, 1), asIsTitle: 'PRE-FILLED AS-IS PROCESS SPECIFICATION', fitGapTitle: 'FIT-GAP ASSSSMENT', oosL2: 'A2R 2', sheetName: 'Fit-gap Template_A2R ', flows: [{ tab: 'FAA', id: 'A2R 1.1', name: 'Asset Acquisition' }] }],
+  ['I2P', { headerRow: 6, entities: rot(ents, 2), asIsTitle: 'PRE-FILLED AS-IS PROCESS SPECIFICATION', fitGapTitle: 'FIT-GAP ASSESSMENT', oosL2: 'I2P 4', sheetName: 'Fit-Gap Template_I2P', oldCopy: true }],
+  ['I2C', { headerRow: 8, entities: ents.map((e, i) => i === 2 ? { ...e, suffix: ' (incl. branch Lyon)' } : e), asIsTitle: 'PRE-FILLED AS-IS PROCESS SPECIFICATION', fitGapTitle: 'FIT-GAP ASSESSMENT', sheetName: 'Fit-Gap Template_I2C' }],
+  ['ICO', { headerRow: 8, entities: rot(ents, 1), asIsTitle: 'PRE-FILLED AS-IS PROCESS SPECIFICATION', fitGapTitle: 'FIT-GAP ASSESSMENT', sheetName: 'Fit-Gap Template_ICO' }],
 ];
 
-/** Returns [{ name, data: Uint8Array }] for all demo workbooks incl. I2C_CMD. */
-async function generateDemoWorkbooks(XLSX, JSZip) {
+/** Returns [{ name, data: Uint8Array }] for all demo workbooks incl. I2C_CMD. A second fictional country (other
+ *  entities, country token at the end of the file names) shows the country switch: { country, entities }. */
+async function generateDemoWorkbooks(XLSX, JSZip, { country = 'France', entities = ENTITIES } = {}) {
   const out = [];
-  for (const [stream, o] of files) {
+  for (const [stream, o] of demoFiles(entities)) {
     seed = 42;
     const wb = workbook(XLSX, stream, { ...o, rows: buildRows(stream) });
     let data = new Uint8Array(XLSX.write(wb, { type: 'array', bookType: 'xlsx' }));
     if (o.flows?.length) data = await addFlowImages(data, o.flows.map(f => `Process Flows_${f.tab}`), JSZip);
-    out.push({ name: `Fit-Gap_Template_${stream}_DemoGroup.xlsx`, data });
+    out.push({ name: `Fit-Gap_Template_${stream}_${country}.xlsx`, data });
   }
   seed = 42;
   const cmdRows = buildRows('I2C', { filterL2: 'I2C 1' });
-  const wbCmd = workbook(XLSX, 'I2C', { headerRow: 8, entities: ENTITIES, asIsTitle: 'PRE-FILLED AS-IS PROCESS SPECIFICATION', fitGapTitle: 'FIT-GAP ASSESSMENT', sheetName: 'Fit-Gap Template_I2C_CMD', rows: cmdRows });
-  out.push({ name: 'Fit-Gap_Template_I2C_CMD_DemoGroup.xlsx', data: new Uint8Array(XLSX.write(wbCmd, { type: 'array', bookType: 'xlsx' })) });
+  const wbCmd = workbook(XLSX, 'I2C', { headerRow: 8, entities, asIsTitle: 'PRE-FILLED AS-IS PROCESS SPECIFICATION', fitGapTitle: 'FIT-GAP ASSESSMENT', sheetName: 'Fit-Gap Template_I2C_CMD', rows: cmdRows });
+  out.push({ name: `Fit-Gap_Template_I2C_CMD_${country}.xlsx`, data: new Uint8Array(XLSX.write(wbCmd, { type: 'array', bookType: 'xlsx' })) });
   return out;
 }
 

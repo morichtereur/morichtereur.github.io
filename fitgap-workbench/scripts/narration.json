@@ -33,6 +33,10 @@
       "text": "Then you add the people in the room, and one session per stream. The traffic light tells you what's still missing before the workshop starts."
     },
     {
+      "id": "n06b",
+      "text": "Before the workshop, run the pre-assessment check. It lists every empty GAP, missing split or unexplained gap – cell by cell – as an Excel list for G-B-S Operations, with a readiness light per entity and stream."
+    },
+    {
       "id": "n07",
       "text": "Step two is the workshop itself. The process tree is on the left – one row per activity, with all the entities side by side."
     },
@@ -95,6 +99,14 @@
     {
       "id": "n22",
       "text": "And finally, the write-back puts the workshop results straight into the original capture workbooks. Values only – all the formatting stays as it is."
+    },
+    {
+      "id": "n23",
+      "text": "Running several countries? Just drop the next country's capture sheets in. The tool asks first: start a separate session, or add them to this one."
+    },
+    {
+      "id": "n24",
+      "text": "Added. Now the country filter in the sidebar switches every view, every slide and every export. Nothing gets lost – the session file keeps all the countries."
     },
     {
       "id": "t2",

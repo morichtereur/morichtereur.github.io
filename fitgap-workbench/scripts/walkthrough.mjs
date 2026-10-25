@@ -8,8 +8,15 @@ import { mkdirSync, renameSync, readdirSync, existsSync, readFileSync, writeFile
 import { resolve } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { buildSubtitles, spokenText } from './subtitles.mjs';
+import * as XLSX from 'xlsx';
+import JSZip from 'jszip';
+import { generateDemoWorkbooks } from '../src/model/demo.js';
 
 const out = resolve(process.argv[2] || 'dist/video'); mkdirSync(out, { recursive: true });
+// Second fictional country for the country switch (dropped in near the end of the tour).
+const sgDir = resolve(out, '_second-country'); mkdirSync(sgDir, { recursive: true });
+const sgFiles = [];
+for (const f of await generateDemoWorkbooks(XLSX, JSZip, { country: 'Singapore', entities: [{ code: '302001', name: 'Demo Singapore Pte Ltd' }, { code: '302002', name: 'Demo Hub Singapore Pte Ltd' }] })) { if (/CMD/.test(f.name)) continue; const p = resolve(sgDir, f.name); writeFileSync(p, f.data); sgFiles.push(p); }
 const W = Number(process.env.VIDEO_W || 1920), H = Number(process.env.VIDEO_H || 1080);
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--no-sandbox', '--force-device-scale-factor=1'] });
 const ctx = await browser.newContext({ viewport: { width: W, height: H }, recordVideo: { dir: out, size: { width: W, height: H } }, locale: 'en-GB', timezoneId: 'Europe/Zurich' });
@@ -67,7 +74,7 @@ const raise = () => page.evaluate(() => { if (!document.fullscreenElement) retur
 const titleOff = () => page.evaluate(() => { const t = document.getElementById('vt-title'); if (t) t.className = 'off'; });
 // Badge label: "Step N · …" captions set STEP N (prefix stripped), an explicit label sets it too, everything else keeps the current one.
 let currentLabel = 'INTRO';
-const CHAPTER = { INTRO: 'Introduction', OVERVIEW: 'Start here', 'STEP 1': '1 · Plan & prepare', 'STEP 2': '2 · Workshop', 'STEP 3': '3 · Present', 'STEP 4': '4 · Results', 'STEP 5': '5 · QG2 sign-off & hand-over' };
+const CHAPTER = { COUNTRIES: 'Several countries', INTRO: 'Introduction', OVERVIEW: 'Start here', 'STEP 1': '1 · Plan & prepare', 'STEP 2': '2 · Workshop', 'STEP 3': '3 · Present', 'STEP 4': '4 · Results', 'STEP 5': '5 · QG2 sign-off & hand-over' };
 const chapters = [{ title: 'Introduction', at: 0 }];
 const chapterMark = (label) => { const t = CHAPTER[label] || label; if (chapters[chapters.length - 1].title !== t) chapters.push({ title: t, at: Date.now() - t0 }); };
 const say = async (text, ms = 3200, n, during) => { await overlay(); await raise(); const m = text.match(/^Step (\d) · /); if (m) { currentLabel = `STEP ${m[1]}`; text = text.slice(m[0].length); text = text.charAt(0).toUpperCase() + text.slice(1); } else if (n) currentLabel = n; const label = currentLabel; chapterMark(label); await page.evaluate(([t, l]) => { const c = document.getElementById('vt-cap'); c.querySelector('.t').textContent = t; c.querySelector('.n').textContent = l; c.querySelector('.n').style.display = l ? '' : 'none'; c.classList.add('on'); }, [text, label]); const hold = speak(ms); if (!during) { await sleep(hold); return; } const t = Date.now(); await during(); await sleep(Math.max(300, hold - (Date.now() - t))); };
@@ -114,6 +121,16 @@ await say('Step 1 · Plan & prepare: client, country, your initials for the audi
 await moveTo('.brand-settings', { pause: 900 });
 await page.evaluate(() => window.scrollBy({ top: 420, behavior: 'smooth' })); await sleep(900);
 await say('People in the room and one session per stream. The traffic light tells you what is still missing before the workshop.', 3800, '');
+await hush();
+
+// Pre-assessment check (Files & exports)
+await click('.side-nav > .side-nav-item:has-text("Workshop")');
+{ const fe = page.locator('button:has-text("Files & exports")'); if (await fe.count()) await click('button:has-text("Files & exports")'); }
+await page.waitForSelector('button:has-text("Pre-assessment check")');
+await say('Before the workshop: the pre-assessment check. Every empty GAP, missing split or unexplained gap, cell by cell – as an Excel list for GBS Operations, with a readiness light per entity and stream.', 5200, '', async () => {
+  await click('button:has-text("Pre-assessment check")', { after: 1200 });
+  await moveTo('.qc-table', { pause: 1500 });
+});
 await hush();
 
 // Workshop
@@ -183,6 +200,26 @@ await click('.side-nav > .side-nav-item:has-text("Hand-over")'); await page.wait
 await say('The hand-over package: deviation log, separate variants for the DTPs, initiative candidates, taxonomy change requests, QG2 summary, flat export, audit trail.', 4200, '');
 await moveTo('button:has-text("Download hand-over package")', { pause: 900 });
 await say('And the write-back: the workshop results go into the original capture workbooks – values only, formatting kept.', 3600, '');
+await hush();
+
+// Several countries: country prompt on import, then the country filter in the sidebar
+await click('.side-nav > .side-nav-item:has-text("Workshop")');
+{ const fe = page.locator('button:has-text("Files & exports")'); if (await fe.count()) await click('button:has-text("Files & exports")'); }
+await page.waitForSelector('.dropzone input[type=file]', { state: 'attached' });
+await page.evaluate(() => window.scrollTo({ top: 0 }));
+await say('Several countries? Drop the next country\'s capture sheets in. The tool asks first: a separate session, or add them to this one.', 4400, 'COUNTRIES', async () => {
+  await moveTo('.dropzone', { pause: 600 });
+  await page.setInputFiles('.dropzone input[type=file]', sgFiles);
+  await page.waitForSelector('.card:has-text("new country")'); await sleep(900);
+  await moveTo('button:has-text("Add to this session")', { pause: 900 });
+});
+await click('button:has-text("Add to this session")', { after: 600 });
+await page.waitForSelector('#side-country'); await page.waitForFunction(() => document.querySelectorAll('.filerow .st.ok, .filerow .st.warn').length >= 5, null, { timeout: 60000 }); await sleep(800);
+await say('The country filter in the sidebar switches every view, slide and export. Nothing is lost – the session file keeps all countries.', 4400, '', async () => {
+  await moveTo('#side-country', { pause: 1200 });
+  await page.selectOption('#side-country', 'France'); await sleep(1500);
+  await page.selectOption('#side-country', 'Singapore'); await sleep(1200);
+});
 await hush();
 
 chapterMark('Summary');
