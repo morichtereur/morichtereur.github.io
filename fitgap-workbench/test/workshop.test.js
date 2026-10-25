@@ -7,7 +7,8 @@ import { tmpdir } from 'node:os';
 import * as XLSX from 'xlsx';
 import { parseCaptureWorkbook } from '../src/parser/capture.js';
 import { createSession, mergeParsedWorkbook } from '../src/model/session.js';
-import { applyChange, completeness, confirmFit, bulkConfirmNoGap, undoBulk, buildTree, activitiesOf, nodeStats, suggestGapType, applyToAllEntities, sessionPace, undoAction, redoAction } from '../src/model/workshop.js';
+import { applyChange, completeness, confirmFit, bulkConfirmNoGap, undoBulk, buildTree, activitiesOf, nodeStats, suggestGapType, applyToAllEntities, sessionPace, undoAction, redoAction, setEffortHours, setEffortFte, rebaseFte, hoursOf, effortSum, fteBasis } from '../src/model/workshop.js';
+import { flatRows } from '../src/model/exports.js';
 
 let session;
 before(() => {
@@ -107,3 +108,23 @@ test('undo / redo revert and re-apply one user step as a whole, logged in the au
   assert.equal(undoAction(session, 'no_such_step'), 0);
 });
 function serializeLike(s) { return JSON.stringify(s); }
+
+test('effort in hours per month: FTE derived with the basis, recalculated when the basis changes', () => {
+  const [a, b] = Object.values(session.assessments).filter(x => !x.scope.outOfScope).slice(10, 12);
+  assert.equal(fteBasis(session), 140);
+  assert.ok(setEffortHours(session, a.key, 28));
+  assert.equal(a.fitGap.hours, 28); assert.equal(a.fitGap.fte, 0.2);
+  b.fitGap.fte = 0.5; b.fitGap.hours = null; // e.g. the Ops pre-fill
+  assert.equal(hoursOf(session, b), 70, 'hours estimated from an imported FTE');
+  assert.deepEqual(effortSum(session, [a, b]), { hours: 98, fte: 0.7, withValue: 2 });
+  assert.equal(rebaseFte(session, 160), 1, 'only FTE derived from hours is recalculated');
+  assert.equal(a.fitGap.fte, 0.18); assert.equal(b.fitGap.fte, 0.5);
+  const row = flatRows(session).find(r => r['Process ID'] === a.processId && r['Entity code'] === a.entityCode);
+  assert.equal(row['Hours / month'], 28); assert.equal(row['FTE'], 0.18); assert.equal(row['FTE basis (h/month)'], 160);
+  assert.ok(setEffortFte(session, a.key, 0.25));
+  assert.equal(a.fitGap.hours, null, 'direct FTE entry clears captured hours'); assert.equal(a.fitGap.fte, 0.25);
+  Object.defineProperty(session, '_actionId', { value: 'act_h', configurable: true, writable: true, enumerable: false });
+  setEffortHours(session, a.key, 7); delete session._actionId;
+  undoAction(session, 'act_h'); assert.equal(a.fitGap.fte, 0.25); assert.equal(a.fitGap.hours, null, 'hours and FTE undo together');
+  rebaseFte(session, 140);
+});

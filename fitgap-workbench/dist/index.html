@@ -711,6 +711,9 @@ dialog.welcome { max-width: 40rem; }
 .fte-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1cqw; margin-top: 1.6cqw; padding-top: 1.2cqw; border-top: 1px solid var(--line); }
 .fte-kpis b { display: block; font-family: var(--font-mono); font-weight: 500; font-size: 2.2cqw; line-height: 1.1; color: var(--accent); } .fte-kpis span { font-size: .85cqw; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-2); }
 
+.fte-note { font-family: var(--font-mono); font-size: .72rem; color: var(--accent); white-space: nowrap; }
+.present .fte-note { font-size: .85cqw; } .fte-row.compact .small { font-size: .7rem; }
+
 </style>
 </head>
 <body>
@@ -756,7 +759,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 </script>
 <script id="app">
 'use strict';
-const BUILD = { version: '0.1.0', builtAt: '2026-10-25T05:14:52.285Z' };
+const BUILD = { version: '0.1.0', builtAt: '2026-10-25T05:35:30.221Z' };
 
 /* ---- src/model/constants.js ---- */
 // Domain constants. Pure data – no client-specific values anywhere in here.
@@ -1497,7 +1500,7 @@ function parseCaptureWorkbook(wb, opts) {
       const a = {
         entityCode: code, processId: id, stream: p.stream,
         asIs: { le: null, gbs: null, systems: '', gap: null, gapRaw: '', info: '', extra: {} },
-        fitGap: { local: null, other: null, gbs: null, fte: null, extra: {} },
+        fitGap: { local: null, other: null, gbs: null, fte: null, hours: null, extra: {} },
         detailedGap: Object.fromEntries(DETAILED_GAP_FIELDS.map(f => [f, ''])),
         scope: { outOfScope: false, source: null, reason: '' },
         notes: [],
@@ -1689,6 +1692,8 @@ function createSession() {
       streamsInScope: { R2R: true, 'A2R-FAA': true, 'A2R-IA': true, I2P: true, I2C: true, ICO: true, MD: true },
       gapDefinitions: { ...GAP_DEFINITIONS },
       minutesPerActivity: { NO_GAP: 1.5, GAP: 5 },
+      effortUnit: 'hours',          // 'hours' (hours per month, FTE derived) | 'fte'
+      hoursPerFteMonth: 140,        // productive hours per FTE per month (≈ 1,680 a year)
       editorInitials: '',
       lunch: { start: '12:00', end: '13:00' },
       dayStart: '08:00', dayEnd: '18:00',
@@ -1958,6 +1963,38 @@ function redoAction(session, actionId, meta = auditMeta(session)) {
   return n;
 }
 
+/* ---- Effort: captured in hours per month (what local teams can estimate), FTE derived with a per-session basis. ---- */
+const DEFAULT_HOURS_PER_FTE_MONTH = 140; // ≈ 1,680 productive hours a year
+function fteBasis(session) { const b = Number(session?.settings?.hoursPerFteMonth); return b > 0 ? b : DEFAULT_HOURS_PER_FTE_MONTH; }
+const r2 = (x) => Math.round(x * 100) / 100, r1 = (x) => Math.round(x * 10) / 10;
+/** Hours per month of an assessment: captured hours, else derived from an FTE value (e.g. the Ops pre-fill). */
+function hoursOf(session, a) { const h = a?.fitGap?.hours; if (h !== null && h !== undefined) return h; const f = a?.fitGap?.fte; return f === null || f === undefined ? null : r1(f * fteBasis(session)); }
+/** Set the effort in hours per month; the FTE value is derived and stored (analysis, exports and write-back use it). */
+function setEffortHours(session, key, hours, meta = auditMeta(session)) {
+  const h = hours === null || hours === undefined || hours === '' ? null : Number(hours);
+  const a = applyChange(session, key, 'fitGap.hours', h, meta);
+  const b = applyChange(session, key, 'fitGap.fte', h === null ? null : r2(h / fteBasis(session)), meta);
+  return a || b;
+}
+/** Set the effort directly in FTE (FTE capture mode); captured hours are cleared so the two never disagree. */
+function setEffortFte(session, key, fte, meta = auditMeta(session)) {
+  const f = fte === null || fte === undefined || fte === '' ? null : Number(fte);
+  const a = applyChange(session, key, 'fitGap.fte', f, meta); const b = applyChange(session, key, 'fitGap.hours', null, meta);
+  return a || b;
+}
+/** New FTE basis: recompute every FTE value that was derived from captured hours. Returns the count. */
+function rebaseFte(session, hoursPerFteMonth, meta = auditMeta(session)) {
+  session.settings.hoursPerFteMonth = hoursPerFteMonth; let n = 0;
+  for (const a of Object.values(session.assessments)) { const h = a.fitGap.hours; if (h === null || h === undefined) continue; if (applyChange(session, a.key, 'fitGap.fte', r2(h / fteBasis(session)), { ...meta, note: `FTE basis ${fteBasis(session)} h/month` })) n++; }
+  return n;
+}
+/** Sum of effort for a list of assessments: { hours, fte, withValue }. */
+function effortSum(session, list) {
+  let hours = 0, fte = 0, withValue = 0;
+  for (const a of list) { if (!a) continue; const h = hoursOf(session, a), f = a.fitGap?.fte; if (h === null && (f === null || f === undefined)) continue; withValue++; hours += h || 0; fte += Number(f) || 0; }
+  return { hours: r1(hours), fte: r2(fte), withValue };
+}
+
 function effectiveGap(a) { return a.workshop.gapType || a.asIs.gap || null; }
 function gapDiffersFromOps(a) { return !!a.workshop.gapType && a.workshop.gapType !== a.asIs.gap; }
 function fitGapComplete(a) { return [a.fitGap.local, a.fitGap.other, a.fitGap.gbs].every(v => v === true || v === false); }
@@ -2059,7 +2096,7 @@ function applyToAllEntities(session, fromKey, meta = auditMeta(session)) {
   const src = session.assessments[fromKey]; if (!src) return 0; let n = 0;
   for (const a of Object.values(session.assessments)) {
     if (a.processId !== src.processId || a.key === fromKey || a.scope.outOfScope) continue;
-    for (const f of ['local', 'other', 'gbs', 'fte']) if (src.fitGap[f] !== null) n += applyChange(session, a.key, `fitGap.${f}`, src.fitGap[f], meta) ? 1 : 0;
+    for (const f of ['local', 'other', 'gbs', 'fte', 'hours']) if (src.fitGap[f] !== null && src.fitGap[f] !== undefined) n += applyChange(session, a.key, `fitGap.${f}`, src.fitGap[f], meta) ? 1 : 0;
     for (const f of DETAILED_GAP_FIELDS) if (src.detailedGap[f]) n += applyChange(session, a.key, `detailedGap.${f}`, src.detailedGap[f], meta) ? 1 : 0;
     for (const f of ['gapType', 'rationale', 'status']) if (src.workshop[f]) n += applyChange(session, a.key, `workshop.${f}`, src.workshop[f], meta) ? 1 : 0;
     if (src.deviation) n += applyChange(session, a.key, 'deviation', JSON.parse(JSON.stringify(src.deviation)), meta) ? 1 : 0;
@@ -2315,7 +2352,7 @@ function flatRows(session) {
       'To-Be LE': yn(p.toBe?.le), 'To-Be GBS': yn(p.toBe?.gbs), 'To-Be system': p.toBe?.system || '', 'Planned initiative': p.toBe?.initiative || '',
       'Ops LE/Country/Other': yn(a.asIs.le), 'Ops GBS': yn(a.asIs.gbs), 'Ops used systems': a.asIs.systems || '', 'Ops GAP': GAP_LABEL[a.asIs.gap] || '', 'Ops GAP (raw)': a.asIs.gapRaw || '', 'Ops additional information': a.asIs.info || '',
       'Scope': a.scope.outOfScope ? 'Out of scope' : 'In scope', 'Scope source': a.scope.source || '',
-      'Fit-Gap Local Accounting': yn(a.fitGap.local), 'Fit-Gap Other': yn(a.fitGap.other), 'Fit-Gap GBS': yn(a.fitGap.gbs), 'FTE': a.fitGap.fte ?? '',
+      'Fit-Gap Local Accounting': yn(a.fitGap.local), 'Fit-Gap Other': yn(a.fitGap.other), 'Fit-Gap GBS': yn(a.fitGap.gbs), 'Hours / month': a.fitGap.hours ?? '', 'FTE': a.fitGap.fte ?? '', 'FTE basis (h/month)': a.fitGap.hours !== null && a.fitGap.hours !== undefined ? fteBasis(session) : '',
     };
     for (const f of DETAILED_GAP_FIELDS) r[`DG ${DETAILED_GAP_LABEL[f]}`] = a.detailedGap[f] || '';
     Object.assign(r, {
@@ -2349,7 +2386,7 @@ function buildDeviationLogWorkbook(session, XLSX) {
   XLSX.utils.book_append_sheet(wb, sheet(XLSX, dev, ['Entity', 'Stream', 'Process ID']), 'Deviation log');
   XLSX.utils.book_append_sheet(wb, sheet(XLSX, initiativeRows(session), ['Entity', 'Stream', 'Process ID']), 'Initiative candidates');
   XLSX.utils.book_append_sheet(wb, sheet(XLSX, taxonomyRows(session), ['Process ID', 'Proposed change', 'Reason']), 'Taxonomy change requests');
-  { const about = XLSX.utils.aoa_to_sheet([['GBS Fit-Gap Workbench – deviation log'], ['Client', session.settings.clientName], ['Country', session.settings.country], ['Exported', new Date().toISOString().slice(0, 16).replace('T', ' ')], ['Deviations', dev.length], ['Entities', Object.keys(session.entities).length], ['Assessments', Object.keys(session.assessments).length]]); about['!cols'] = [{ wch: 30 }, { wch: 70 }]; XLSX.utils.book_append_sheet(wb, about, 'About'); }
+  { const about = XLSX.utils.aoa_to_sheet([['GBS Fit-Gap Workbench – deviation log'], ['Client', session.settings.clientName], ['Country', session.settings.country], ['Exported', new Date().toISOString().slice(0, 16).replace('T', ' ')], ['FTE basis', `${fteBasis(session)} productive hours per FTE per month (effort captured as ${session.settings.effortUnit === 'fte' ? 'FTE' : 'hours per month'})`], ['Deviations', dev.length], ['Entities', Object.keys(session.entities).length], ['Assessments', Object.keys(session.assessments).length]]); about['!cols'] = [{ wch: 30 }, { wch: 70 }]; XLSX.utils.book_append_sheet(wb, about, 'About'); }
   return wb;
 }
 
@@ -3412,13 +3449,29 @@ function Swimlane({ session, entityCode, node, activities, large }) {
 const BOARD_LANES = [['LOCAL', 'Local Accounting', 'local', 'home'], ['OTHER', 'Other party', 'coe', 'users'], ['GBS', 'GBS', 'gbs', 'globe']];
 const CONTROL_RX = /approv|review|validat|reconcil|check|monitor|verif|control|confirm|audit/i;
 const stepTag = (p) => CONTROL_RX.test(p.name || '') ? '◆ CONTROL' : '● CORE';
-// FTE: effort spent on the activity today. Quick picks for the room; free entry accepts 0,25 and 0.25.
+// Effort spent on the activity today. Default: hours per month (what local teams can estimate) – FTE is derived with
+// the session's basis (Plan & prepare → More settings). FTE capture mode keeps the direct FTE entry.
 const FTE_QUICK = [0.05, 0.1, 0.25, 0.5, 1];
+const HOURS_QUICK = [1, 2, 4, 8, 16, 40];
 const fmtFte = (v) => (v === null || v === undefined || v === '' ? '' : String(Math.round(Number(v) * 100) / 100));
-const fteSum = (list) => Math.round(list.reduce((t, a) => t + (Number(a?.fitGap?.fte) || 0), 0) * 100) / 100;
-function FteField({ value, onSet, compact }) {
-  const commit = (v) => { const n = parseNumber(v); if (v !== '' && v !== null && (n === null || n < 0 || n > 99)) return; onSet(n); };
-  return html`<div class=${`fte-row${compact ? ' compact' : ''}`}><${TextInput} class="num sm fte-input" value=${fmtFte(value)} onCommit=${commit} placeholder=${compact ? '–' : '0.00'} inputmode="decimal" aria-label="FTE" />${!compact && html`<div class="chips">${FTE_QUICK.map(q => html`<${Chip} key=${q} active=${Number(value) === q} onClick=${() => onSet(Number(value) === q ? null : q)}>${q}</${Chip}>`)}</div>`}</div>`;
+const fmtHours = (v) => (v === null || v === undefined || v === '' ? '' : String(Math.round(Number(v) * 10) / 10));
+const effortMode = (session) => (session.settings.effortUnit === 'fte' ? 'fte' : 'hours');
+/** "52 h/month · 0.37 FTE" or "0.37 FTE" (FTE mode). */
+function effortLabel(session, sum) { return effortMode(session) === 'hours' ? `${fmtHours(sum.hours)} h/month · ${fmtFte(sum.fte)} FTE` : `${fmtFte(sum.fte)} FTE`; }
+/** Badge on a step card. */
+function effortBadge(session, a) { const h = a.fitGap.hours, f = a.fitGap.fte; if (effortMode(session) === 'hours') { if (h !== null && h !== undefined) return `${fmtHours(h)} h`; return f !== null && f !== undefined ? `≈${fmtHours(hoursOf(session, a))} h` : ''; } return f !== null && f !== undefined ? `${fmtFte(f)} FTE` : ''; }
+function EffortField({ session, a, updateSession, compact }) {
+  const mode = effortMode(session); const basis = fteBasis(session);
+  const setH = (v) => updateSession(s => setEffortHours(s, a.key, v)); const setF = (v) => updateSession(s => setEffortFte(s, a.key, v));
+  const valid = (v, max) => { const n = parseNumber(v); return (v === '' || v === null) ? { ok: true, n: null } : { ok: n !== null && n >= 0 && n <= max, n }; };
+  if (mode === 'fte') {
+    const commit = (v) => { const r = valid(v, 99); if (r.ok) setF(r.n); };
+    return html`<div class=${`fte-row${compact ? ' compact' : ''}`}><${TextInput} class="num sm fte-input" value=${fmtFte(a.fitGap.fte)} onCommit=${commit} placeholder=${compact ? '–' : '0.00'} inputmode="decimal" aria-label="FTE" />${compact ? html`<span>FTE</span>` : html`<span class="small muted">FTE</span><div class="chips">${FTE_QUICK.map(q => html`<${Chip} key=${q} active=${Number(a.fitGap.fte) === q} onClick=${() => setF(Number(a.fitGap.fte) === q ? null : q)}>${q}</${Chip}>`)}</div>`}</div>`;
+  }
+  const h = a.fitGap.hours; const fromOps = (h === null || h === undefined) && a.fitGap.fte !== null && a.fitGap.fte !== undefined;
+  const commit = (v) => { const r = valid(v, 2000); if (r.ok) setH(r.n); };
+  const fteNote = h !== null && h !== undefined ? `= ${fmtFte(a.fitGap.fte)} FTE` : fromOps ? `Ops: ${fmtFte(a.fitGap.fte)} FTE` : '';
+  return html`<div class=${`fte-row${compact ? ' compact' : ''}`}><${TextInput} class="num sm fte-input" value=${fmtHours(h)} onCommit=${commit} placeholder=${fromOps ? `≈${fmtHours(hoursOf(session, a))}` : compact ? '–' : '0'} inputmode="decimal" aria-label="Hours per month" /><span class="small muted">h / month</span>${!compact && html`<div class="chips">${HOURS_QUICK.map(q => html`<${Chip} key=${q} active=${Number(h) === q} onClick=${() => setH(Number(h) === q ? null : q)}>${q} h</${Chip}>`)}</div>`}${fteNote && html`<span class="fte-note" title=${`FTE basis: ${basis} productive hours per FTE per month`}>${fteNote}</span>`}</div>`;
 }
 
 function FlowBoard({ session, entityCode, node, activities, updateSession, toast, readOnly, onOpenRow, large, onAsk }) {
@@ -3441,7 +3494,7 @@ function FlowBoard({ session, entityCode, node, activities, updateSession, toast
     return html`<button class=${`stepcard${s.lanes.length > 1 ? ' split' : ''}${sel === s.p.id ? ' sel' : ''}`} style=${`--lane-color:var(--${BOARD_LANES.find(l => l[0] === k)[2]})`} onClick=${() => !readOnly && setSel(sel === s.p.id ? null : s.p.id)} onDblClick=${() => onOpenRow && onOpenRow(s.p.id)} title=${`${s.p.id} ${s.p.name}`}>
       <div class="tg">${stepTag(s.p)}${s.lanes.length > 1 ? ` · ${idx + 1}/${s.lanes.length}` : ''}</div>
       <div class="nm">${s.p.name}</div>
-      <div class="meta"><${GapPill} value=${s.gap || (s.source === 'tobe' ? 'NOT_ASSESSED' : 'NOT_ASSESSED')} size="sm" />${s.source !== 'workshop' && html`<span class="src">${s.source === 'ops' ? 'Ops as-is' : 'To-Be'}</span>`}${idx === 0 && s.a.fitGap.fte !== null && s.a.fitGap.fte !== undefined && html`<span class="fte-badge" title="FTE today">${fmtFte(s.a.fitGap.fte)} FTE</span>`}</div>
+      <div class="meta"><${GapPill} value=${s.gap || (s.source === 'tobe' ? 'NOT_ASSESSED' : 'NOT_ASSESSED')} size="sm" />${s.source !== 'workshop' && html`<span class="src">${s.source === 'ops' ? 'Ops as-is' : 'To-Be'}</span>`}${idx === 0 && effortBadge(session, s.a) && html`<span class="fte-badge" title="Effort today">${effortBadge(session, s.a)}</span>`}</div>
       ${handoff && html`<div class="handoff">↳ hand-off from ${BOARD_LANES.find(l => l[0] === prev.lanes[0])?.[1]}</div>`}
       ${mismatch && html`<div class="handoff" style="color:var(--flag)">⚑ To-Be: ${BOARD_LANES.find(l => l[0] === toBeLane)?.[1]}</div>`}
       ${s.differsOps && html`<div class="handoff" style="color:var(--accent)">● differs from Ops as-is</div>`}
@@ -3450,7 +3503,7 @@ function FlowBoard({ session, entityCode, node, activities, updateSession, toast
   const a = selected?.a; const set = (path, v) => updateSession(s => applyChange(s, a.key, path, v));
   return html`<div class=${`board-wrap${selected && !readOnly ? ' with-detail' : ''}${large ? ' large' : ''}`} tabindex="0">
     <div>
-      <div class="sg-row" style="justify-content:space-between;margin:0 0 .4rem"><span class="eyebrow">Process flow · ${ent?.displayName || entityCode} · ${node.id} ${node.name}</span><span class="sg-row" style="margin:0;gap:.6rem"><span class="muted small">${steps.length} steps · ${handoffs} hand-off${handoffs === 1 ? '' : 's'}</span><span class="fte-total" title="FTE captured for this process group">Σ ${fmtFte(fteSum(steps.map(s => s.a)))} FTE · ${steps.filter(s => s.a.fitGap.fte !== null && s.a.fitGap.fte !== undefined).length}/${steps.length}</span>${!readOnly && html`<${Button} variant="text" size="sm" onClick=${exportPng}>PNG</${Button}>`}</span></div>
+      <div class="sg-row" style="justify-content:space-between;margin:0 0 .4rem"><span class="eyebrow">Process flow · ${ent?.displayName || entityCode} · ${node.id} ${node.name}</span><span class="sg-row" style="margin:0;gap:.6rem"><span class="muted small">${steps.length} steps · ${handoffs} hand-off${handoffs === 1 ? '' : 's'}</span>${(() => { const sum = effortSum(session, steps.map(s => s.a)); return html`<span class="fte-total" title=${`Effort captured for this process group (FTE basis ${fteBasis(session)} h/month)`}>Σ ${effortLabel(session, sum)} · ${sum.withValue}/${steps.length}</span>`; })()}${!readOnly && html`<${Button} variant="text" size="sm" onClick=${exportPng}>PNG</${Button}>`}</span></div>
       <div class="board">
         <div class="board-grid" style=${`grid-template-columns:${cols}`}>
           <div class="board-h lane-h"><b>Lane</b><small>${handoffs} hand-offs</small></div>
@@ -3471,7 +3524,7 @@ function FlowBoard({ session, entityCode, node, activities, updateSession, toast
       <dl class="kv"><dt>To-Be</dt><dd>${selected.toBe.map(l => html`<${Tag} kind=${l} key=${l} />`)}${!selected.toBe.length && '–'} ${selected.p.toBe?.system && html`<span class="muted small">· ${selected.p.toBe.system}</span>`}</dd><dt>Ops as-is</dt><dd>${selected.ops.map(l => html`<${Tag} kind=${l} key=${l} />`)}${!selected.ops.length && '–'}</dd><dt>Workshop</dt><dd>${selected.source === 'workshop' ? selected.lanes.map(l => html`<${Tag} kind=${l} key=${l} />`) : html`<span class="muted">not yet assessed</span>`}</dd></dl>
       <div class="fgrid" style="grid-template-columns:1fr;margin-top:.6rem">
         <${Field} label="Who performs it today?"><div class="sg-row" style="margin:0;gap:.5rem"><span class="small">Local</span><${YN} size="sm" value=${a.fitGap.local} onChange=${v => set('fitGap.local', v)} name="Local" /><span class="small">GBS</span><${YN} size="sm" value=${a.fitGap.gbs} onChange=${v => set('fitGap.gbs', v)} name="GBS" /><span class="small">Other</span><${YN} size="sm" value=${a.fitGap.other} onChange=${v => set('fitGap.other', v)} name="Other" /></div></${Field}>
-        <${Field} label="Effort today (FTE)" hint=${a.fitGap.fte === null || a.fitGap.fte === undefined ? 'How much capacity this activity takes today – type it or pick a value' : `Σ process group: ${fmtFte(fteSum(steps.map(s => s.a)))} FTE`}><${FteField} value=${a.fitGap.fte} onSet=${v => set('fitGap.fte', v)} /></${Field}>
+        <${Field} label=${effortMode(session) === 'hours' ? 'Effort today (hours per month)' : 'Effort today (FTE)'} hint=${effortMode(session) === 'hours' ? `Average hours a month incl. period-end peaks · Σ process group: ${effortLabel(session, effortSum(session, steps.map(s => s.a)))}` : `Σ process group: ${effortLabel(session, effortSum(session, steps.map(s => s.a)))}`}><${EffortField} session=${session} a=${a} updateSession=${updateSession} /></${Field}>
         <${Field} label="Is there a gap vs. the global standard?"><div class="gapbtns">${['NO_GAP', 'HARMONIZATION', 'STANDARDIZATION', 'BOTH'].map(g => html`<button key=${g} class=${`pill pill-${g}${(a.workshop.gapType || '') === g ? ' on' : ''}`} title=${session.settings.gapDefinitions[g]} onClick=${() => { set('workshop.gapType', g); if (a.workshop.status === WORKSHOP_STATUS.NOT_ASSESSED) set('workshop.status', g === 'NO_GAP' ? WORKSHOP_STATUS.CONFIRMED_FIT : WORKSHOP_STATUS.GAP_CONFIRMED); }}>${GAP_LABEL[g]}</button>`)}</div>${!a.workshop.gapType && a.asIs.gap && html`<span class="hint">Ops pre-assessed: ${GAP_LABEL[a.asIs.gap]}</span>`}</${Field}>
         <${Field} label="What is different vs. the global standard?" required=${GAP_TYPES_WITH_DEVIATION.has(effectiveGap(a))}><${TextInput} textarea class="sm" style="min-height:3rem" value=${a.workshop.rationale} onCommit=${v => set('workshop.rationale', v)} placeholder="Who does it differently, which system, which rule…" /></${Field}>
         ${GAP_TYPES_WITH_DEVIATION.has(effectiveGap(a)) && html`<${Field} label="Dimension"><div class="chips">${Object.keys(DIMENSION).map(d => html`<${Chip} key=${d} active=${(a.deviation?.dimensions || []).includes(d)} onClick=${() => updateSession(s => { const cur = s.assessments[a.key].deviation || { dimensions: [], resolution: '', justification: '', ownerId: '', targetDate: '', escalation: 'L1', approval: 'PROPOSED' }; const dims = cur.dimensions.includes(d) ? cur.dimensions.filter(x => x !== d) : [...cur.dimensions, d]; applyChange(s, a.key, 'deviation', { ...cur, dimensions: dims }); })}>${DIMENSION_LABEL[d]}</${Chip}>`)}</div></${Field}>
@@ -3511,7 +3564,7 @@ function PresentMode({ session, updateSession, stream: initialStream, entityFilt
   useEffect(() => { document.documentElement.requestFullscreen?.().catch(() => {}); return () => { if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {}); }; }, []);
   const s = slides[Math.min(i, slides.length - 1)]; const st = session.settings;
   const title = (eyebrow, h) => html`<div class="eyebrow">${eyebrow}</div><h2>${h}</h2>`;
-  const streamStats = (() => { const g = gapAnalysis(session, { stream: stream === 'MD' ? null : stream, entityCode: entityFilter }); const splits = entities.map(e => activitySplit(session, e.code, stream === 'MD' ? null : stream)); const cls = {}, fte = {}; let fteTotal = 0, fteRows = 0, rows = 0; for (const sp of splits) { for (const [k, v] of Object.entries(sp.totals.cls)) cls[k] = (cls[k] || 0) + v; for (const r of sp.rows) { rows++; if (r.fte) { fte[r.cls] = (fte[r.cls] || 0) + r.fte; fteTotal += r.fte; fteRows++; } } } return { g, cls, fte, fteTotal, fteRows, rows }; })();
+  const streamStats = (() => { const g = gapAnalysis(session, { stream: stream === 'MD' ? null : stream, entityCode: entityFilter }); const splits = entities.map(e => activitySplit(session, e.code, stream === 'MD' ? null : stream)); const cls = {}, fte = {}; let fteTotal = 0, fteRows = 0, rows = 0, hoursTotal = 0; for (const sp of splits) { for (const [k, v] of Object.entries(sp.totals.cls)) cls[k] = (cls[k] || 0) + v; for (const r of sp.rows) { rows++; if (r.fte) { fte[r.cls] = (fte[r.cls] || 0) + r.fte; fteTotal += r.fte; fteRows++; hoursTotal += hoursOf(session, session.assessments[r.key]) || 0; } } } return { g, cls, fte, fteTotal, fteRows, rows, hoursTotal }; })();
   const content = (() => {
     switch (s.type) {
       case 'cover': { const nAct = Object.values(session.processes).filter(p => p.stream === (stream === 'MD' ? p.stream : stream) && p.level >= 4).length; const dates = (st.workshopDates || []).join(', ') || [...new Set(session.sessions.filter(x => x.stream.startsWith(stream) && x.date).map(x => x.date))].sort().map(fmtDateShort).join(', ') || fmtDateShort(new Date().toISOString().slice(0, 10)); return html`<div class="cover">
@@ -3522,9 +3575,9 @@ function PresentMode({ session, updateSession, stream: initialStream, entityFilt
       case 'scope': return html`${title('Scope', 'Streams and activities in scope')}<div class="slide-grid">${STREAMS.filter(x => Object.values(session.processes).some(p => p.stream === x)).map(x => { const n = Object.values(session.processes).filter(p => p.stream === x && p.level >= 4).length; const oos = Object.values(session.assessments).filter(a => a.stream === x && a.scope.outOfScope).length; return html`<div class="slide-kpi" key=${x}><div class="big" style="font-size:4cqw">${n}</div><div class="eyebrow">${x} · L4 activities${oos ? ` · ${oos} entity-rows out of scope` : ''}</div></div>`; })}</div>`;
       case 'legend': { const GI = { NO_GAP: 'check', HARMONIZATION: 'swap', STANDARDIZATION: 'target', BOTH: 'layers' }; return html`${title('Gap types', 'How we classify every activity')}<div class="slide-legend">${['NO_GAP', 'HARMONIZATION', 'STANDARDIZATION', 'BOTH'].map(g => html`<div class="legend-tile" key=${g}><span class="legend-ico" style=${`--c:var(--g-${({ NO_GAP: 'none', HARMONIZATION: 'harm', STANDARDIZATION: 'std', BOTH: 'both' })[g]})`}><${Icon} name=${GI[g]} size=${18} /></span><div><${GapPill} value=${g} size="lg" /><p>${st.gapDefinitions[g]}</p></div></div>`)}<div class="legend-tile"><span class="legend-ico" style="--c:var(--accent)"><${Icon} name="compass" size=${18} /></span><div><span class="eyebrow">Resolution approaches</span><p><b>Separate variant</b> – cannot be closed; separate process variant for substantiated legal, tax or regulatory reasons.<br /><b>Close before go-live</b> – close the gap in the current as-is process before transition go-live.<br /><b>Lift & shift</b> – adopt the global standard after transition; deviation closed after migration.</p></div></div></div>`; }
       case 'l3flow': return html`${title(`${stream} · ${s.node.id}`, s.node.name)}<div class="sg-row" style="margin:0 0 .6cqw">${entities.map(e => html`<${Chip} key=${e.code} active=${swimEntity === e.code} onClick=${() => setSwimEntity(e.code)}>${e.displayName || e.name}</${Chip}>`)}<span class="muted small">click a step to capture who performs it and what is different</span></div>${swimEntity && html`<${FlowBoard} session=${session} entityCode=${swimEntity} node=${s.node} activities=${s.node.activities} updateSession=${updateSession} toast=${toast} large onAsk=${onAsk} />`}`;
-      case 'l3table': return html`${title(`${stream} · ${s.node.id}`, `${s.node.name} · ${s.node.activities.length} activities`)}<table class="slide-table"><thead><tr><th>Activity</th>${entities.map(e => html`<th key=${e.code}>${e.displayName || e.name}</th>`)}</tr></thead><tbody>${s.node.activities.map(p => html`<tr key=${p.id}><td><span class="mono muted">${p.id}</span> ${p.name}</td>${entities.map(e => { const a = session.assessments[assessmentKey(e.code, p.id)]; if (!a) return html`<td key=${e.code}>—</td>`; if (a.scope.outOfScope) return html`<td key=${e.code}><${GapPill} value="OUT_OF_SCOPE" size="sm" /></td>`; const l = lanesOf(a, p); const findings = ['legalRegulatory', 'languageRequirements', 'externalParty', 'internalControls'].filter(f => a.detailedGap[f] && a.detailedGap[f] !== NA).map(f => DETAILED_GAP_LABEL[f].split(' ')[0]); return html`<td key=${e.code}><div class="sg-row" style="margin:0;gap:.3cqw"><select class="select sm present-select" value=${a.workshop.gapType || ''} onChange=${ev => updateSession(x => applyChange(x, a.key, 'workshop.gapType', ev.target.value || null))}><option value="">${a.asIs.gap ? 'Ops: ' + GAP_LABEL[a.asIs.gap] : '–'}</option>${['NO_GAP', 'HARMONIZATION', 'STANDARDIZATION', 'BOTH', 'NA'].map(g => html`<option value=${g}>${GAP_LABEL[g]}</option>`)}</select><${GapPill} value=${effectiveGap(a) || 'NOT_ASSESSED'} size="sm" />${gapDiffersFromOps(a) && html`<span class="diff-note">Ops: ${GAP_LABEL[a.asIs.gap] || '–'}</span>`}</div><div class="muted small sg-row" style="margin:.2cqw 0 0;gap:.4cqw">${l.workshop ? html`<${Tag} kind=${l.workshop} />` : 'split: –'}<${FteField} compact value=${a.fitGap.fte} onSet=${v => updateSession(x => applyChange(x, a.key, 'fitGap.fte', v))} /><span>FTE</span>${findings.length ? html`<span>· ${findings.join(', ')}</span>` : ''}</div></td>`; })}</tr>`)}<tr class="fte-sum"><td>Σ FTE captured</td>${entities.map(e => { const list = s.node.activities.map(p => session.assessments[assessmentKey(e.code, p.id)]).filter(a => a && !a.scope.outOfScope); return html`<td key=${e.code}><b class="mono">${fmtFte(fteSum(list))}</b> <span class="muted">FTE · ${list.filter(a => a.fitGap.fte !== null && a.fitGap.fte !== undefined).length}/${list.length} activities</span></td>`; })}</tr></tbody></table>`;
+      case 'l3table': return html`${title(`${stream} · ${s.node.id}`, `${s.node.name} · ${s.node.activities.length} activities`)}<table class="slide-table"><thead><tr><th>Activity</th>${entities.map(e => html`<th key=${e.code}>${e.displayName || e.name}</th>`)}</tr></thead><tbody>${s.node.activities.map(p => html`<tr key=${p.id}><td><span class="mono muted">${p.id}</span> ${p.name}</td>${entities.map(e => { const a = session.assessments[assessmentKey(e.code, p.id)]; if (!a) return html`<td key=${e.code}>—</td>`; if (a.scope.outOfScope) return html`<td key=${e.code}><${GapPill} value="OUT_OF_SCOPE" size="sm" /></td>`; const l = lanesOf(a, p); const findings = ['legalRegulatory', 'languageRequirements', 'externalParty', 'internalControls'].filter(f => a.detailedGap[f] && a.detailedGap[f] !== NA).map(f => DETAILED_GAP_LABEL[f].split(' ')[0]); return html`<td key=${e.code}><div class="sg-row" style="margin:0;gap:.3cqw"><select class="select sm present-select" value=${a.workshop.gapType || ''} onChange=${ev => updateSession(x => applyChange(x, a.key, 'workshop.gapType', ev.target.value || null))}><option value="">${a.asIs.gap ? 'Ops: ' + GAP_LABEL[a.asIs.gap] : '–'}</option>${['NO_GAP', 'HARMONIZATION', 'STANDARDIZATION', 'BOTH', 'NA'].map(g => html`<option value=${g}>${GAP_LABEL[g]}</option>`)}</select><${GapPill} value=${effectiveGap(a) || 'NOT_ASSESSED'} size="sm" />${gapDiffersFromOps(a) && html`<span class="diff-note">Ops: ${GAP_LABEL[a.asIs.gap] || '–'}</span>`}</div><div class="muted small sg-row" style="margin:.2cqw 0 0;gap:.4cqw">${l.workshop ? html`<${Tag} kind=${l.workshop} />` : 'split: –'}<${EffortField} compact session=${session} a=${a} updateSession=${updateSession} />${findings.length ? html`<span>· ${findings.join(', ')}</span>` : ''}</div></td>`; })}</tr>`)}<tr class="fte-sum"><td>Σ effort captured</td>${entities.map(e => { const list = s.node.activities.map(p => session.assessments[assessmentKey(e.code, p.id)]).filter(a => a && !a.scope.outOfScope); const sum = effortSum(session, list); return html`<td key=${e.code}><b class="mono">${effortLabel(session, sum)}</b> <span class="muted">· ${sum.withValue}/${list.length} activities</span></td>`; })}</tr></tbody></table>`;
       case 'stream': return html`${title(stream, 'Stream summary')}<div class="slide-two"><div><div class="eyebrow">Activity split (workshop vs. plan)</div>${SPLIT_CLASS_KEYS.map(k => html`<div class="bar-row" key=${k}><span>${SPLIT_CLASS[k]}</span><span class="bar"><i style=${`width:${100 * (streamStats.cls[k] || 0) / Math.max(1, Object.values(streamStats.cls).reduce((a, b) => a + b, 0))}%;background:var(--${k === 'NOT_ASSESSED' ? 'none' : k.includes('GBS') && !k.startsWith('PLANNED_GBS') ? 'gbs' : k === 'OTHER_PARTY' ? 'coe' : k === 'STAYS_LOCAL' ? 'local' : 'flag'})`}></i></span><b class="num">${streamStats.cls[k] || 0}</b><span class="num muted">${streamStats.fte[k] ? `${fmtFte(streamStats.fte[k])} FTE` : ''}</span></div>`)}
-        <div class="fte-kpis"><div><b>${fmtFte(streamStats.fteTotal)}</b><span>FTE captured</span></div><div><b>${fmtFte((streamStats.fte.MOVES_TO_GBS || 0) + (streamStats.fte.PLANNED_LOCAL_DONE_BY_GBS || 0))}</b><span>FTE with GBS</span></div><div><b>${fmtFte((streamStats.fte.STAYS_LOCAL || 0) + (streamStats.fte.PLANNED_GBS_STAYS_LOCAL || 0))}</b><span>FTE staying local</span></div><div><b>${fmtFte(Math.max(0, streamStats.fteTotal - (streamStats.fte.MOVES_TO_GBS || 0) - (streamStats.fte.PLANNED_LOCAL_DONE_BY_GBS || 0) - (streamStats.fte.STAYS_LOCAL || 0) - (streamStats.fte.PLANNED_GBS_STAYS_LOCAL || 0)))}</b><span>FTE · split still open</span></div></div><div class="muted small" style="margin-top:.5cqw;font-size:.9cqw">${streamStats.fteRows} of ${streamStats.rows} activities have an FTE value</div></div><div><div class="eyebrow">Gap distribution · Ops pre-assessment vs. workshop</div><${OpsVsWorkshopChart} dist=${streamStats.g.dist} /></div></div>`;
+        <div class="fte-kpis"><div><b>${fmtFte(streamStats.fteTotal)}</b><span>FTE captured</span></div><div><b>${fmtFte((streamStats.fte.MOVES_TO_GBS || 0) + (streamStats.fte.PLANNED_LOCAL_DONE_BY_GBS || 0))}</b><span>FTE with GBS</span></div><div><b>${fmtFte((streamStats.fte.STAYS_LOCAL || 0) + (streamStats.fte.PLANNED_GBS_STAYS_LOCAL || 0))}</b><span>FTE staying local</span></div><div><b>${fmtFte(Math.max(0, streamStats.fteTotal - (streamStats.fte.MOVES_TO_GBS || 0) - (streamStats.fte.PLANNED_LOCAL_DONE_BY_GBS || 0) - (streamStats.fte.STAYS_LOCAL || 0) - (streamStats.fte.PLANNED_GBS_STAYS_LOCAL || 0)))}</b><span>FTE · split still open</span></div></div><div class="muted small" style="margin-top:.5cqw;font-size:.9cqw">${streamStats.fteRows} of ${streamStats.rows} activities have an effort value${effortMode(session) === 'hours' ? ` · ${fmtHours(streamStats.hoursTotal)} h/month at ${fteBasis(session)} h per FTE` : ''}</div></div><div><div class="eyebrow">Gap distribution · Ops pre-assessment vs. workshop</div><${OpsVsWorkshopChart} dist=${streamStats.g.dist} /></div></div>`;
       case 'cross': { const g = gapAnalysis(session, { entityCode: entityFilter }); return html`${title(st.country || 'Country', 'Cross-entity view')}<div class="slide-two"><div><div class="eyebrow">Gap in all entities (likely global-standard issue) · ${g.cross.all.length}</div><ul class="slide-list">${g.cross.all.slice(0, 12).map(b => html`<li key=${b.processId}><span class="mono muted">${b.processId}</span> ${b.name}</li>`)}</ul></div><div><div class="eyebrow">Gap in one entity only (entity-specific) · ${g.cross.one.length}</div><ul class="slide-list">${g.cross.one.slice(0, 12).map(b => html`<li key=${b.processId}><span class="mono muted">${b.processId}</span> ${b.name} <span class="muted">· ${session.entities[b.gaps[0]]?.displayName || b.gaps[0]}</span></li>`)}</ul></div></div>`; }
       case 'open': { const g = gapAnalysis(session, { stream: stream === 'MD' ? null : stream, entityCode: entityFilter }); return html`${title('Open points & next steps', `${g.openPoints.length} open points`)}<table class="slide-table"><thead><tr><th>Activity</th><th>Entity</th><th>Status</th><th>Missing / next step</th><th>Owner · due</th></tr></thead><tbody>${g.openPoints.slice(0, 14).map(o => html`<tr key=${o.key}><td><span class="mono muted">${o.processId}</span> ${o.name}</td><td>${session.entities[o.entityCode]?.displayName || o.entityCode}</td><td><${StatusDot} status=${o.status} /></td><td>${o.nextStep || o.missing.join(', ')}</td><td>${session.participants.find(p => p.id === o.owner)?.name || ''}${o.due ? ' · ' + o.due : ''}</td></tr>`)}</tbody></table>`; }
       case 'end': { const g = gapAnalysis(session, { stream: stream === 'MD' ? null : stream, entityCode: entityFilter }); const nowKey = new Date().toISOString().slice(0, 16).replace('T', ' '); const next = session.sessions.filter(x => x.id !== session.activeSessionId && !x.startedAt && !x.endedAt && x.date && `${x.date} ${x.start || '00:00'}` > nowKey).sort((a, b) => (a.date + a.start).localeCompare(b.date + b.start))[0]; const assessed = Object.values(session.assessments).filter(a => !a.scope.outOfScope && (stream === 'MD' || a.stream === stream) && a.workshop.status !== 'NOT_ASSESSED').length, tot = Object.values(session.assessments).filter(a => !a.scope.outOfScope && (stream === 'MD' || a.stream === stream)).length; return html`<div class="cover end">
@@ -4086,6 +4139,10 @@ function PlanView({ session, summary, updateSession, toast }) {
         <div class="field" style="margin-top:.2rem"><label>Client logo & colour</label><${BrandSettings} session=${session} updateSession=${updateSession} toast=${toast} /></div>
         <details class="disclosure" style="margin-top:.6rem"><summary>More settings – entities, streams in scope, gap definitions, timing <${Icon} name="chevron" size=${14} /></summary><div class="body" style="max-width:none">
           <div class="fgrid" style="margin-bottom:.8rem"><${Field} label="Facilitators" hint="Comma-separated"><${TextInput} value=${(st.facilitators || []).join(', ')} onCommit=${v => setS('facilitators', v.split(',').map(x => x.trim()).filter(Boolean))} /></${Field}><${Field} label="Minutes per activity (no gap / gap)" hint="Effort estimate per session"><div class="sg-row" style="margin:0"><${TextInput} class="num sm" value=${String(st.minutesPerActivity.NO_GAP)} onCommit=${v => updateSession(s => { s.settings.minutesPerActivity.NO_GAP = Number(v.replace(',', '.')) || 1.5; })} style="width:4.5rem" /><${TextInput} class="num sm" value=${String(st.minutesPerActivity.GAP)} onCommit=${v => updateSession(s => { s.settings.minutesPerActivity.GAP = Number(v.replace(',', '.')) || 5; })} style="width:4.5rem" /></div></${Field}></div>
+          <div class="fgrid" style="margin-bottom:.8rem;grid-template-columns:minmax(0,1fr) minmax(0,1.4fr)">
+            <${Field} label="Effort is captured in" hint="Hours are easier for local teams to estimate; FTE is calculated from them"><div class="yn" role="group" aria-label="Effort unit"><button type="button" aria-pressed=${(st.effortUnit || 'hours') === 'hours'} onClick=${() => updateSession(s => { s.settings.effortUnit = 'hours'; })}>Hours / month</button><button type="button" aria-pressed=${st.effortUnit === 'fte'} onClick=${() => updateSession(s => { s.settings.effortUnit = 'fte'; })}>FTE</button></div></${Field}>
+            <${Field} label="Productive hours per FTE per month" hint=${`FTE = hours ÷ this basis. Default 140 (≈ 1,680 h a year); adjust to the country's working time. Changing it recalculates every FTE derived from hours.`}><div class="sg-row" style="margin:0"><${TextInput} class="num sm" value=${String(fteBasis(session))} onCommit=${v => { const n = parseNumber(v); if (!n || n < 40 || n > 250) { toast('Please enter between 40 and 250 hours'); return; } let c = 0; updateSession(s => { c = rebaseFte(s, n); }); toast(`FTE basis ${n} h/month${c ? ` – ${c} FTE value${c === 1 ? '' : 's'} recalculated` : ''}`); }} style="width:5rem" /><span class="small muted">h / FTE / month</span></div></${Field}>
+          </div>
           <div class="eyebrow" style="margin-bottom:.3rem">Streams in scope</div>
           <div class="sg-row" style="gap:1rem;margin-bottom:.8rem">${SUB_STREAMS.map(s => html`<${Switch} key=${s} checked=${st.streamsInScope[s] !== false} onChange=${v => updateSession(x => { x.settings.streamsInScope[s] = v; })}>${s}${s.startsWith('A2R') || s === 'MD' ? '' : html`<span class="muted small"> · ${summary.activitiesByStream[s] || 0}</span>`}</${Switch}>`)}</div>
           <div class="eyebrow" style="margin-bottom:.3rem">Entities (from the import)</div>
@@ -4262,7 +4319,7 @@ function ExpandedCell({ session, a, process, updateSession, picks, participants,
         <${Field} label="Local Accounting (the entity)" required><${YN} value=${a.fitGap.local} onChange=${v => set('fitGap.local', v)} name="Local Accounting" /></${Field}>
         <${Field} label="GBS (shared service centre)" required><${YN} value=${a.fitGap.gbs} onChange=${v => set('fitGap.gbs', v)} name="GBS" /></${Field}>
         <${Field} label="Other party (e.g. external provider)"><${YN} value=${a.fitGap.other} onChange=${v => set('fitGap.other', v)} name="Other" /></${Field}>
-        <${Field} label="Effort (FTE)" hint="optional"><${TextInput} class="num sm" value=${a.fitGap.fte ?? ''} onCommit=${v => set('fitGap.fte', parseNumber(v))} placeholder="0.0" style="width:6rem" /></${Field}>
+        <${Field} label=${effortMode(session) === 'hours' ? 'Effort (hours per month)' : 'Effort (FTE)'} hint="optional"><${EffortField} session=${session} a=${a} updateSession=${updateSession} /></${Field}>
       </div>
       <h4 style="margin-top:.8rem"><span class="step">2</span> Is there a gap vs. the global standard?</h4>
       <div class="fgrid">

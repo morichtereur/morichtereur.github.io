@@ -104,7 +104,7 @@ function ExpandedCell({ session, a, process, updateSession, picks, participants,
         <${Field} label="Local Accounting (the entity)" required><${YN} value=${a.fitGap.local} onChange=${v => set('fitGap.local', v)} name="Local Accounting" /></${Field}>
         <${Field} label="GBS (shared service centre)" required><${YN} value=${a.fitGap.gbs} onChange=${v => set('fitGap.gbs', v)} name="GBS" /></${Field}>
         <${Field} label="Other party (e.g. external provider)"><${YN} value=${a.fitGap.other} onChange=${v => set('fitGap.other', v)} name="Other" /></${Field}>
-        <${Field} label="Effort (FTE)" hint="optional"><${TextInput} class="num sm" value=${a.fitGap.fte ?? ''} onCommit=${v => set('fitGap.fte', parseNumber(v))} placeholder="0.0" style="width:6rem" /></${Field}>
+        <${Field} label=${effortMode(session) === 'hours' ? 'Effort (hours per month)' : 'Effort (FTE)'} hint="optional"><${EffortField} session=${session} a=${a} updateSession=${updateSession} /></${Field}>
       </div>
       <h4 style="margin-top:.8rem"><span class="step">2</span> Is there a gap vs. the global standard?</h4>
       <div class="fgrid">

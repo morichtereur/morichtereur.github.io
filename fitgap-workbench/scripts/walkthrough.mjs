@@ -153,10 +153,10 @@ await say('Step 3 · Present: full-screen slides for the room. Cover with the cl
 await page.keyboard.press('ArrowRight'); await sleep(1600);
 await page.keyboard.press('ArrowRight'); await sleep(1600);
 await page.keyboard.press('ArrowRight'); await sleep(1200);
-await say('Flow boards in present mode are editable: who performs a step, its FTE and what is different are captured live.', 3600, '', async () => {
+await say('Flow boards in present mode are editable: who performs a step, its hours per month (turned into FTE) and what is different.', 3600, '', async () => {
   await click('.present .board-grid .stepcard >> nth=2', { after: 900 });
   await click('.present .board-detail .yn >> nth=0 >> button >> nth=0', { after: 700 });
-  await click('.present .board-detail .fte-row .chip:has-text("0.25")', { after: 900 });
+  await click('.present .board-detail .fte-row .chip:has-text("8 h")', { after: 900 });
   await click('.present .board-detail .gapbtns .pill-STANDARDIZATION', { after: 700 });
 });
 // Poster inset for the thumbnail: the flow board with a step being edited, without caption and cursor.

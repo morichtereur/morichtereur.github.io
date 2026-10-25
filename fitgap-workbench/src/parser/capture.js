@@ -377,7 +377,7 @@ export function parseCaptureWorkbook(wb, opts) {
       const a = {
         entityCode: code, processId: id, stream: p.stream,
         asIs: { le: null, gbs: null, systems: '', gap: null, gapRaw: '', info: '', extra: {} },
-        fitGap: { local: null, other: null, gbs: null, fte: null, extra: {} },
+        fitGap: { local: null, other: null, gbs: null, fte: null, hours: null, extra: {} },
         detailedGap: Object.fromEntries(DETAILED_GAP_FIELDS.map(f => [f, ''])),
         scope: { outOfScope: false, source: null, reason: '' },
         notes: [],

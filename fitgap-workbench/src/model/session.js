@@ -18,6 +18,8 @@ export function createSession() {
       streamsInScope: { R2R: true, 'A2R-FAA': true, 'A2R-IA': true, I2P: true, I2C: true, ICO: true, MD: true },
       gapDefinitions: { ...GAP_DEFINITIONS },
       minutesPerActivity: { NO_GAP: 1.5, GAP: 5 },
+      effortUnit: 'hours',          // 'hours' (hours per month, FTE derived) | 'fte'
+      hoursPerFteMonth: 140,        // productive hours per FTE per month (≈ 1,680 a year)
       editorInitials: '',
       lunch: { start: '12:00', end: '13:00' },
       dayStart: '08:00', dayEnd: '18:00',

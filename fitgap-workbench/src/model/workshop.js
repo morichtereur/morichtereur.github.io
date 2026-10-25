@@ -39,6 +39,38 @@ export function redoAction(session, actionId, meta = auditMeta(session)) {
   return n;
 }
 
+/* ---- Effort: captured in hours per month (what local teams can estimate), FTE derived with a per-session basis. ---- */
+export const DEFAULT_HOURS_PER_FTE_MONTH = 140; // ≈ 1,680 productive hours a year
+export function fteBasis(session) { const b = Number(session?.settings?.hoursPerFteMonth); return b > 0 ? b : DEFAULT_HOURS_PER_FTE_MONTH; }
+const r2 = (x) => Math.round(x * 100) / 100, r1 = (x) => Math.round(x * 10) / 10;
+/** Hours per month of an assessment: captured hours, else derived from an FTE value (e.g. the Ops pre-fill). */
+export function hoursOf(session, a) { const h = a?.fitGap?.hours; if (h !== null && h !== undefined) return h; const f = a?.fitGap?.fte; return f === null || f === undefined ? null : r1(f * fteBasis(session)); }
+/** Set the effort in hours per month; the FTE value is derived and stored (analysis, exports and write-back use it). */
+export function setEffortHours(session, key, hours, meta = auditMeta(session)) {
+  const h = hours === null || hours === undefined || hours === '' ? null : Number(hours);
+  const a = applyChange(session, key, 'fitGap.hours', h, meta);
+  const b = applyChange(session, key, 'fitGap.fte', h === null ? null : r2(h / fteBasis(session)), meta);
+  return a || b;
+}
+/** Set the effort directly in FTE (FTE capture mode); captured hours are cleared so the two never disagree. */
+export function setEffortFte(session, key, fte, meta = auditMeta(session)) {
+  const f = fte === null || fte === undefined || fte === '' ? null : Number(fte);
+  const a = applyChange(session, key, 'fitGap.fte', f, meta); const b = applyChange(session, key, 'fitGap.hours', null, meta);
+  return a || b;
+}
+/** New FTE basis: recompute every FTE value that was derived from captured hours. Returns the count. */
+export function rebaseFte(session, hoursPerFteMonth, meta = auditMeta(session)) {
+  session.settings.hoursPerFteMonth = hoursPerFteMonth; let n = 0;
+  for (const a of Object.values(session.assessments)) { const h = a.fitGap.hours; if (h === null || h === undefined) continue; if (applyChange(session, a.key, 'fitGap.fte', r2(h / fteBasis(session)), { ...meta, note: `FTE basis ${fteBasis(session)} h/month` })) n++; }
+  return n;
+}
+/** Sum of effort for a list of assessments: { hours, fte, withValue }. */
+export function effortSum(session, list) {
+  let hours = 0, fte = 0, withValue = 0;
+  for (const a of list) { if (!a) continue; const h = hoursOf(session, a), f = a.fitGap?.fte; if (h === null && (f === null || f === undefined)) continue; withValue++; hours += h || 0; fte += Number(f) || 0; }
+  return { hours: r1(hours), fte: r2(fte), withValue };
+}
+
 export function effectiveGap(a) { return a.workshop.gapType || a.asIs.gap || null; }
 export function gapDiffersFromOps(a) { return !!a.workshop.gapType && a.workshop.gapType !== a.asIs.gap; }
 export function fitGapComplete(a) { return [a.fitGap.local, a.fitGap.other, a.fitGap.gbs].every(v => v === true || v === false); }
@@ -140,7 +172,7 @@ export function applyToAllEntities(session, fromKey, meta = auditMeta(session)) 
   const src = session.assessments[fromKey]; if (!src) return 0; let n = 0;
   for (const a of Object.values(session.assessments)) {
     if (a.processId !== src.processId || a.key === fromKey || a.scope.outOfScope) continue;
-    for (const f of ['local', 'other', 'gbs', 'fte']) if (src.fitGap[f] !== null) n += applyChange(session, a.key, `fitGap.${f}`, src.fitGap[f], meta) ? 1 : 0;
+    for (const f of ['local', 'other', 'gbs', 'fte', 'hours']) if (src.fitGap[f] !== null && src.fitGap[f] !== undefined) n += applyChange(session, a.key, `fitGap.${f}`, src.fitGap[f], meta) ? 1 : 0;
     for (const f of DETAILED_GAP_FIELDS) if (src.detailedGap[f]) n += applyChange(session, a.key, `detailedGap.${f}`, src.detailedGap[f], meta) ? 1 : 0;
     for (const f of ['gapType', 'rationale', 'status']) if (src.workshop[f]) n += applyChange(session, a.key, `workshop.${f}`, src.workshop[f], meta) ? 1 : 0;
     if (src.deviation) n += applyChange(session, a.key, 'deviation', JSON.parse(JSON.stringify(src.deviation)), meta) ? 1 : 0;

@@ -76,6 +76,11 @@ across modules – the build fails on duplicates.
 3. Session JSON save/load, backup prompt at session end
 4. Deviation log (+ initiative candidates, taxonomy change requests), flat export with audit log, audit export; acceptance run  ← pilot MVP complete
 5–11. flows, present mode, QG2, evaluate, swimlane, write-back, full PLAN/PREPARE/HAND-OVER, profile mapping UI
+15. Effort in hours: local teams estimate hours per month (quick picks 1–40 h, free entry with comma or point);
+    FTE = hours ÷ productive hours per FTE per month (default 140 ≈ 1,680 h a year, set under Plan & prepare → More
+    settings; changing it recalculates every FTE derived from hours, logged in the audit trail). Both are stored
+    (`fitGap.hours`, `fitGap.fte`); write-back fills the capture sheet's FTE column, exports carry hours, FTE and the
+    basis. FTE pre-filled by Ops stays and shows as "≈ x h". Switch back to direct FTE entry in the same settings.
 14. Single-entity country files (first seen with Korea): sheets without any entity label are read as one entity and
     joined to the entity of the same country on import (country from the file name, ISO codes such as `_KR`); if the
     labelled file comes later it takes over a placeholder entity, so the import order does not matter. Duplicate

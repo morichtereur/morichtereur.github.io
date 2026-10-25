@@ -10,7 +10,7 @@ and compare the printout with the assumptions in section 4.
 ```
 Session {
   version: 1, id, createdAt, updatedAt,
-  settings: { clientName, country, workshopDates[], facilitators[], logoDataUrl, logoOnDark, logoSource ('workbook:<file> · <sheet>' | 'upload:<name>' | 'removed'), brandColor,
+  settings: { clientName, country, workshopDates[], facilitators[], effortUnit (hours|fte), hoursPerFteMonth, logoDataUrl, logoOnDark, logoSource ('workbook:<file> · <sheet>' | 'upload:<name>' | 'removed'), brandColor,
               streamsInScope{R2R,A2R-FAA,A2R-IA,I2P,I2C,ICO,MD}, gapDefinitions{}, minutesPerActivity{NO_GAP,GAP}, editorInitials },
   entities:    { [code]: Entity },          // code = 6-digit code, or "name:<fuzzykey>" when the label has none
   processes:   { [processId]: Process },
@@ -42,7 +42,7 @@ Assessment (one per entity × activity, whatever the number of files containing 
 {
   entityCode, processId, stream, key,
   asIs:        { le, gbs, systems, gap, gapRaw, info, extra{} }          // Ops pre-assessment, refreshed on re-import (diff recorded)
-  fitGap:      { local, other, gbs, fte, extra{} }                        // workshop step 1 (imported if pre-filled)
+  fitGap:      { local, other, gbs, hours, fte, extra{} }                 // workshop step 1; hours = per month, fte = hours ÷ settings.hoursPerFteMonth (or entered / imported directly)
   detailedGap: { itSystems, workflowTools, currentProcess, externalParty, languageRequirements, legalRegulatory, internalControls, extra{} }
   scope:       { outOfScope, source: 'ops-gap' | 'fitGap.<field>' | 'workshop', reason }
   notes[]:     { kind: 'instruction', field, text, cell }                  // instruction text found in capture cells
