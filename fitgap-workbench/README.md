@@ -26,11 +26,12 @@ npm run package:replit # zips the project (no node_modules, no samples) for uplo
 
 ## Explanation video
 
-`npm run video` records a guided tour with demo data (captions, visible cursor, title cards) to `dist/video/`:
+`npm run video` (full tour, ~5 min) and `npm run video:short` (~90 s overview for a management audience, voice-over from
+`scripts/narration-short.json`, `narrate.py --spec narration-short.json`) record a guided tour with demo data (captions, visible cursor, title cards) to `dist/video/`:
 `walkthrough.mp4` (1920×1080, H.264, chapters per step, title metadata), `walkthrough.webm`, `thumbnail.png`
 (poster frame) and – with voice-over – `walkthrough.srt` / `.vtt` built from the spoken text
 (`scripts/subtitles.mjs`: ≤ 42 characters per line, ≤ 2 lines, split at sentence and clause breaks).
-`VIDEO_W` / `VIDEO_H` change the size. The tour is scripted in `scripts/walkthrough.mjs` – edit the
+`VIDEO_W` / `VIDEO_H` change the size. The tours are scripted in `scripts/tours/full.mjs` / `short.mjs` (frame, captions, audio and thumbnail in `scripts/walkthrough.mjs`) – edit the
 captions there and re-record after UI changes. Uses the pre-installed Chromium; no network.
 
 Voice-over (English, Kokoro-82M, Apache-2.0, runs offline on CPU):

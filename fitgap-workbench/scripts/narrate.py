@@ -15,13 +15,14 @@ here = os.path.dirname(os.path.abspath(__file__))
 ap = argparse.ArgumentParser()
 ap.add_argument('model_dir'); ap.add_argument('out_dir')
 ap.add_argument('--voice'); ap.add_argument('--speed', type=float)
+ap.add_argument('--spec', default='narration.json', help='narration file in scripts/ (narration-short.json for TOUR=short)')
 args = ap.parse_args()
 
 import soundfile as sf
 import espeakng_loader
 from kokoro_onnx import Kokoro, EspeakConfig
 
-spec = json.load(open(os.path.join(here, 'narration.json'), encoding='utf-8'))
+spec = json.load(open(os.path.join(here, args.spec), encoding='utf-8'))
 voice = args.voice or spec.get('voice', 'af_heart'); speed = args.speed or spec.get('speed', 1.0)
 lang = 'en-gb' if voice.startswith('b') else spec.get('lang', 'en-us')
 os.makedirs(args.out_dir, exist_ok=True)

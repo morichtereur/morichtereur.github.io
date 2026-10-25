@@ -1,0 +1,52 @@
+{
+  "voice": "af_heart",
+  "speed": 1.0,
+  "lang": "en-us",
+  "note": "Voice-over for scripts/tours/short.mjs (TOUR=short, ~90 s overview for a management audience). One entry per title() / say() call, in tour order.",
+  "lines": [
+    {
+      "id": "t1",
+      "text": "The G-B-S Fit-Gap Workbench. Country fit-gap workshops – faster, consistent, and audit-ready."
+    },
+    {
+      "id": "s1",
+      "text": "Every country fit-gap starts from five capture workbooks – thousands of rows, pre-assessed by G-B-S Operations."
+    },
+    {
+      "id": "s2",
+      "text": "The workbench reads them as they are, in seconds. It's one offline file – no installation, no server, and no data leaving the laptop."
+    },
+    {
+      "id": "s3",
+      "text": "Before the workshop, a quality check shows Operations exactly which pre-assessment cells are still missing."
+    },
+    {
+      "id": "s4",
+      "text": "In the room, the team confirms the no-gap rows in bulk – and spends its time on the real gaps."
+    },
+    {
+      "id": "s6",
+      "text": "Every decision is logged – who, when, and in which session. A complete audit trail for the quality gates."
+    },
+    {
+      "id": "s5",
+      "text": "Effort is captured live, in hours per month, and converted into F-T-E – a clear baseline for the transition."
+    },
+    {
+      "id": "s6b",
+      "text": "All deviations land on one board – with resolution approach, owner, and approval status."
+    },
+    {
+      "id": "s7",
+      "text": "Results flow straight into the deviation log, the Q-G-2 sign-off, and back into the original workbooks."
+    },
+    {
+      "id": "s8",
+      "text": "And several countries run side by side – one filter away."
+    },
+    {
+      "id": "t2",
+      "text": "One file. Every country. Decisions you can trace."
+    }
+  ]
+}

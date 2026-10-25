@@ -48,8 +48,8 @@ export function buildSubtitles(cues, clips, spoken) {
   };
 }
 
-export function spokenText() {
-  return Object.fromEntries(JSON.parse(readFileSync(new URL('./narration.json', import.meta.url), 'utf8')).lines.map(l => [l.id, l.text]));
+export function spokenText(spec = 'narration.json') {
+  return Object.fromEntries(JSON.parse(readFileSync(new URL(`./${spec}`, import.meta.url), 'utf8')).lines.map(l => [l.id, l.text]));
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
