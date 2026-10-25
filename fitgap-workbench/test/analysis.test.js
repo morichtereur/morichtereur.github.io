@@ -99,3 +99,17 @@ test('write-back round trip: patched workbook re-imports with the workshop value
   assert.equal(Object.keys(zip2.files).filter(n => n.startsWith('xl/media/')).length, mediaBefore);
   assert.ok(wb.SheetNames.includes('Cover') && wb.Sheets[parsed.sheetName]['!merges'].length > 0, 'merges and other sheets survive');
 });
+
+test('write-back leaves cells alone whose value the workshop did not change (keeps "x", spacing, shared strings)', () => {
+  const t = createSession(); const f = readdirSync(dir).find(x => /R2R/.test(x));
+  const p = parseCaptureWorkbook(XLSX.read(readFileSync(join(dir, f)), { type: 'buffer' }), { XLSX, fileName: f }); mergeParsedWorkbook(t, p);
+  const a = Object.values(t.assessments).find(x => !x.scope.outOfScope && x.sources[0].cells.fitGap?.local && x.sources[0].cells.detailedGap?.itSystems);
+  a.sources[0].imported = { fitGap: { local: true }, detailedGap: { itSystems: 'email' } }; a.detailedGap.itSystems = 'email';
+  applyChange(t, a.key, 'fitGap.local', true); applyChange(t, a.key, 'fitGap.gbs', true);
+  const cells = writeBackCells(t, f)[a.sources[0].sheet];
+  const { local, gbs } = a.sources[0].cells.fitGap;
+  assert.ok(!(local in cells), 'unchanged Y not rewritten'); assert.equal(cells[gbs], 'Y');
+  assert.ok(!(a.sources[0].cells.detailedGap.itSystems in cells), 'unchanged text not rewritten');
+  applyChange(t, a.key, 'detailedGap.itSystems', 'SAP');
+  assert.equal(writeBackCells(t, f)[a.sources[0].sheet][a.sources[0].cells.detailedGap.itSystems], 'SAP');
+});

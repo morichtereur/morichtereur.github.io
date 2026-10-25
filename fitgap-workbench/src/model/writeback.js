@@ -70,9 +70,10 @@ export function writeBackCells(session, fileName, { onlyTouched = true } = {}) {
       const sheet = out[src.sheet] = out[src.sheet] || {};
       const fg = src.cells.fitGap || {}, dg = src.cells.detailedGap || {};
       if (a.scope.outOfScope && a.scope.source === 'workshop') { if (fg.local) sheet[fg.local] = 'Out of scope'; continue; }
-      for (const f of ['local', 'other', 'gbs']) { const v = ynCell(a.fitGap[f]); if (fg[f] && v !== null) sheet[fg[f]] = v; }
-      if (fg.fte && a.fitGap.fte !== null && a.fitGap.fte !== undefined) sheet[fg.fte] = a.fitGap.fte;
-      for (const f of DETAILED_GAP_FIELDS) if (dg[f] && a.detailedGap[f]) sheet[dg[f]] = a.detailedGap[f];
+      const imp = src.imported || {}; const same = (t, f) => imp[t] && f in imp[t] && imp[t][f] === a[t][f];
+      for (const f of ['local', 'other', 'gbs']) { const v = ynCell(a.fitGap[f]); if (fg[f] && v !== null && !same('fitGap', f)) sheet[fg[f]] = v; }
+      if (fg.fte && a.fitGap.fte !== null && a.fitGap.fte !== undefined && !same('fitGap', 'fte')) sheet[fg.fte] = a.fitGap.fte;
+      for (const f of DETAILED_GAP_FIELDS) if (dg[f] && a.detailedGap[f] && !same('detailedGap', f)) sheet[dg[f]] = a.detailedGap[f];
     }
   }
   return out;

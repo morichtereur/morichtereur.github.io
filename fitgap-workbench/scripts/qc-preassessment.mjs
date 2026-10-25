@@ -30,7 +30,7 @@ const qc = preAssessmentQC(session, { reference });
 const file = resolve(out || `${(session.settings.country || 'country').replace(/\W+/g, '_')}_pre-assessment_QC.xlsx`);
 writeFileSync(file, await qcWorkbookBytes(session, XLSX, JSZip, qc));
 console.log(`${session.settings.clientName} · ${session.settings.country} · ${Object.keys(session.entities).length} entities · ${Object.keys(session.assessments).length} assessments`);
-for (const s of qc.summary) console.log(`  ${s.readiness.padEnd(5)} ${s.entity.slice(0, 30).padEnd(30)} ${s.stream.padEnd(4)} in scope ${String(s.inScope).padStart(4)} · GAP ${String(s.gapPct).padStart(3)}% · split ${String(s.splitPct).padStart(3)}% · system ${String(s.systemPct).padStart(3)}% · gaps explained ${String(s.gapsExplainedPct).padStart(3)}% · H${s.high} M${s.medium} L${s.low}`);
+for (const s of qc.summary) console.log(`  ${s.readiness.padEnd(5)} ${s.entity.slice(0, 30).padEnd(30)} ${s.stream.padEnd(4)} in scope ${String(s.inScope).padStart(4)} · GAP ${String(s.gapPct).padStart(3)}% · split ${String(s.splitPct).padStart(3)}% · system ${String(s.systemPct).padStart(3)}% · gaps explained ${s.gapsExplainedPct === null ? "  –" : String(s.gapsExplainedPct).padStart(3) + "%"} · H${s.high} M${s.medium} L${s.low}`);
 const byCheck = {}; for (const i of qc.issues) byCheck[`${i.severity} · ${i.check}`] = (byCheck[`${i.severity} · ${i.check}`] || 0) + 1;
 console.log(`findings: ${qc.totals.high} high · ${qc.totals.medium} medium · ${qc.totals.low} low · ${qc.totals.info} info`);
 for (const [k, n] of Object.entries(byCheck)) console.log(`  ${String(n).padStart(4)}  ${k}`);

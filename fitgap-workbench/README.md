@@ -85,6 +85,8 @@ across modules – the build fails on duplicates.
     against other countries. Excel with Summary, Issues (Status / Comment Ops columns for GBS Ops), Checks, About.
     Parser: entity labels without a code are recognised by their position above the block (e.g. a hub next to the
     legal entity), and a second block for the same entity is reported and skipped instead of overwriting the first.
+    Write-back only writes values the workshop changed: cells whose value is still the one imported (e.g. an Ops "x"
+    for Yes, a pre-filled Detailed Gap text) stay exactly as they are – original notation, spacing and string type.
 15. Effort in hours: local teams estimate hours per month (quick picks 1–40 h, free entry with comma or point);
     FTE = hours ÷ productive hours per FTE per month (default 140 ≈ 1,680 h a year, set under Plan & prepare → More
     settings; changing it recalculates every FTE derived from hours, logged in the audit trail). Both are stored

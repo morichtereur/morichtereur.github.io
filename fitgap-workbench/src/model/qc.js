@@ -38,6 +38,16 @@ export const QC_CHECKS = {
  * @param opts.reference  optional { name, entityCodes:Set, processIds:Map<stream,Set<id>> } of other countries
  * @returns { summary[], issues[], totals }
  */
+// First filled Fit-Gap / Detailed Gap cell of an activity – where GBS Ops finds the pre-filled workshop value.
+function qcFirstFilled(a) {
+  const c = a.sources[0]?.cells || {};
+  for (const [t, f] of [['fitGap', 'local'], ['fitGap', 'other'], ['fitGap', 'gbs'], ['fitGap', 'fte'], ...Object.keys(c.detailedGap || {}).map(f => ['detailedGap', f])]) {
+    const v = a[t]?.[f]; if (v === null || v === undefined || v === '' || !c[t]?.[f]) continue;
+    return { cell: c[t][f], value: v === true ? 'Y' : v === false ? 'N' : String(v) };
+  }
+  return {};
+}
+
 export function preAssessmentQC(session, { reference = null } = {}) {
   const issues = []; const push = (code, f) => issues.push({ code, severity: QC_CHECKS[code].sev, check: QC_CHECKS[code].title, action: QC_CHECKS[code].action, ...f });
   const entityName = (code) => session.entities[code]?.displayName || session.entities[code]?.name || code;
@@ -89,12 +99,12 @@ export function preAssessmentQC(session, { reference = null } = {}) {
       if (asIs && toBe && asIs !== toBe && (a.asIs.gap === GAP.NO_GAP || a.asIs.gap === GAP.STANDARDIZATION)) push('SPLIT_VS_GAP', { ...where(a, 'gap'), value: a.asIs.gapRaw, finding: `As-Is ${asIs} · To-Be ${toBe} · GAP "${a.asIs.gapRaw}".` });
       if (asIs && toBe && asIs === toBe && (a.asIs.gap === GAP.HARMONIZATION || a.asIs.gap === GAP.BOTH)) push('GAP_VS_SPLIT', { ...where(a, 'gap'), value: a.asIs.gapRaw, finding: `As-Is and To-Be both ${asIs} · GAP "${a.asIs.gapRaw}".` });
       const fg = a.fitGap || {}; const dgFilled = Object.entries(a.detailedGap || {}).filter(([f, v]) => f !== 'extra' && v).length;
-      if (fg.local !== null || fg.gbs !== null || fg.other !== null || dgFilled) push('WORKSHOP_PREFILLED', { ...where(a, 'gap'), finding: `Fit-Gap split ${qcYn(fg.local) || '–'}/${qcYn(fg.other) || '–'}/${qcYn(fg.gbs) || '–'}${dgFilled ? `, ${dgFilled} Detailed Gap field(s)` : ''}${fg.fte !== null && fg.fte !== undefined ? `, FTE ${fg.fte}` : ''}.` });
+      if (fg.local !== null || fg.gbs !== null || fg.other !== null || dgFilled) push('WORKSHOP_PREFILLED', { ...where(a, 'gap'), ...qcFirstFilled(a), finding: `Fit-Gap split ${qcYn(fg.local) || '–'}/${qcYn(fg.other) || '–'}/${qcYn(fg.gbs) || '–'}${dgFilled ? `, ${dgFilled} Detailed Gap field(s)` : ''}${fg.fte !== null && fg.fte !== undefined ? `, FTE ${fg.fte}` : ''}.` });
     }
     const mine = issues.slice(before);
     const pct = (n) => (inScope.length ? Math.round(100 * n / inScope.length) : 0);
     const readiness = !inScope.length ? 'n/a' : notDone ? 'Red' : pct(gapFilled) >= 95 && pct(splitFilled) >= 90 ? 'Green' : pct(gapFilled) >= 80 && pct(splitFilled) >= 50 ? 'Amber' : 'Red';
-    summary.push({ entityCode: code, entity: entityName(code), stream, activities: list.length, outOfScope: list.length - inScope.length, inScope: inScope.length, gapPct: pct(gapFilled), splitPct: pct(splitFilled), systemPct: pct(sysFilled), gaps: gaps.length, gapsExplainedPct: gaps.length ? Math.round(100 * gapsExplained / gaps.length) : 100, high: mine.filter(i => i.severity === QC_SEV.HIGH).length, medium: mine.filter(i => i.severity === QC_SEV.MEDIUM).length, low: mine.filter(i => i.severity === QC_SEV.LOW).length, readiness });
+    summary.push({ entityCode: code, entity: entityName(code), stream, activities: list.length, outOfScope: list.length - inScope.length, inScope: inScope.length, gapPct: pct(gapFilled), splitPct: pct(splitFilled), systemPct: pct(sysFilled), gaps: gaps.length, gapsExplainedPct: gaps.length ? Math.round(100 * gapsExplained / gaps.length) : null, high: mine.filter(i => i.severity === QC_SEV.HIGH).length, medium: mine.filter(i => i.severity === QC_SEV.MEDIUM).length, low: mine.filter(i => i.severity === QC_SEV.LOW).length, readiness });
   }
 
   // ---- template completeness against other countries
@@ -114,7 +124,7 @@ export function preAssessmentQC(session, { reference = null } = {}) {
 /** Excel for GBS Operations: Summary · Issues (one row per cell to fix) · Checks (what each check means). */
 export function buildQcWorkbook(session, XLSX, qc) {
   const wb = XLSX.utils.book_new(); const st = session.settings;
-  const summaryRows = qc.summary.map(s => ({ 'Entity code': session.entities[s.entityCode]?.hasCode ? s.entityCode : '', 'Entity': s.entity, 'Stream': s.stream, 'Readiness': s.readiness, 'Activities': s.activities, 'Out of scope': s.outOfScope, 'In scope': s.inScope, 'GAP filled %': s.gapPct, 'As-Is split filled %': s.splitPct, 'System filled %': s.systemPct, 'Gaps (H/S/B)': s.gaps, 'Gaps explained %': s.gapsExplainedPct, 'High': s.high, 'Medium': s.medium, 'Low': s.low }));
+  const summaryRows = qc.summary.map(s => ({ 'Entity code': session.entities[s.entityCode]?.hasCode ? s.entityCode : '', 'Entity': s.entity, 'Stream': s.stream, 'Readiness': s.readiness, 'Activities': s.activities, 'Out of scope': s.outOfScope, 'In scope': s.inScope, 'GAP filled %': s.gapPct, 'As-Is split filled %': s.splitPct, 'System filled %': s.systemPct, 'Gaps (H/S/B)': s.gaps, 'Gaps explained %': s.gapsExplainedPct ?? '–', 'High': s.high, 'Medium': s.medium, 'Low': s.low }));
   XLSX.utils.book_append_sheet(wb, sheet(XLSX, summaryRows, ['Entity', 'Stream']), 'Summary');
   const issueRows = qc.issues.map((i, n) => ({ '#': n + 1, 'Severity': i.severity, 'Check': i.check, 'File': i.file || '', 'Sheet': i.sheet || '', 'Row': i.row || '', 'Cell': i.cell || '', 'Entity': i.entity || '', 'Stream': i.stream || '', 'Process ID': i.processId || '', 'Activity': i.activity || '', 'Value': i.value || '', 'Finding': i.finding || '', 'Action for GBS Ops': i.action, 'Status': '', 'Comment Ops': '' }));
   XLSX.utils.book_append_sheet(wb, sheet(XLSX, issueRows, ['#', 'Severity', 'Check']), 'Issues');

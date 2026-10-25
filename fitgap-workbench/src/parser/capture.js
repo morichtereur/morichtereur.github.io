@@ -424,6 +424,8 @@ export function parseCaptureWorkbook(wb, opts) {
           if (looksLikeInstruction(v)) { a.notes.push({ kind: 'instruction', field: `${target}.${f}`, text: v, cell: cells[f] }); notes.push({ row: r + 1, processId: id, entity: entity.name, field: `${target}.${f}`, text: v }); continue; }
           if (kind === 'FITGAP') a.fitGap[f] = f === 'fte' ? parseNumber(v) : parseYN(v);
           else a.detailedGap[f] = v;
+          // Value as imported – write-back leaves cells alone that the workshop did not change.
+          ((src.imported = src.imported || {})[target] = src.imported[target] || {})[f] = a[target][f];
         }
         if (Object.keys(extra).length) (kind === 'FITGAP' ? a.fitGap : a.detailedGap).extra = extra;
       }
