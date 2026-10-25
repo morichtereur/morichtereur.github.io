@@ -697,6 +697,20 @@ dialog.welcome { max-width: 40rem; }
 .legend-ico { width: 3cqw; height: 3cqw; border-radius: .8cqw; display: grid; place-items: center; background: color-mix(in srgb, var(--c) 14%, transparent); color: var(--c); margin-top: .2cqw; }
 .present-foot .mark-svg { vertical-align: middle; }
 
+/* ---------- FTE capture (flow board, present) ---------- */
+.fte-row { display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; }
+.fte-row .fte-input { width: 5.2rem; text-align: right; font-family: var(--font-mono); } .fte-row .fte-input::placeholder { color: var(--ink-3); opacity: .6; }
+.fte-row.compact .fte-input { width: 4.2rem; padding: .1rem .35rem; }
+.fte-row .chips { gap: .25rem; } .fte-row .chip { font-family: var(--font-mono); }
+.fte-badge { font-family: var(--font-mono); font-size: .62rem; padding: .02rem .3rem; border-radius: 3px; background: var(--accent-soft); color: var(--accent); white-space: nowrap; }
+.fte-total { font-family: var(--font-mono); font-size: .74rem; color: var(--accent); background: var(--accent-soft); padding: .1rem .45rem; border-radius: 999px; white-space: nowrap; }
+.present .fte-total { font-size: .9cqw; } .present .fte-badge { font-size: .75cqw; }
+.present .fte-row.compact .fte-input { width: 5cqw; font-size: .95cqw; }
+.slide-table tr.fte-sum td { border-top: 2px solid var(--line-strong); background: var(--accent-soft); font-size: 1.05cqw; }
+.bar-row { grid-template-columns: 11rem 1fr 3rem 4.5rem; } .present .bar-row { grid-template-columns: 16cqw 1fr 4cqw 6cqw; }
+.fte-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1cqw; margin-top: 1.6cqw; padding-top: 1.2cqw; border-top: 1px solid var(--line); }
+.fte-kpis b { display: block; font-family: var(--font-mono); font-weight: 500; font-size: 2.2cqw; line-height: 1.1; color: var(--accent); } .fte-kpis span { font-size: .85cqw; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-2); }
+
 </style>
 </head>
 <body>
@@ -742,7 +756,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 </script>
 <script id="app">
 'use strict';
-const BUILD = { version: '0.1.0', builtAt: '2026-10-19T22:27:33.453Z' };
+const BUILD = { version: '0.1.0', builtAt: '2026-10-25T05:14:52.285Z' };
 
 /* ---- src/model/constants.js ---- */
 // Domain constants. Pure data – no client-specific values anywhere in here.
@@ -1152,6 +1166,11 @@ function sheetToGrid(ws, XLSX) {
   // which real files often start at B1 or row 3. Row/column indexes must be absolute.
   const range = ws['!ref'] ? XLSX.utils.decode_range(ws['!ref']) : { s: { r: 0, c: 0 }, e: { r: 0, c: 0 } };
   range.s.r = 0; range.s.c = 0;
+  // Formatting applied to whole columns stretches !ref to row 1,048,576 – read only up to the last cell with a value.
+  let lastR = 0, lastC = 0;
+  for (const k of Object.keys(ws)) { if (k[0] === '!') continue; const cell = ws[k]; if (!cell || cell.v === undefined || cell.v === null || cell.v === '') continue; const a = XLSX.utils.decode_cell(k); if (a.r > lastR) lastR = a.r; if (a.c > lastC) lastC = a.c; }
+  for (const m of ws['!merges'] || []) { if (m.s.r > lastR && m.s.r <= range.e.r && ws[XLSX.utils.encode_cell(m.s)]?.v !== undefined) lastR = m.s.r; }
+  range.e.r = Math.min(range.e.r, lastR); range.e.c = Math.min(range.e.c, Math.max(lastC, 0));
   const rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: null, blankrows: true, range });
   let width = 0;
   for (const r of rows) if (r.length > width) width = r.length;
@@ -1309,6 +1328,9 @@ function buildBlocks(grid, headerRow, band, core, profile, warnings) {
     for (let j = i - 1; j >= 0; j--) { if (profile.blocks[blocks[j].kind].perEntity && blocks[j].entity) { prevEnt = blocks[j].entity; break; } }
     if (prevEnt) { b.entity = prevEnt; b.entityInherited = true; continue; }
     const guess = uniqueEntities[b.ordinal - 1];
+    // No entity label anywhere in the file: a single-entity capture sheet (e.g. a one-entity country). The entity is
+    // resolved on import (the country's entity, or a placeholder that the labelled file of the country takes over).
+    if (!uniqueEntities.length && b.ordinal === 1) { b.entity = { code: null, name: '', raw: '', unlabeled: true }; b.entityGuessed = true; if (!warnings.some(w => w.code === 'SINGLE_ENTITY_NO_LABEL')) warnings.push({ level: 'info', code: 'SINGLE_ENTITY_NO_LABEL', message: 'No entity label in this file – read as a single-entity capture sheet; matched to the entity of the same country on import.' }); continue; }
     if (guess) { b.entity = guess; b.entityGuessed = true; warnings.push({ level: 'warn', code: 'ENTITY_BY_ORDINAL', message: `${b.kind} block at column ${colLetter(b.col)} has no entity label – assigned to "${guess.name}" by position (${b.ordinal}). Please verify.` }); }
     else { b.entity = { code: null, name: `Unknown entity ${b.ordinal}`, raw: '' }; b.entityGuessed = true; warnings.push({ level: 'error', code: 'ENTITY_UNKNOWN', message: `${b.kind} block at column ${colLetter(b.col)} has no entity label and no other block to pair with.` }); }
   }
@@ -1370,11 +1392,11 @@ function detectLayout(grid, profile = PROFILE_CAPTURE_SHEET_V1) {
   const entities = [];
   for (const b of blocks) {
     if (!b.entity) continue;
-    const key = b.entity.code || fuzzyKey(b.entity.name);
-    let e = entities.find(x => (x.code || fuzzyKey(x.name)) === key);
-    if (!e) { e = { code: b.entity.code, name: b.entity.name, raw: b.entity.raw, blocks: [] }; entities.push(e); }
+    const key = b.entity.unlabeled ? 'unlabeled' : (b.entity.code || fuzzyKey(b.entity.name));
+    let e = entities.find(x => (x.unlabeled ? 'unlabeled' : (x.code || fuzzyKey(x.name))) === key);
+    if (!e) { e = { code: b.entity.code, name: b.entity.name, raw: b.entity.raw, unlabeled: !!b.entity.unlabeled, blocks: [] }; entities.push(e); }
     e.blocks.push(b.kind);
-    if (!b.entity.code) warnings.push({ level: 'warn', code: 'ENTITY_NO_CODE', message: `Entity label "${b.entity.raw}" has no 6-digit code – matched by name only.` });
+    if (!b.entity.code && !b.entity.unlabeled) warnings.push({ level: 'warn', code: 'ENTITY_NO_CODE', message: `Entity label "${b.entity.raw}" has no 6-digit code – matched by name only.` });
   }
   const seenCode = new Set();
   for (const e of entities) {
@@ -1424,14 +1446,17 @@ function parseCaptureWorkbook(wb, opts) {
   const toBe = layout.blocks.find(b => b.kind === 'TOBE');
   const shared = layout.blocks.filter(b => !profile.blocks[b.kind].perEntity && b.kind !== 'TOBE');
   const perEntity = layout.blocks.filter(b => profile.blocks[b.kind].perEntity);
-  const entityOf = (b) => b.entity.code || fuzzyKey(b.entity.name);
+  const entityOf = (b) => (b.entity.unlabeled ? 'unlabeled' : (b.entity.code || fuzzyKey(b.entity.name)));
+  const idCount = new Map(); const firstName = new Map(); const duplicates = []; const levelInferred = [];
   const activityLevels = new Set(profile.dataRow.activityLevels);
   let skippedCount = 0;
 
   for (let r = layout.headerRow + 1; r < grid.rows.length; r++) {
     const rawLevel = readCell(grid, r, layout.core.level.col);
-    const id = normText(readCell(grid, r, layout.core.id.col));
-    const level = parseNumber(rawLevel);
+    let id = normText(readCell(grid, r, layout.core.id.col));
+    let level = parseNumber(rawLevel);
+    // Level cell empty but a well-formed Process ID: the level is the number of numeric parts ("R2R 2.2.2.3" → 4).
+    if (isEmpty(rawLevel) && idRx.test(id)) { const parts = (id.match(/\s(\d+(?:\.\d+)*)$/) || [])[1]; const inferred = parts ? parts.split('.').length : (/^[A-Z0-9]+$/i.test(id.replace(/\s/g, '')) ? 0 : null); if (inferred !== null) { level = inferred; levelInferred.push({ row: r + 1, id, level }); } }
     const valid = Number.isInteger(level) && level >= profile.dataRow.levelMin && level <= profile.dataRow.levelMax && idRx.test(id);
     if (!valid) {
       const name = normText(readCell(grid, r, layout.core.name?.col));
@@ -1440,11 +1465,17 @@ function parseCaptureWorkbook(wb, opts) {
     }
     const name = normText(readCell(grid, r, layout.core.name?.col));
     const description = normText(readCell(grid, r, layout.core.description?.col));
+    // The same Process ID twice in one sheet (template copy errors): keep both rows – the later one as "<id> (2)" –
+    // instead of letting the second silently overwrite the first.
+    const originalId = id; const seen = (idCount.get(originalId) || 0) + 1; idCount.set(originalId, seen);
+    if (seen === 1) firstName.set(originalId, name);
+    // Structure rows repeated with the same name (a stream header written twice) are the same node – merge them.
+    if (seen > 1 && (activityLevels.has(level) || normText(firstName.get(originalId)) !== normText(name))) { id = `${originalId} (${seen})`; duplicates.push({ row: r + 1, id: originalId, keptAs: id, name, activity: activityLevels.has(level), first: firstName.get(originalId) }); }
     stack[level] = id;
     for (const k of Object.keys(stack)) if (Number(k) > level) delete stack[k];
     let parentId = null;
     for (let l = level - 1; l >= 0; l--) if (stack[l]) { parentId = stack[l]; break; }
-    const structural = parentIdFromStructure(id);
+    const structural = parentIdFromStructure(originalId);
     if (level > 0 && structural && parentId && structural !== parentId && !(structural.length < parentId.length)) hierarchyMismatch++;
     const p = { id, level, name, description, stream: streamOf(id), parentId, structuralParentId: structural, row: r + 1 };
     if (toBe) {
@@ -1462,7 +1493,7 @@ function parseCaptureWorkbook(wb, opts) {
       byEntity.get(ek).blocks[b.kind] = b;
     }
     for (const [, { entity, blocks }] of byEntity) {
-      const code = entity.code || `name:${fuzzyKey(entity.name)}`;
+      const code = entity.unlabeled ? 'unlabeled' : (entity.code || `name:${fuzzyKey(entity.name)}`);
       const a = {
         entityCode: code, processId: id, stream: p.stream,
         asIs: { le: null, gbs: null, systems: '', gap: null, gapRaw: '', info: '', extra: {} },
@@ -1506,13 +1537,17 @@ function parseCaptureWorkbook(wb, opts) {
   const byId = new Map(processes.map(p => [p.id, p])); let reparented = 0;
   for (const p of processes) { if (p.structuralParentId && p.structuralParentId !== p.parentId && byId.has(p.structuralParentId) && byId.get(p.structuralParentId).level < p.level) { p.parentId = p.structuralParentId; reparented++; } }
   if (reparented) warnings.push({ level: 'info', code: 'REPARENTED', message: `${reparented} row(s) attached to the parent implied by their Process ID instead of the row above.` });
+  if (levelInferred.length) warnings.push({ level: 'info', code: 'LEVEL_INFERRED', message: `${levelInferred.length} row(s) without a Process Level – level taken from the Process ID (e.g. ${levelInferred[0].id} → L${levelInferred[0].level}, row ${levelInferred[0].row}).`, examples: levelInferred.slice(0, 10) });
+  const dupActs = duplicates.filter(d => d.activity), dupNodes = duplicates.filter(d => !d.activity);
+  if (dupActs.length) warnings.push({ level: 'warn', code: 'DUPLICATE_ID', message: `${dupActs.length} activity ID(s) appear more than once in this sheet – the later rows are kept as separate activities with " (2)" added to the ID (e.g. ${dupActs[0].keptAs}, row ${dupActs[0].row}: "${dupActs[0].name}"). Please correct the IDs in the template.`, examples: dupActs.slice(0, 10) });
+  if (dupNodes.length) warnings.push({ level: 'info', code: 'DUPLICATE_NODE', message: `${dupNodes.map(d => `"${d.id}" is used for "${d.first}" and "${d.name}" (row ${d.row})`).join('; ')} – kept as separate process groups.`, examples: dupNodes });
   const skippedNamed = skipped.filter(x => x.name).length;
   if (skippedCount) warnings.push({ level: skippedNamed ? 'warn' : 'info', code: 'ROWS_SKIPPED', message: `${skippedCount} non-data row(s) skipped (no numeric level 0–5 with a stream process ID).`, examples: skipped });
   if (hierarchyMismatch - reparented > 0) warnings.push({ level: 'info', code: 'HIERARCHY', message: `${hierarchyMismatch - reparented} row(s) where the parent implied by the Process ID does not exist – kept under the row above.` });
   if (unmappedGap.length) warnings.push({ level: 'warn', code: 'GAP_UNMAPPED', message: `${unmappedGap.length} GAP value(s) could not be mapped (set to UNCLEAR).`, examples: unmappedGap.slice(0, 10) });
   if (notes.length) warnings.push({ level: 'info', code: 'INSTRUCTION_TEXT', message: `${notes.length} cell(s) with instruction text imported as notes, not values.`, examples: notes.slice(0, 10) });
 
-  const entities = layout.entities.map(e => ({ code: e.code || `name:${fuzzyKey(e.name)}`, name: e.name, raw: e.raw, hasCode: !!e.code }));
+  const entities = layout.entities.map(e => (e.unlabeled ? { code: 'unlabeled', name: '', raw: '', hasCode: false, unlabeled: true } : { code: e.code || `name:${fuzzyKey(e.name)}`, name: e.name, raw: e.raw, hasCode: !!e.code }));
   const activities = processes.filter(p => activityLevels.has(p.level));
   const summary = summarise(entities, activities, assessments);
   return {
@@ -1695,8 +1730,12 @@ function sameValue(a, b) { return JSON.stringify(a ?? null) === JSON.stringify(b
  * values are applied and recorded in importDiffs for review.
  */
 /** "…_Assessment__A2R_France.xlsx" → "France" (the trailing token when it is not a stream / version / date). */
+// ISO-3166 alpha-2 codes as they appear at the end of capture-sheet file names ("…_R2R_KR.xlsx").
+const COUNTRY_CODES = { AR: 'Argentina', AT: 'Austria', AU: 'Australia', BE: 'Belgium', BG: 'Bulgaria', BR: 'Brazil', CA: 'Canada', CH: 'Switzerland', CL: 'Chile', CN: 'China', CO: 'Colombia', CZ: 'Czech Republic', DE: 'Germany', DK: 'Denmark', EG: 'Egypt', ES: 'Spain', FI: 'Finland', FR: 'France', GB: 'United Kingdom', GR: 'Greece', HK: 'Hong Kong', HR: 'Croatia', HU: 'Hungary', ID: 'Indonesia', IE: 'Ireland', IL: 'Israel', IN: 'India', IT: 'Italy', JP: 'Japan', KR: 'Korea', MX: 'Mexico', MY: 'Malaysia', NL: 'Netherlands', NO: 'Norway', NZ: 'New Zealand', PH: 'Philippines', PL: 'Poland', PT: 'Portugal', RO: 'Romania', RS: 'Serbia', RU: 'Russia', SA: 'Saudi Arabia', SE: 'Sweden', SG: 'Singapore', SI: 'Slovenia', SK: 'Slovakia', TH: 'Thailand', TR: 'Turkey', TW: 'Taiwan', UA: 'Ukraine', UK: 'United Kingdom', US: 'United States', VN: 'Vietnam', ZA: 'South Africa' };
 function countryFromFileName(fileName = '') {
-  const m = String(fileName).replace(/\.[a-z]+$/i, '').match(/[_\- ]([A-Za-z][A-Za-z ]{2,30})$/);
+  const base = String(fileName).replace(/\.[a-z]+$/i, '');
+  const iso = base.match(/[_\- ]([A-Z]{2})$/); if (iso && COUNTRY_CODES[iso[1]]) return COUNTRY_CODES[iso[1]];
+  const m = base.match(/[_\- ]([A-Za-z][A-Za-z ]{2,30})$/);
   if (!m) return '';
   const tok = m[1].trim();
   if (/^(A2R|R2R|I2P|I2C|ICO|O2C|P2P|H2R|MD|FAA|IA|CMD|CM|FINAL|DRAFT|NEW|OLD|VOLD|TEMPLATE|TEMP|COPY|VERSION|FIT|GAP|ASSESSMENT)$/i.test(tok)) return '';
@@ -1709,8 +1748,21 @@ function clientNameFromEntities(names) {
   if (!firsts.length) return '';
   const count = {}; for (const w of firsts) count[w.toLowerCase()] = (count[w.toLowerCase()] || 0) + 1;
   const [best, n] = Object.entries(count).sort((a, b) => b[1] - a[1])[0];
-  if (n < 2 || n * 2 < firsts.length) return '';
+  if (firsts.length > 1 && (n < 2 || n * 2 < firsts.length)) return '';
   return firsts.find(w => w.toLowerCase() === best);
+}
+
+/** Move every assessment (and its audit entries) of one entity code to another. */
+function rekeyEntity(session, from, to) {
+  for (const a of Object.values(session.assessments)) {
+    if (a.entityCode !== from) continue;
+    const oldKey = a.key; a.entityCode = to; a.key = assessmentKey(to, a.processId);
+    delete session.assessments[oldKey];
+    if (session.assessments[a.key]) { const ex = session.assessments[a.key]; for (const s of a.sources) if (!ex.sources.some(x => x.file === s.file && x.row === s.row)) ex.sources.push(s); }
+    else session.assessments[a.key] = a;
+    for (const e of session.audit) if (e.key === oldKey) e.key = a.key;
+  }
+  for (const p of session.participants || []) if (p.entityCode === from) p.entityCode = to;
 }
 
 function mergeParsedWorkbook(session, parsed, opts = {}) {
@@ -1718,9 +1770,30 @@ function mergeParsedWorkbook(session, parsed, opts = {}) {
   const report = { file: parsed.fileName, sheet: parsed.sheetName, entities: { added: [], merged: [], pending: [] }, processes: { added: 0, existing: 0, renamed: [] }, assessments: { added: 0, merged: 0, changedOps: 0, protectedWorkshop: 0 }, warnings: parsed.warnings.slice() };
   const codeMap = {}; // parsed entity code → session entity code
 
+  const fileCountry = countryFromFileName(parsed.fileName) || session.settings.country || '';
+  const sameCountry = () => Object.values(session.entities).filter(x => !fileCountry || !x.country || x.country === fileCountry);
   for (const e of parsed.entities) {
     let target = null;
+    if (e.unlabeled) {
+      // Single-entity file without label: the one entity of this country, else a placeholder the labelled file takes over.
+      const real = sameCountry().filter(x => !x.placeholder), ph = sameCountry().filter(x => x.placeholder);
+      if (real.length === 1) { target = real[0]; report.entities.merged.push({ from: '(no label)', to: target.name, auto: true, reason: 'single-entity file' }); }
+      else if (ph.length) target = ph[0];
+      else {
+        const code = `unlabeled:${fuzzyKey(fileCountry || 'entity')}`;
+        target = session.entities[code] = { code, name: `${fileCountry || 'Entity'} (no entity label)`, displayName: `${fileCountry || 'Entity'} (no entity label)`, country: fileCountry, hasCode: false, placeholder: true, sources: [] };
+        report.entities.added.push(target.name);
+        if (real.length > 1) report.warnings.push({ level: 'warn', code: 'ENTITY_AMBIGUOUS', message: `${parsed.fileName} has no entity label and ${fileCountry || 'this country'} has ${real.length} entities – imported under "${target.name}". Add the entity label in the file and re-import.` });
+      }
+      if (!target.sources.includes(parsed.fileName)) target.sources.push(parsed.fileName);
+      codeMap[e.code] = target.code; continue;
+    }
     if (e.hasCode && session.entities[e.code]) target = session.entities[e.code];
+    // A labelled file for a country that so far only had unlabelled files: the placeholder becomes this entity.
+    if (!target && e.hasCode) {
+      const ph = sameCountry().filter(x => x.placeholder), real = sameCountry().filter(x => !x.placeholder);
+      if (ph.length === 1 && real.length === 0) { const fresh = { code: e.code, name: e.name, displayName: e.name, country: ph[0].country || fileCountry, hasCode: true, sources: [...ph[0].sources] }; session.entities[e.code] = fresh; rekeyEntity(session, ph[0].code, e.code); delete session.entities[ph[0].code]; target = fresh; report.entities.merged.push({ from: ph[0].name, to: e.name, auto: true, reason: 'label found in this file' }); }
+    }
     else if (!e.hasCode) {
       let best = null;
       for (const s of Object.values(session.entities)) {
@@ -1734,7 +1807,7 @@ function mergeParsedWorkbook(session, parsed, opts = {}) {
       }
     }
     if (!target) {
-      target = { code: e.code, name: e.name, displayName: e.name, country: session.settings.country || countryFromFileName(parsed.fileName), hasCode: e.hasCode, sources: [] };
+      target = { code: e.code, name: e.name, displayName: e.name, country: fileCountry, hasCode: e.hasCode, sources: [] };
       session.entities[e.code] = target;
       report.entities.added.push(e.name);
     }
@@ -1743,7 +1816,7 @@ function mergeParsedWorkbook(session, parsed, opts = {}) {
   }
   // Client and country from the files when nobody typed them yet (editable under Plan & prepare).
   if (!session.settings.country) session.settings.country = countryFromFileName(parsed.fileName);
-  if (!session.settings.clientName) session.settings.clientName = clientNameFromEntities(Object.values(session.entities).map(x => x.name));
+  if (!session.settings.clientName) session.settings.clientName = clientNameFromEntities(Object.values(session.entities).filter(x => !x.placeholder).map(x => x.name));
 
   for (const p of parsed.processes) {
     const ex = session.processes[p.id];
@@ -3339,6 +3412,14 @@ function Swimlane({ session, entityCode, node, activities, large }) {
 const BOARD_LANES = [['LOCAL', 'Local Accounting', 'local', 'home'], ['OTHER', 'Other party', 'coe', 'users'], ['GBS', 'GBS', 'gbs', 'globe']];
 const CONTROL_RX = /approv|review|validat|reconcil|check|monitor|verif|control|confirm|audit/i;
 const stepTag = (p) => CONTROL_RX.test(p.name || '') ? '◆ CONTROL' : '● CORE';
+// FTE: effort spent on the activity today. Quick picks for the room; free entry accepts 0,25 and 0.25.
+const FTE_QUICK = [0.05, 0.1, 0.25, 0.5, 1];
+const fmtFte = (v) => (v === null || v === undefined || v === '' ? '' : String(Math.round(Number(v) * 100) / 100));
+const fteSum = (list) => Math.round(list.reduce((t, a) => t + (Number(a?.fitGap?.fte) || 0), 0) * 100) / 100;
+function FteField({ value, onSet, compact }) {
+  const commit = (v) => { const n = parseNumber(v); if (v !== '' && v !== null && (n === null || n < 0 || n > 99)) return; onSet(n); };
+  return html`<div class=${`fte-row${compact ? ' compact' : ''}`}><${TextInput} class="num sm fte-input" value=${fmtFte(value)} onCommit=${commit} placeholder=${compact ? '–' : '0.00'} inputmode="decimal" aria-label="FTE" />${!compact && html`<div class="chips">${FTE_QUICK.map(q => html`<${Chip} key=${q} active=${Number(value) === q} onClick=${() => onSet(Number(value) === q ? null : q)}>${q}</${Chip}>`)}</div>`}</div>`;
+}
 
 function FlowBoard({ session, entityCode, node, activities, updateSession, toast, readOnly, onOpenRow, large, onAsk }) {
   const { steps, handoffs } = useMemo(() => swimlaneModel(session, entityCode, activities), [session.assessments, entityCode, activities]);
@@ -3360,7 +3441,7 @@ function FlowBoard({ session, entityCode, node, activities, updateSession, toast
     return html`<button class=${`stepcard${s.lanes.length > 1 ? ' split' : ''}${sel === s.p.id ? ' sel' : ''}`} style=${`--lane-color:var(--${BOARD_LANES.find(l => l[0] === k)[2]})`} onClick=${() => !readOnly && setSel(sel === s.p.id ? null : s.p.id)} onDblClick=${() => onOpenRow && onOpenRow(s.p.id)} title=${`${s.p.id} ${s.p.name}`}>
       <div class="tg">${stepTag(s.p)}${s.lanes.length > 1 ? ` · ${idx + 1}/${s.lanes.length}` : ''}</div>
       <div class="nm">${s.p.name}</div>
-      <div class="meta"><${GapPill} value=${s.gap || (s.source === 'tobe' ? 'NOT_ASSESSED' : 'NOT_ASSESSED')} size="sm" />${s.source !== 'workshop' && html`<span class="src">${s.source === 'ops' ? 'Ops as-is' : 'To-Be'}</span>`}</div>
+      <div class="meta"><${GapPill} value=${s.gap || (s.source === 'tobe' ? 'NOT_ASSESSED' : 'NOT_ASSESSED')} size="sm" />${s.source !== 'workshop' && html`<span class="src">${s.source === 'ops' ? 'Ops as-is' : 'To-Be'}</span>`}${idx === 0 && s.a.fitGap.fte !== null && s.a.fitGap.fte !== undefined && html`<span class="fte-badge" title="FTE today">${fmtFte(s.a.fitGap.fte)} FTE</span>`}</div>
       ${handoff && html`<div class="handoff">↳ hand-off from ${BOARD_LANES.find(l => l[0] === prev.lanes[0])?.[1]}</div>`}
       ${mismatch && html`<div class="handoff" style="color:var(--flag)">⚑ To-Be: ${BOARD_LANES.find(l => l[0] === toBeLane)?.[1]}</div>`}
       ${s.differsOps && html`<div class="handoff" style="color:var(--accent)">● differs from Ops as-is</div>`}
@@ -3369,7 +3450,7 @@ function FlowBoard({ session, entityCode, node, activities, updateSession, toast
   const a = selected?.a; const set = (path, v) => updateSession(s => applyChange(s, a.key, path, v));
   return html`<div class=${`board-wrap${selected && !readOnly ? ' with-detail' : ''}${large ? ' large' : ''}`} tabindex="0">
     <div>
-      <div class="sg-row" style="justify-content:space-between;margin:0 0 .4rem"><span class="eyebrow">Process flow · ${ent?.displayName || entityCode} · ${node.id} ${node.name}</span><span class="sg-row" style="margin:0;gap:.6rem"><span class="muted small">${steps.length} steps · ${handoffs} hand-off${handoffs === 1 ? '' : 's'}</span>${!readOnly && html`<${Button} variant="text" size="sm" onClick=${exportPng}>PNG</${Button}>`}</span></div>
+      <div class="sg-row" style="justify-content:space-between;margin:0 0 .4rem"><span class="eyebrow">Process flow · ${ent?.displayName || entityCode} · ${node.id} ${node.name}</span><span class="sg-row" style="margin:0;gap:.6rem"><span class="muted small">${steps.length} steps · ${handoffs} hand-off${handoffs === 1 ? '' : 's'}</span><span class="fte-total" title="FTE captured for this process group">Σ ${fmtFte(fteSum(steps.map(s => s.a)))} FTE · ${steps.filter(s => s.a.fitGap.fte !== null && s.a.fitGap.fte !== undefined).length}/${steps.length}</span>${!readOnly && html`<${Button} variant="text" size="sm" onClick=${exportPng}>PNG</${Button}>`}</span></div>
       <div class="board">
         <div class="board-grid" style=${`grid-template-columns:${cols}`}>
           <div class="board-h lane-h"><b>Lane</b><small>${handoffs} hand-offs</small></div>
@@ -3390,6 +3471,7 @@ function FlowBoard({ session, entityCode, node, activities, updateSession, toast
       <dl class="kv"><dt>To-Be</dt><dd>${selected.toBe.map(l => html`<${Tag} kind=${l} key=${l} />`)}${!selected.toBe.length && '–'} ${selected.p.toBe?.system && html`<span class="muted small">· ${selected.p.toBe.system}</span>`}</dd><dt>Ops as-is</dt><dd>${selected.ops.map(l => html`<${Tag} kind=${l} key=${l} />`)}${!selected.ops.length && '–'}</dd><dt>Workshop</dt><dd>${selected.source === 'workshop' ? selected.lanes.map(l => html`<${Tag} kind=${l} key=${l} />`) : html`<span class="muted">not yet assessed</span>`}</dd></dl>
       <div class="fgrid" style="grid-template-columns:1fr;margin-top:.6rem">
         <${Field} label="Who performs it today?"><div class="sg-row" style="margin:0;gap:.5rem"><span class="small">Local</span><${YN} size="sm" value=${a.fitGap.local} onChange=${v => set('fitGap.local', v)} name="Local" /><span class="small">GBS</span><${YN} size="sm" value=${a.fitGap.gbs} onChange=${v => set('fitGap.gbs', v)} name="GBS" /><span class="small">Other</span><${YN} size="sm" value=${a.fitGap.other} onChange=${v => set('fitGap.other', v)} name="Other" /></div></${Field}>
+        <${Field} label="Effort today (FTE)" hint=${a.fitGap.fte === null || a.fitGap.fte === undefined ? 'How much capacity this activity takes today – type it or pick a value' : `Σ process group: ${fmtFte(fteSum(steps.map(s => s.a)))} FTE`}><${FteField} value=${a.fitGap.fte} onSet=${v => set('fitGap.fte', v)} /></${Field}>
         <${Field} label="Is there a gap vs. the global standard?"><div class="gapbtns">${['NO_GAP', 'HARMONIZATION', 'STANDARDIZATION', 'BOTH'].map(g => html`<button key=${g} class=${`pill pill-${g}${(a.workshop.gapType || '') === g ? ' on' : ''}`} title=${session.settings.gapDefinitions[g]} onClick=${() => { set('workshop.gapType', g); if (a.workshop.status === WORKSHOP_STATUS.NOT_ASSESSED) set('workshop.status', g === 'NO_GAP' ? WORKSHOP_STATUS.CONFIRMED_FIT : WORKSHOP_STATUS.GAP_CONFIRMED); }}>${GAP_LABEL[g]}</button>`)}</div>${!a.workshop.gapType && a.asIs.gap && html`<span class="hint">Ops pre-assessed: ${GAP_LABEL[a.asIs.gap]}</span>`}</${Field}>
         <${Field} label="What is different vs. the global standard?" required=${GAP_TYPES_WITH_DEVIATION.has(effectiveGap(a))}><${TextInput} textarea class="sm" style="min-height:3rem" value=${a.workshop.rationale} onCommit=${v => set('workshop.rationale', v)} placeholder="Who does it differently, which system, which rule…" /></${Field}>
         ${GAP_TYPES_WITH_DEVIATION.has(effectiveGap(a)) && html`<${Field} label="Dimension"><div class="chips">${Object.keys(DIMENSION).map(d => html`<${Chip} key=${d} active=${(a.deviation?.dimensions || []).includes(d)} onClick=${() => updateSession(s => { const cur = s.assessments[a.key].deviation || { dimensions: [], resolution: '', justification: '', ownerId: '', targetDate: '', escalation: 'L1', approval: 'PROPOSED' }; const dims = cur.dimensions.includes(d) ? cur.dimensions.filter(x => x !== d) : [...cur.dimensions, d]; applyChange(s, a.key, 'deviation', { ...cur, dimensions: dims }); })}>${DIMENSION_LABEL[d]}</${Chip}>`)}</div></${Field}>
@@ -3429,7 +3511,7 @@ function PresentMode({ session, updateSession, stream: initialStream, entityFilt
   useEffect(() => { document.documentElement.requestFullscreen?.().catch(() => {}); return () => { if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {}); }; }, []);
   const s = slides[Math.min(i, slides.length - 1)]; const st = session.settings;
   const title = (eyebrow, h) => html`<div class="eyebrow">${eyebrow}</div><h2>${h}</h2>`;
-  const streamStats = (() => { const g = gapAnalysis(session, { stream: stream === 'MD' ? null : stream, entityCode: entityFilter }); const split = entities.map(e => activitySplit(session, e.code, stream === 'MD' ? null : stream).totals); const cls = {}; for (const t of split) for (const [k, v] of Object.entries(t.cls)) cls[k] = (cls[k] || 0) + v; return { g, cls }; })();
+  const streamStats = (() => { const g = gapAnalysis(session, { stream: stream === 'MD' ? null : stream, entityCode: entityFilter }); const splits = entities.map(e => activitySplit(session, e.code, stream === 'MD' ? null : stream)); const cls = {}, fte = {}; let fteTotal = 0, fteRows = 0, rows = 0; for (const sp of splits) { for (const [k, v] of Object.entries(sp.totals.cls)) cls[k] = (cls[k] || 0) + v; for (const r of sp.rows) { rows++; if (r.fte) { fte[r.cls] = (fte[r.cls] || 0) + r.fte; fteTotal += r.fte; fteRows++; } } } return { g, cls, fte, fteTotal, fteRows, rows }; })();
   const content = (() => {
     switch (s.type) {
       case 'cover': { const nAct = Object.values(session.processes).filter(p => p.stream === (stream === 'MD' ? p.stream : stream) && p.level >= 4).length; const dates = (st.workshopDates || []).join(', ') || [...new Set(session.sessions.filter(x => x.stream.startsWith(stream) && x.date).map(x => x.date))].sort().map(fmtDateShort).join(', ') || fmtDateShort(new Date().toISOString().slice(0, 10)); return html`<div class="cover">
@@ -3440,8 +3522,9 @@ function PresentMode({ session, updateSession, stream: initialStream, entityFilt
       case 'scope': return html`${title('Scope', 'Streams and activities in scope')}<div class="slide-grid">${STREAMS.filter(x => Object.values(session.processes).some(p => p.stream === x)).map(x => { const n = Object.values(session.processes).filter(p => p.stream === x && p.level >= 4).length; const oos = Object.values(session.assessments).filter(a => a.stream === x && a.scope.outOfScope).length; return html`<div class="slide-kpi" key=${x}><div class="big" style="font-size:4cqw">${n}</div><div class="eyebrow">${x} · L4 activities${oos ? ` · ${oos} entity-rows out of scope` : ''}</div></div>`; })}</div>`;
       case 'legend': { const GI = { NO_GAP: 'check', HARMONIZATION: 'swap', STANDARDIZATION: 'target', BOTH: 'layers' }; return html`${title('Gap types', 'How we classify every activity')}<div class="slide-legend">${['NO_GAP', 'HARMONIZATION', 'STANDARDIZATION', 'BOTH'].map(g => html`<div class="legend-tile" key=${g}><span class="legend-ico" style=${`--c:var(--g-${({ NO_GAP: 'none', HARMONIZATION: 'harm', STANDARDIZATION: 'std', BOTH: 'both' })[g]})`}><${Icon} name=${GI[g]} size=${18} /></span><div><${GapPill} value=${g} size="lg" /><p>${st.gapDefinitions[g]}</p></div></div>`)}<div class="legend-tile"><span class="legend-ico" style="--c:var(--accent)"><${Icon} name="compass" size=${18} /></span><div><span class="eyebrow">Resolution approaches</span><p><b>Separate variant</b> – cannot be closed; separate process variant for substantiated legal, tax or regulatory reasons.<br /><b>Close before go-live</b> – close the gap in the current as-is process before transition go-live.<br /><b>Lift & shift</b> – adopt the global standard after transition; deviation closed after migration.</p></div></div></div>`; }
       case 'l3flow': return html`${title(`${stream} · ${s.node.id}`, s.node.name)}<div class="sg-row" style="margin:0 0 .6cqw">${entities.map(e => html`<${Chip} key=${e.code} active=${swimEntity === e.code} onClick=${() => setSwimEntity(e.code)}>${e.displayName || e.name}</${Chip}>`)}<span class="muted small">click a step to capture who performs it and what is different</span></div>${swimEntity && html`<${FlowBoard} session=${session} entityCode=${swimEntity} node=${s.node} activities=${s.node.activities} updateSession=${updateSession} toast=${toast} large onAsk=${onAsk} />`}`;
-      case 'l3table': return html`${title(`${stream} · ${s.node.id}`, `${s.node.name} · ${s.node.activities.length} activities`)}<table class="slide-table"><thead><tr><th>Activity</th>${entities.map(e => html`<th key=${e.code}>${e.displayName || e.name}</th>`)}</tr></thead><tbody>${s.node.activities.map(p => html`<tr key=${p.id}><td><span class="mono muted">${p.id}</span> ${p.name}</td>${entities.map(e => { const a = session.assessments[assessmentKey(e.code, p.id)]; if (!a) return html`<td key=${e.code}>—</td>`; if (a.scope.outOfScope) return html`<td key=${e.code}><${GapPill} value="OUT_OF_SCOPE" size="sm" /></td>`; const l = lanesOf(a, p); const findings = ['legalRegulatory', 'languageRequirements', 'externalParty', 'internalControls'].filter(f => a.detailedGap[f] && a.detailedGap[f] !== NA).map(f => DETAILED_GAP_LABEL[f].split(' ')[0]); return html`<td key=${e.code}><div class="sg-row" style="margin:0;gap:.3cqw"><select class="select sm present-select" value=${a.workshop.gapType || ''} onChange=${ev => updateSession(x => applyChange(x, a.key, 'workshop.gapType', ev.target.value || null))}><option value="">${a.asIs.gap ? 'Ops: ' + GAP_LABEL[a.asIs.gap] : '–'}</option>${['NO_GAP', 'HARMONIZATION', 'STANDARDIZATION', 'BOTH', 'NA'].map(g => html`<option value=${g}>${GAP_LABEL[g]}</option>`)}</select><${GapPill} value=${effectiveGap(a) || 'NOT_ASSESSED'} size="sm" />${gapDiffersFromOps(a) && html`<span class="diff-note">Ops: ${GAP_LABEL[a.asIs.gap] || '–'}</span>`}</div><div class="muted small">${l.workshop ? html`<${Tag} kind=${l.workshop} />` : 'split: –'} ${findings.length ? '· ' + findings.join(', ') : ''}</div></td>`; })}</tr>`)}</tbody></table>`;
-      case 'stream': return html`${title(stream, 'Stream summary')}<div class="slide-two"><div><div class="eyebrow">Activity split (workshop vs. plan)</div>${SPLIT_CLASS_KEYS.map(k => html`<div class="bar-row" key=${k}><span>${SPLIT_CLASS[k]}</span><span class="bar"><i style=${`width:${100 * (streamStats.cls[k] || 0) / Math.max(1, Object.values(streamStats.cls).reduce((a, b) => a + b, 0))}%;background:var(--${k === 'NOT_ASSESSED' ? 'none' : k.includes('GBS') && !k.startsWith('PLANNED_GBS') ? 'gbs' : k === 'OTHER_PARTY' ? 'coe' : k === 'STAYS_LOCAL' ? 'local' : 'flag'})`}></i></span><b class="num">${streamStats.cls[k] || 0}</b></div>`)}</div><div><div class="eyebrow">Gap distribution · Ops pre-assessment vs. workshop</div><${OpsVsWorkshopChart} dist=${streamStats.g.dist} /></div></div>`;
+      case 'l3table': return html`${title(`${stream} · ${s.node.id}`, `${s.node.name} · ${s.node.activities.length} activities`)}<table class="slide-table"><thead><tr><th>Activity</th>${entities.map(e => html`<th key=${e.code}>${e.displayName || e.name}</th>`)}</tr></thead><tbody>${s.node.activities.map(p => html`<tr key=${p.id}><td><span class="mono muted">${p.id}</span> ${p.name}</td>${entities.map(e => { const a = session.assessments[assessmentKey(e.code, p.id)]; if (!a) return html`<td key=${e.code}>—</td>`; if (a.scope.outOfScope) return html`<td key=${e.code}><${GapPill} value="OUT_OF_SCOPE" size="sm" /></td>`; const l = lanesOf(a, p); const findings = ['legalRegulatory', 'languageRequirements', 'externalParty', 'internalControls'].filter(f => a.detailedGap[f] && a.detailedGap[f] !== NA).map(f => DETAILED_GAP_LABEL[f].split(' ')[0]); return html`<td key=${e.code}><div class="sg-row" style="margin:0;gap:.3cqw"><select class="select sm present-select" value=${a.workshop.gapType || ''} onChange=${ev => updateSession(x => applyChange(x, a.key, 'workshop.gapType', ev.target.value || null))}><option value="">${a.asIs.gap ? 'Ops: ' + GAP_LABEL[a.asIs.gap] : '–'}</option>${['NO_GAP', 'HARMONIZATION', 'STANDARDIZATION', 'BOTH', 'NA'].map(g => html`<option value=${g}>${GAP_LABEL[g]}</option>`)}</select><${GapPill} value=${effectiveGap(a) || 'NOT_ASSESSED'} size="sm" />${gapDiffersFromOps(a) && html`<span class="diff-note">Ops: ${GAP_LABEL[a.asIs.gap] || '–'}</span>`}</div><div class="muted small sg-row" style="margin:.2cqw 0 0;gap:.4cqw">${l.workshop ? html`<${Tag} kind=${l.workshop} />` : 'split: –'}<${FteField} compact value=${a.fitGap.fte} onSet=${v => updateSession(x => applyChange(x, a.key, 'fitGap.fte', v))} /><span>FTE</span>${findings.length ? html`<span>· ${findings.join(', ')}</span>` : ''}</div></td>`; })}</tr>`)}<tr class="fte-sum"><td>Σ FTE captured</td>${entities.map(e => { const list = s.node.activities.map(p => session.assessments[assessmentKey(e.code, p.id)]).filter(a => a && !a.scope.outOfScope); return html`<td key=${e.code}><b class="mono">${fmtFte(fteSum(list))}</b> <span class="muted">FTE · ${list.filter(a => a.fitGap.fte !== null && a.fitGap.fte !== undefined).length}/${list.length} activities</span></td>`; })}</tr></tbody></table>`;
+      case 'stream': return html`${title(stream, 'Stream summary')}<div class="slide-two"><div><div class="eyebrow">Activity split (workshop vs. plan)</div>${SPLIT_CLASS_KEYS.map(k => html`<div class="bar-row" key=${k}><span>${SPLIT_CLASS[k]}</span><span class="bar"><i style=${`width:${100 * (streamStats.cls[k] || 0) / Math.max(1, Object.values(streamStats.cls).reduce((a, b) => a + b, 0))}%;background:var(--${k === 'NOT_ASSESSED' ? 'none' : k.includes('GBS') && !k.startsWith('PLANNED_GBS') ? 'gbs' : k === 'OTHER_PARTY' ? 'coe' : k === 'STAYS_LOCAL' ? 'local' : 'flag'})`}></i></span><b class="num">${streamStats.cls[k] || 0}</b><span class="num muted">${streamStats.fte[k] ? `${fmtFte(streamStats.fte[k])} FTE` : ''}</span></div>`)}
+        <div class="fte-kpis"><div><b>${fmtFte(streamStats.fteTotal)}</b><span>FTE captured</span></div><div><b>${fmtFte((streamStats.fte.MOVES_TO_GBS || 0) + (streamStats.fte.PLANNED_LOCAL_DONE_BY_GBS || 0))}</b><span>FTE with GBS</span></div><div><b>${fmtFte((streamStats.fte.STAYS_LOCAL || 0) + (streamStats.fte.PLANNED_GBS_STAYS_LOCAL || 0))}</b><span>FTE staying local</span></div><div><b>${fmtFte(Math.max(0, streamStats.fteTotal - (streamStats.fte.MOVES_TO_GBS || 0) - (streamStats.fte.PLANNED_LOCAL_DONE_BY_GBS || 0) - (streamStats.fte.STAYS_LOCAL || 0) - (streamStats.fte.PLANNED_GBS_STAYS_LOCAL || 0)))}</b><span>FTE · split still open</span></div></div><div class="muted small" style="margin-top:.5cqw;font-size:.9cqw">${streamStats.fteRows} of ${streamStats.rows} activities have an FTE value</div></div><div><div class="eyebrow">Gap distribution · Ops pre-assessment vs. workshop</div><${OpsVsWorkshopChart} dist=${streamStats.g.dist} /></div></div>`;
       case 'cross': { const g = gapAnalysis(session, { entityCode: entityFilter }); return html`${title(st.country || 'Country', 'Cross-entity view')}<div class="slide-two"><div><div class="eyebrow">Gap in all entities (likely global-standard issue) · ${g.cross.all.length}</div><ul class="slide-list">${g.cross.all.slice(0, 12).map(b => html`<li key=${b.processId}><span class="mono muted">${b.processId}</span> ${b.name}</li>`)}</ul></div><div><div class="eyebrow">Gap in one entity only (entity-specific) · ${g.cross.one.length}</div><ul class="slide-list">${g.cross.one.slice(0, 12).map(b => html`<li key=${b.processId}><span class="mono muted">${b.processId}</span> ${b.name} <span class="muted">· ${session.entities[b.gaps[0]]?.displayName || b.gaps[0]}</span></li>`)}</ul></div></div>`; }
       case 'open': { const g = gapAnalysis(session, { stream: stream === 'MD' ? null : stream, entityCode: entityFilter }); return html`${title('Open points & next steps', `${g.openPoints.length} open points`)}<table class="slide-table"><thead><tr><th>Activity</th><th>Entity</th><th>Status</th><th>Missing / next step</th><th>Owner · due</th></tr></thead><tbody>${g.openPoints.slice(0, 14).map(o => html`<tr key=${o.key}><td><span class="mono muted">${o.processId}</span> ${o.name}</td><td>${session.entities[o.entityCode]?.displayName || o.entityCode}</td><td><${StatusDot} status=${o.status} /></td><td>${o.nextStep || o.missing.join(', ')}</td><td>${session.participants.find(p => p.id === o.owner)?.name || ''}${o.due ? ' · ' + o.due : ''}</td></tr>`)}</tbody></table>`; }
       case 'end': { const g = gapAnalysis(session, { stream: stream === 'MD' ? null : stream, entityCode: entityFilter }); const nowKey = new Date().toISOString().slice(0, 16).replace('T', ' '); const next = session.sessions.filter(x => x.id !== session.activeSessionId && !x.startedAt && !x.endedAt && x.date && `${x.date} ${x.start || '00:00'}` > nowKey).sort((a, b) => (a.date + a.start).localeCompare(b.date + b.start))[0]; const assessed = Object.values(session.assessments).filter(a => !a.scope.outOfScope && (stream === 'MD' || a.stream === stream) && a.workshop.status !== 'NOT_ASSESSED').length, tot = Object.values(session.assessments).filter(a => !a.scope.outOfScope && (stream === 'MD' || a.stream === stream)).length; return html`<div class="cover end">
@@ -4114,7 +4197,7 @@ function TreePanel({ tree, selectedId, onSelect, session, entityFilter, collapse
     return html`<div>
       <button class=${`tree-node${selectedId === n.id ? ' sel' : ''}${!n.parentId ? ' root' : ''}`} style=${`padding-left:${0.5 + depth * 0.8}rem`} onClick=${() => isLeaf ? onSelect(n.id) : toggle(n.id)}>
         ${!isLeaf && n.children.length ? html`<span class=${`tw${open ? ' open' : ''}`}><${Icon} name="chevron" size=${12} /></span>` : html`<span class="tw"></span>`}
-        <span class="tn">${!n.parentId && html`<span class="tree-ico"><${Icon} name=${streamIcon(n.stream)} size=${13} /></span>`}${String(n.name || '').startsWith(n.id) ? html`<span class="pid">${n.id}</span>${n.name.slice(n.id.length)}` : html`<span class="pid">${n.id}</span> ${n.name}`}</span>
+        <span class="tn">${!n.parentId && html`<span class="tree-ico"><${Icon} name=${streamIcon(n.stream)} size=${13} /></span>`}${(() => { const pid = n.level < 4 ? n.id.replace(/ \(\d+\)$/, '') : n.id; return String(n.name || '').startsWith(pid) ? html`<span class="pid">${pid}</span>${n.name.slice(pid.length)}` : html`<span class="pid">${pid}</span> ${n.name}`; })()}</span>
         <span class="tp"><span class="num">${s.assessed}/${s.total}</span>${s.openGaps ? html`<span class="og" title="open gaps">${s.openGaps}</span>` : null}</span>
         <span class="tb"><i style=${`width:${pct}%`}></i></span>
       </button>

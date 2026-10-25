@@ -39,7 +39,7 @@ function TreePanel({ tree, selectedId, onSelect, session, entityFilter, collapse
     return html`<div>
       <button class=${`tree-node${selectedId === n.id ? ' sel' : ''}${!n.parentId ? ' root' : ''}`} style=${`padding-left:${0.5 + depth * 0.8}rem`} onClick=${() => isLeaf ? onSelect(n.id) : toggle(n.id)}>
         ${!isLeaf && n.children.length ? html`<span class=${`tw${open ? ' open' : ''}`}><${Icon} name="chevron" size=${12} /></span>` : html`<span class="tw"></span>`}
-        <span class="tn">${!n.parentId && html`<span class="tree-ico"><${Icon} name=${streamIcon(n.stream)} size=${13} /></span>`}${String(n.name || '').startsWith(n.id) ? html`<span class="pid">${n.id}</span>${n.name.slice(n.id.length)}` : html`<span class="pid">${n.id}</span> ${n.name}`}</span>
+        <span class="tn">${!n.parentId && html`<span class="tree-ico"><${Icon} name=${streamIcon(n.stream)} size=${13} /></span>`}${(() => { const pid = n.level < 4 ? n.id.replace(/ \(\d+\)$/, '') : n.id; return String(n.name || '').startsWith(pid) ? html`<span class="pid">${pid}</span>${n.name.slice(pid.length)}` : html`<span class="pid">${pid}</span> ${n.name}`; })()}</span>
         <span class="tp"><span class="num">${s.assessed}/${s.total}</span>${s.openGaps ? html`<span class="og" title="open gaps">${s.openGaps}</span>` : null}</span>
         <span class="tb"><i style=${`width:${pct}%`}></i></span>
       </button>

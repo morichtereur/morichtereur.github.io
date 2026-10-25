@@ -6,6 +6,14 @@
 const BOARD_LANES = [['LOCAL', 'Local Accounting', 'local', 'home'], ['OTHER', 'Other party', 'coe', 'users'], ['GBS', 'GBS', 'gbs', 'globe']];
 const CONTROL_RX = /approv|review|validat|reconcil|check|monitor|verif|control|confirm|audit/i;
 const stepTag = (p) => CONTROL_RX.test(p.name || '') ? '◆ CONTROL' : '● CORE';
+// FTE: effort spent on the activity today. Quick picks for the room; free entry accepts 0,25 and 0.25.
+const FTE_QUICK = [0.05, 0.1, 0.25, 0.5, 1];
+const fmtFte = (v) => (v === null || v === undefined || v === '' ? '' : String(Math.round(Number(v) * 100) / 100));
+const fteSum = (list) => Math.round(list.reduce((t, a) => t + (Number(a?.fitGap?.fte) || 0), 0) * 100) / 100;
+function FteField({ value, onSet, compact }) {
+  const commit = (v) => { const n = parseNumber(v); if (v !== '' && v !== null && (n === null || n < 0 || n > 99)) return; onSet(n); };
+  return html`<div class=${`fte-row${compact ? ' compact' : ''}`}><${TextInput} class="num sm fte-input" value=${fmtFte(value)} onCommit=${commit} placeholder=${compact ? '–' : '0.00'} inputmode="decimal" aria-label="FTE" />${!compact && html`<div class="chips">${FTE_QUICK.map(q => html`<${Chip} key=${q} active=${Number(value) === q} onClick=${() => onSet(Number(value) === q ? null : q)}>${q}</${Chip}>`)}</div>`}</div>`;
+}
 
 function FlowBoard({ session, entityCode, node, activities, updateSession, toast, readOnly, onOpenRow, large, onAsk }) {
   const { steps, handoffs } = useMemo(() => swimlaneModel(session, entityCode, activities), [session.assessments, entityCode, activities]);
@@ -27,7 +35,7 @@ function FlowBoard({ session, entityCode, node, activities, updateSession, toast
     return html`<button class=${`stepcard${s.lanes.length > 1 ? ' split' : ''}${sel === s.p.id ? ' sel' : ''}`} style=${`--lane-color:var(--${BOARD_LANES.find(l => l[0] === k)[2]})`} onClick=${() => !readOnly && setSel(sel === s.p.id ? null : s.p.id)} onDblClick=${() => onOpenRow && onOpenRow(s.p.id)} title=${`${s.p.id} ${s.p.name}`}>
       <div class="tg">${stepTag(s.p)}${s.lanes.length > 1 ? ` · ${idx + 1}/${s.lanes.length}` : ''}</div>
       <div class="nm">${s.p.name}</div>
-      <div class="meta"><${GapPill} value=${s.gap || (s.source === 'tobe' ? 'NOT_ASSESSED' : 'NOT_ASSESSED')} size="sm" />${s.source !== 'workshop' && html`<span class="src">${s.source === 'ops' ? 'Ops as-is' : 'To-Be'}</span>`}</div>
+      <div class="meta"><${GapPill} value=${s.gap || (s.source === 'tobe' ? 'NOT_ASSESSED' : 'NOT_ASSESSED')} size="sm" />${s.source !== 'workshop' && html`<span class="src">${s.source === 'ops' ? 'Ops as-is' : 'To-Be'}</span>`}${idx === 0 && s.a.fitGap.fte !== null && s.a.fitGap.fte !== undefined && html`<span class="fte-badge" title="FTE today">${fmtFte(s.a.fitGap.fte)} FTE</span>`}</div>
       ${handoff && html`<div class="handoff">↳ hand-off from ${BOARD_LANES.find(l => l[0] === prev.lanes[0])?.[1]}</div>`}
       ${mismatch && html`<div class="handoff" style="color:var(--flag)">⚑ To-Be: ${BOARD_LANES.find(l => l[0] === toBeLane)?.[1]}</div>`}
       ${s.differsOps && html`<div class="handoff" style="color:var(--accent)">● differs from Ops as-is</div>`}
@@ -36,7 +44,7 @@ function FlowBoard({ session, entityCode, node, activities, updateSession, toast
   const a = selected?.a; const set = (path, v) => updateSession(s => applyChange(s, a.key, path, v));
   return html`<div class=${`board-wrap${selected && !readOnly ? ' with-detail' : ''}${large ? ' large' : ''}`} tabindex="0">
     <div>
-      <div class="sg-row" style="justify-content:space-between;margin:0 0 .4rem"><span class="eyebrow">Process flow · ${ent?.displayName || entityCode} · ${node.id} ${node.name}</span><span class="sg-row" style="margin:0;gap:.6rem"><span class="muted small">${steps.length} steps · ${handoffs} hand-off${handoffs === 1 ? '' : 's'}</span>${!readOnly && html`<${Button} variant="text" size="sm" onClick=${exportPng}>PNG</${Button}>`}</span></div>
+      <div class="sg-row" style="justify-content:space-between;margin:0 0 .4rem"><span class="eyebrow">Process flow · ${ent?.displayName || entityCode} · ${node.id} ${node.name}</span><span class="sg-row" style="margin:0;gap:.6rem"><span class="muted small">${steps.length} steps · ${handoffs} hand-off${handoffs === 1 ? '' : 's'}</span><span class="fte-total" title="FTE captured for this process group">Σ ${fmtFte(fteSum(steps.map(s => s.a)))} FTE · ${steps.filter(s => s.a.fitGap.fte !== null && s.a.fitGap.fte !== undefined).length}/${steps.length}</span>${!readOnly && html`<${Button} variant="text" size="sm" onClick=${exportPng}>PNG</${Button}>`}</span></div>
       <div class="board">
         <div class="board-grid" style=${`grid-template-columns:${cols}`}>
           <div class="board-h lane-h"><b>Lane</b><small>${handoffs} hand-offs</small></div>
@@ -57,6 +65,7 @@ function FlowBoard({ session, entityCode, node, activities, updateSession, toast
       <dl class="kv"><dt>To-Be</dt><dd>${selected.toBe.map(l => html`<${Tag} kind=${l} key=${l} />`)}${!selected.toBe.length && '–'} ${selected.p.toBe?.system && html`<span class="muted small">· ${selected.p.toBe.system}</span>`}</dd><dt>Ops as-is</dt><dd>${selected.ops.map(l => html`<${Tag} kind=${l} key=${l} />`)}${!selected.ops.length && '–'}</dd><dt>Workshop</dt><dd>${selected.source === 'workshop' ? selected.lanes.map(l => html`<${Tag} kind=${l} key=${l} />`) : html`<span class="muted">not yet assessed</span>`}</dd></dl>
       <div class="fgrid" style="grid-template-columns:1fr;margin-top:.6rem">
         <${Field} label="Who performs it today?"><div class="sg-row" style="margin:0;gap:.5rem"><span class="small">Local</span><${YN} size="sm" value=${a.fitGap.local} onChange=${v => set('fitGap.local', v)} name="Local" /><span class="small">GBS</span><${YN} size="sm" value=${a.fitGap.gbs} onChange=${v => set('fitGap.gbs', v)} name="GBS" /><span class="small">Other</span><${YN} size="sm" value=${a.fitGap.other} onChange=${v => set('fitGap.other', v)} name="Other" /></div></${Field}>
+        <${Field} label="Effort today (FTE)" hint=${a.fitGap.fte === null || a.fitGap.fte === undefined ? 'How much capacity this activity takes today – type it or pick a value' : `Σ process group: ${fmtFte(fteSum(steps.map(s => s.a)))} FTE`}><${FteField} value=${a.fitGap.fte} onSet=${v => set('fitGap.fte', v)} /></${Field}>
         <${Field} label="Is there a gap vs. the global standard?"><div class="gapbtns">${['NO_GAP', 'HARMONIZATION', 'STANDARDIZATION', 'BOTH'].map(g => html`<button key=${g} class=${`pill pill-${g}${(a.workshop.gapType || '') === g ? ' on' : ''}`} title=${session.settings.gapDefinitions[g]} onClick=${() => { set('workshop.gapType', g); if (a.workshop.status === WORKSHOP_STATUS.NOT_ASSESSED) set('workshop.status', g === 'NO_GAP' ? WORKSHOP_STATUS.CONFIRMED_FIT : WORKSHOP_STATUS.GAP_CONFIRMED); }}>${GAP_LABEL[g]}</button>`)}</div>${!a.workshop.gapType && a.asIs.gap && html`<span class="hint">Ops pre-assessed: ${GAP_LABEL[a.asIs.gap]}</span>`}</${Field}>
         <${Field} label="What is different vs. the global standard?" required=${GAP_TYPES_WITH_DEVIATION.has(effectiveGap(a))}><${TextInput} textarea class="sm" style="min-height:3rem" value=${a.workshop.rationale} onCommit=${v => set('workshop.rationale', v)} placeholder="Who does it differently, which system, which rule…" /></${Field}>
         ${GAP_TYPES_WITH_DEVIATION.has(effectiveGap(a)) && html`<${Field} label="Dimension"><div class="chips">${Object.keys(DIMENSION).map(d => html`<${Chip} key=${d} active=${(a.deviation?.dimensions || []).includes(d)} onClick=${() => updateSession(s => { const cur = s.assessments[a.key].deviation || { dimensions: [], resolution: '', justification: '', ownerId: '', targetDate: '', escalation: 'L1', approval: 'PROPOSED' }; const dims = cur.dimensions.includes(d) ? cur.dimensions.filter(x => x !== d) : [...cur.dimensions, d]; applyChange(s, a.key, 'deviation', { ...cur, dimensions: dims }); })}>${DIMENSION_LABEL[d]}</${Chip}>`)}</div></${Field}>

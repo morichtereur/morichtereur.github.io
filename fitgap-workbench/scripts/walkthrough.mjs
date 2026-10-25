@@ -70,7 +70,7 @@ let currentLabel = 'INTRO';
 const CHAPTER = { INTRO: 'Introduction', OVERVIEW: 'Start here', 'STEP 1': '1 · Plan & prepare', 'STEP 2': '2 · Workshop', 'STEP 3': '3 · Present', 'STEP 4': '4 · Results', 'STEP 5': '5 · QG2 sign-off & hand-over' };
 const chapters = [{ title: 'Introduction', at: 0 }];
 const chapterMark = (label) => { const t = CHAPTER[label] || label; if (chapters[chapters.length - 1].title !== t) chapters.push({ title: t, at: Date.now() - t0 }); };
-const say = async (text, ms = 3200, n) => { await overlay(); await raise(); const m = text.match(/^Step (\d) · /); if (m) { currentLabel = `STEP ${m[1]}`; text = text.slice(m[0].length); text = text.charAt(0).toUpperCase() + text.slice(1); } else if (n) currentLabel = n; const label = currentLabel; chapterMark(label); await page.evaluate(([t, l]) => { const c = document.getElementById('vt-cap'); c.querySelector('.t').textContent = t; c.querySelector('.n').textContent = l; c.querySelector('.n').style.display = l ? '' : 'none'; c.classList.add('on'); }, [text, label]); await sleep(speak(ms)); };
+const say = async (text, ms = 3200, n, during) => { await overlay(); await raise(); const m = text.match(/^Step (\d) · /); if (m) { currentLabel = `STEP ${m[1]}`; text = text.slice(m[0].length); text = text.charAt(0).toUpperCase() + text.slice(1); } else if (n) currentLabel = n; const label = currentLabel; chapterMark(label); await page.evaluate(([t, l]) => { const c = document.getElementById('vt-cap'); c.querySelector('.t').textContent = t; c.querySelector('.n').textContent = l; c.querySelector('.n').style.display = l ? '' : 'none'; c.classList.add('on'); }, [text, label]); const hold = speak(ms); if (!during) { await sleep(hold); return; } const t = Date.now(); await during(); await sleep(Math.max(300, hold - (Date.now() - t))); };
 const hush = () => page.evaluate(() => document.getElementById('vt-cap')?.classList.remove('on'));
 const moveTo = async (selector, opts = {}) => {
   await overlay(); await raise();
@@ -153,9 +153,12 @@ await say('Step 3 · Present: full-screen slides for the room. Cover with the cl
 await page.keyboard.press('ArrowRight'); await sleep(1600);
 await page.keyboard.press('ArrowRight'); await sleep(1600);
 await page.keyboard.press('ArrowRight'); await sleep(1200);
-await say('Flow boards in present mode are editable: decisions are captured while you present, no second tool.', 3600, '');
-await click('.present .board-grid .stepcard >> nth=2', { after: 800 });
-await click('.present .board-detail .gapbtns .pill-STANDARDIZATION', { after: 900 });
+await say('Flow boards in present mode are editable: who performs a step, its FTE and what is different are captured live.', 3600, '', async () => {
+  await click('.present .board-grid .stepcard >> nth=2', { after: 900 });
+  await click('.present .board-detail .yn >> nth=0 >> button >> nth=0', { after: 700 });
+  await click('.present .board-detail .fte-row .chip:has-text("0.25")', { after: 900 });
+  await click('.present .board-detail .gapbtns .pill-STANDARDIZATION', { after: 700 });
+});
 // Poster inset for the thumbnail: the flow board with a step being edited, without caption and cursor.
 await page.screenshot({ path: resolve(out, '_present.png'), style: '#vt-cap, #vt-cur, #vt-ring { visibility: hidden !important; }' });
 await page.keyboard.press('ArrowRight'); await sleep(1400);

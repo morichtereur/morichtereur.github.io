@@ -59,8 +59,12 @@ function sameValue(a, b) { return JSON.stringify(a ?? null) === JSON.stringify(b
  * values are applied and recorded in importDiffs for review.
  */
 /** "…_Assessment__A2R_France.xlsx" → "France" (the trailing token when it is not a stream / version / date). */
+// ISO-3166 alpha-2 codes as they appear at the end of capture-sheet file names ("…_R2R_KR.xlsx").
+const COUNTRY_CODES = { AR: 'Argentina', AT: 'Austria', AU: 'Australia', BE: 'Belgium', BG: 'Bulgaria', BR: 'Brazil', CA: 'Canada', CH: 'Switzerland', CL: 'Chile', CN: 'China', CO: 'Colombia', CZ: 'Czech Republic', DE: 'Germany', DK: 'Denmark', EG: 'Egypt', ES: 'Spain', FI: 'Finland', FR: 'France', GB: 'United Kingdom', GR: 'Greece', HK: 'Hong Kong', HR: 'Croatia', HU: 'Hungary', ID: 'Indonesia', IE: 'Ireland', IL: 'Israel', IN: 'India', IT: 'Italy', JP: 'Japan', KR: 'Korea', MX: 'Mexico', MY: 'Malaysia', NL: 'Netherlands', NO: 'Norway', NZ: 'New Zealand', PH: 'Philippines', PL: 'Poland', PT: 'Portugal', RO: 'Romania', RS: 'Serbia', RU: 'Russia', SA: 'Saudi Arabia', SE: 'Sweden', SG: 'Singapore', SI: 'Slovenia', SK: 'Slovakia', TH: 'Thailand', TR: 'Turkey', TW: 'Taiwan', UA: 'Ukraine', UK: 'United Kingdom', US: 'United States', VN: 'Vietnam', ZA: 'South Africa' };
 export function countryFromFileName(fileName = '') {
-  const m = String(fileName).replace(/\.[a-z]+$/i, '').match(/[_\- ]([A-Za-z][A-Za-z ]{2,30})$/);
+  const base = String(fileName).replace(/\.[a-z]+$/i, '');
+  const iso = base.match(/[_\- ]([A-Z]{2})$/); if (iso && COUNTRY_CODES[iso[1]]) return COUNTRY_CODES[iso[1]];
+  const m = base.match(/[_\- ]([A-Za-z][A-Za-z ]{2,30})$/);
   if (!m) return '';
   const tok = m[1].trim();
   if (/^(A2R|R2R|I2P|I2C|ICO|O2C|P2P|H2R|MD|FAA|IA|CMD|CM|FINAL|DRAFT|NEW|OLD|VOLD|TEMPLATE|TEMP|COPY|VERSION|FIT|GAP|ASSESSMENT)$/i.test(tok)) return '';
@@ -73,8 +77,21 @@ export function clientNameFromEntities(names) {
   if (!firsts.length) return '';
   const count = {}; for (const w of firsts) count[w.toLowerCase()] = (count[w.toLowerCase()] || 0) + 1;
   const [best, n] = Object.entries(count).sort((a, b) => b[1] - a[1])[0];
-  if (n < 2 || n * 2 < firsts.length) return '';
+  if (firsts.length > 1 && (n < 2 || n * 2 < firsts.length)) return '';
   return firsts.find(w => w.toLowerCase() === best);
+}
+
+/** Move every assessment (and its audit entries) of one entity code to another. */
+export function rekeyEntity(session, from, to) {
+  for (const a of Object.values(session.assessments)) {
+    if (a.entityCode !== from) continue;
+    const oldKey = a.key; a.entityCode = to; a.key = assessmentKey(to, a.processId);
+    delete session.assessments[oldKey];
+    if (session.assessments[a.key]) { const ex = session.assessments[a.key]; for (const s of a.sources) if (!ex.sources.some(x => x.file === s.file && x.row === s.row)) ex.sources.push(s); }
+    else session.assessments[a.key] = a;
+    for (const e of session.audit) if (e.key === oldKey) e.key = a.key;
+  }
+  for (const p of session.participants || []) if (p.entityCode === from) p.entityCode = to;
 }
 
 export function mergeParsedWorkbook(session, parsed, opts = {}) {
@@ -82,9 +99,30 @@ export function mergeParsedWorkbook(session, parsed, opts = {}) {
   const report = { file: parsed.fileName, sheet: parsed.sheetName, entities: { added: [], merged: [], pending: [] }, processes: { added: 0, existing: 0, renamed: [] }, assessments: { added: 0, merged: 0, changedOps: 0, protectedWorkshop: 0 }, warnings: parsed.warnings.slice() };
   const codeMap = {}; // parsed entity code → session entity code
 
+  const fileCountry = countryFromFileName(parsed.fileName) || session.settings.country || '';
+  const sameCountry = () => Object.values(session.entities).filter(x => !fileCountry || !x.country || x.country === fileCountry);
   for (const e of parsed.entities) {
     let target = null;
+    if (e.unlabeled) {
+      // Single-entity file without label: the one entity of this country, else a placeholder the labelled file takes over.
+      const real = sameCountry().filter(x => !x.placeholder), ph = sameCountry().filter(x => x.placeholder);
+      if (real.length === 1) { target = real[0]; report.entities.merged.push({ from: '(no label)', to: target.name, auto: true, reason: 'single-entity file' }); }
+      else if (ph.length) target = ph[0];
+      else {
+        const code = `unlabeled:${fuzzyKey(fileCountry || 'entity')}`;
+        target = session.entities[code] = { code, name: `${fileCountry || 'Entity'} (no entity label)`, displayName: `${fileCountry || 'Entity'} (no entity label)`, country: fileCountry, hasCode: false, placeholder: true, sources: [] };
+        report.entities.added.push(target.name);
+        if (real.length > 1) report.warnings.push({ level: 'warn', code: 'ENTITY_AMBIGUOUS', message: `${parsed.fileName} has no entity label and ${fileCountry || 'this country'} has ${real.length} entities – imported under "${target.name}". Add the entity label in the file and re-import.` });
+      }
+      if (!target.sources.includes(parsed.fileName)) target.sources.push(parsed.fileName);
+      codeMap[e.code] = target.code; continue;
+    }
     if (e.hasCode && session.entities[e.code]) target = session.entities[e.code];
+    // A labelled file for a country that so far only had unlabelled files: the placeholder becomes this entity.
+    if (!target && e.hasCode) {
+      const ph = sameCountry().filter(x => x.placeholder), real = sameCountry().filter(x => !x.placeholder);
+      if (ph.length === 1 && real.length === 0) { const fresh = { code: e.code, name: e.name, displayName: e.name, country: ph[0].country || fileCountry, hasCode: true, sources: [...ph[0].sources] }; session.entities[e.code] = fresh; rekeyEntity(session, ph[0].code, e.code); delete session.entities[ph[0].code]; target = fresh; report.entities.merged.push({ from: ph[0].name, to: e.name, auto: true, reason: 'label found in this file' }); }
+    }
     else if (!e.hasCode) {
       let best = null;
       for (const s of Object.values(session.entities)) {
@@ -98,7 +136,7 @@ export function mergeParsedWorkbook(session, parsed, opts = {}) {
       }
     }
     if (!target) {
-      target = { code: e.code, name: e.name, displayName: e.name, country: session.settings.country || countryFromFileName(parsed.fileName), hasCode: e.hasCode, sources: [] };
+      target = { code: e.code, name: e.name, displayName: e.name, country: fileCountry, hasCode: e.hasCode, sources: [] };
       session.entities[e.code] = target;
       report.entities.added.push(e.name);
     }
@@ -107,7 +145,7 @@ export function mergeParsedWorkbook(session, parsed, opts = {}) {
   }
   // Client and country from the files when nobody typed them yet (editable under Plan & prepare).
   if (!session.settings.country) session.settings.country = countryFromFileName(parsed.fileName);
-  if (!session.settings.clientName) session.settings.clientName = clientNameFromEntities(Object.values(session.entities).map(x => x.name));
+  if (!session.settings.clientName) session.settings.clientName = clientNameFromEntities(Object.values(session.entities).filter(x => !x.placeholder).map(x => x.name));
 
   for (const p of parsed.processes) {
     const ex = session.processes[p.id];

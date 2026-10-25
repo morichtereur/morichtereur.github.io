@@ -46,6 +46,11 @@ export function sheetToGrid(ws, XLSX) {
   // which real files often start at B1 or row 3. Row/column indexes must be absolute.
   const range = ws['!ref'] ? XLSX.utils.decode_range(ws['!ref']) : { s: { r: 0, c: 0 }, e: { r: 0, c: 0 } };
   range.s.r = 0; range.s.c = 0;
+  // Formatting applied to whole columns stretches !ref to row 1,048,576 – read only up to the last cell with a value.
+  let lastR = 0, lastC = 0;
+  for (const k of Object.keys(ws)) { if (k[0] === '!') continue; const cell = ws[k]; if (!cell || cell.v === undefined || cell.v === null || cell.v === '') continue; const a = XLSX.utils.decode_cell(k); if (a.r > lastR) lastR = a.r; if (a.c > lastC) lastC = a.c; }
+  for (const m of ws['!merges'] || []) { if (m.s.r > lastR && m.s.r <= range.e.r && ws[XLSX.utils.encode_cell(m.s)]?.v !== undefined) lastR = m.s.r; }
+  range.e.r = Math.min(range.e.r, lastR); range.e.c = Math.min(range.e.c, Math.max(lastC, 0));
   const rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: null, blankrows: true, range });
   let width = 0;
   for (const r of rows) if (r.length > width) width = r.length;
@@ -203,6 +208,9 @@ function buildBlocks(grid, headerRow, band, core, profile, warnings) {
     for (let j = i - 1; j >= 0; j--) { if (profile.blocks[blocks[j].kind].perEntity && blocks[j].entity) { prevEnt = blocks[j].entity; break; } }
     if (prevEnt) { b.entity = prevEnt; b.entityInherited = true; continue; }
     const guess = uniqueEntities[b.ordinal - 1];
+    // No entity label anywhere in the file: a single-entity capture sheet (e.g. a one-entity country). The entity is
+    // resolved on import (the country's entity, or a placeholder that the labelled file of the country takes over).
+    if (!uniqueEntities.length && b.ordinal === 1) { b.entity = { code: null, name: '', raw: '', unlabeled: true }; b.entityGuessed = true; if (!warnings.some(w => w.code === 'SINGLE_ENTITY_NO_LABEL')) warnings.push({ level: 'info', code: 'SINGLE_ENTITY_NO_LABEL', message: 'No entity label in this file – read as a single-entity capture sheet; matched to the entity of the same country on import.' }); continue; }
     if (guess) { b.entity = guess; b.entityGuessed = true; warnings.push({ level: 'warn', code: 'ENTITY_BY_ORDINAL', message: `${b.kind} block at column ${colLetter(b.col)} has no entity label – assigned to "${guess.name}" by position (${b.ordinal}). Please verify.` }); }
     else { b.entity = { code: null, name: `Unknown entity ${b.ordinal}`, raw: '' }; b.entityGuessed = true; warnings.push({ level: 'error', code: 'ENTITY_UNKNOWN', message: `${b.kind} block at column ${colLetter(b.col)} has no entity label and no other block to pair with.` }); }
   }
@@ -264,11 +272,11 @@ export function detectLayout(grid, profile = PROFILE_CAPTURE_SHEET_V1) {
   const entities = [];
   for (const b of blocks) {
     if (!b.entity) continue;
-    const key = b.entity.code || fuzzyKey(b.entity.name);
-    let e = entities.find(x => (x.code || fuzzyKey(x.name)) === key);
-    if (!e) { e = { code: b.entity.code, name: b.entity.name, raw: b.entity.raw, blocks: [] }; entities.push(e); }
+    const key = b.entity.unlabeled ? 'unlabeled' : (b.entity.code || fuzzyKey(b.entity.name));
+    let e = entities.find(x => (x.unlabeled ? 'unlabeled' : (x.code || fuzzyKey(x.name))) === key);
+    if (!e) { e = { code: b.entity.code, name: b.entity.name, raw: b.entity.raw, unlabeled: !!b.entity.unlabeled, blocks: [] }; entities.push(e); }
     e.blocks.push(b.kind);
-    if (!b.entity.code) warnings.push({ level: 'warn', code: 'ENTITY_NO_CODE', message: `Entity label "${b.entity.raw}" has no 6-digit code – matched by name only.` });
+    if (!b.entity.code && !b.entity.unlabeled) warnings.push({ level: 'warn', code: 'ENTITY_NO_CODE', message: `Entity label "${b.entity.raw}" has no 6-digit code – matched by name only.` });
   }
   const seenCode = new Set();
   for (const e of entities) {
@@ -318,14 +326,17 @@ export function parseCaptureWorkbook(wb, opts) {
   const toBe = layout.blocks.find(b => b.kind === 'TOBE');
   const shared = layout.blocks.filter(b => !profile.blocks[b.kind].perEntity && b.kind !== 'TOBE');
   const perEntity = layout.blocks.filter(b => profile.blocks[b.kind].perEntity);
-  const entityOf = (b) => b.entity.code || fuzzyKey(b.entity.name);
+  const entityOf = (b) => (b.entity.unlabeled ? 'unlabeled' : (b.entity.code || fuzzyKey(b.entity.name)));
+  const idCount = new Map(); const firstName = new Map(); const duplicates = []; const levelInferred = [];
   const activityLevels = new Set(profile.dataRow.activityLevels);
   let skippedCount = 0;
 
   for (let r = layout.headerRow + 1; r < grid.rows.length; r++) {
     const rawLevel = readCell(grid, r, layout.core.level.col);
-    const id = normText(readCell(grid, r, layout.core.id.col));
-    const level = parseNumber(rawLevel);
+    let id = normText(readCell(grid, r, layout.core.id.col));
+    let level = parseNumber(rawLevel);
+    // Level cell empty but a well-formed Process ID: the level is the number of numeric parts ("R2R 2.2.2.3" → 4).
+    if (isEmpty(rawLevel) && idRx.test(id)) { const parts = (id.match(/\s(\d+(?:\.\d+)*)$/) || [])[1]; const inferred = parts ? parts.split('.').length : (/^[A-Z0-9]+$/i.test(id.replace(/\s/g, '')) ? 0 : null); if (inferred !== null) { level = inferred; levelInferred.push({ row: r + 1, id, level }); } }
     const valid = Number.isInteger(level) && level >= profile.dataRow.levelMin && level <= profile.dataRow.levelMax && idRx.test(id);
     if (!valid) {
       const name = normText(readCell(grid, r, layout.core.name?.col));
@@ -334,11 +345,17 @@ export function parseCaptureWorkbook(wb, opts) {
     }
     const name = normText(readCell(grid, r, layout.core.name?.col));
     const description = normText(readCell(grid, r, layout.core.description?.col));
+    // The same Process ID twice in one sheet (template copy errors): keep both rows – the later one as "<id> (2)" –
+    // instead of letting the second silently overwrite the first.
+    const originalId = id; const seen = (idCount.get(originalId) || 0) + 1; idCount.set(originalId, seen);
+    if (seen === 1) firstName.set(originalId, name);
+    // Structure rows repeated with the same name (a stream header written twice) are the same node – merge them.
+    if (seen > 1 && (activityLevels.has(level) || normText(firstName.get(originalId)) !== normText(name))) { id = `${originalId} (${seen})`; duplicates.push({ row: r + 1, id: originalId, keptAs: id, name, activity: activityLevels.has(level), first: firstName.get(originalId) }); }
     stack[level] = id;
     for (const k of Object.keys(stack)) if (Number(k) > level) delete stack[k];
     let parentId = null;
     for (let l = level - 1; l >= 0; l--) if (stack[l]) { parentId = stack[l]; break; }
-    const structural = parentIdFromStructure(id);
+    const structural = parentIdFromStructure(originalId);
     if (level > 0 && structural && parentId && structural !== parentId && !(structural.length < parentId.length)) hierarchyMismatch++;
     const p = { id, level, name, description, stream: streamOf(id), parentId, structuralParentId: structural, row: r + 1 };
     if (toBe) {
@@ -356,7 +373,7 @@ export function parseCaptureWorkbook(wb, opts) {
       byEntity.get(ek).blocks[b.kind] = b;
     }
     for (const [, { entity, blocks }] of byEntity) {
-      const code = entity.code || `name:${fuzzyKey(entity.name)}`;
+      const code = entity.unlabeled ? 'unlabeled' : (entity.code || `name:${fuzzyKey(entity.name)}`);
       const a = {
         entityCode: code, processId: id, stream: p.stream,
         asIs: { le: null, gbs: null, systems: '', gap: null, gapRaw: '', info: '', extra: {} },
@@ -400,13 +417,17 @@ export function parseCaptureWorkbook(wb, opts) {
   const byId = new Map(processes.map(p => [p.id, p])); let reparented = 0;
   for (const p of processes) { if (p.structuralParentId && p.structuralParentId !== p.parentId && byId.has(p.structuralParentId) && byId.get(p.structuralParentId).level < p.level) { p.parentId = p.structuralParentId; reparented++; } }
   if (reparented) warnings.push({ level: 'info', code: 'REPARENTED', message: `${reparented} row(s) attached to the parent implied by their Process ID instead of the row above.` });
+  if (levelInferred.length) warnings.push({ level: 'info', code: 'LEVEL_INFERRED', message: `${levelInferred.length} row(s) without a Process Level – level taken from the Process ID (e.g. ${levelInferred[0].id} → L${levelInferred[0].level}, row ${levelInferred[0].row}).`, examples: levelInferred.slice(0, 10) });
+  const dupActs = duplicates.filter(d => d.activity), dupNodes = duplicates.filter(d => !d.activity);
+  if (dupActs.length) warnings.push({ level: 'warn', code: 'DUPLICATE_ID', message: `${dupActs.length} activity ID(s) appear more than once in this sheet – the later rows are kept as separate activities with " (2)" added to the ID (e.g. ${dupActs[0].keptAs}, row ${dupActs[0].row}: "${dupActs[0].name}"). Please correct the IDs in the template.`, examples: dupActs.slice(0, 10) });
+  if (dupNodes.length) warnings.push({ level: 'info', code: 'DUPLICATE_NODE', message: `${dupNodes.map(d => `"${d.id}" is used for "${d.first}" and "${d.name}" (row ${d.row})`).join('; ')} – kept as separate process groups.`, examples: dupNodes });
   const skippedNamed = skipped.filter(x => x.name).length;
   if (skippedCount) warnings.push({ level: skippedNamed ? 'warn' : 'info', code: 'ROWS_SKIPPED', message: `${skippedCount} non-data row(s) skipped (no numeric level 0–5 with a stream process ID).`, examples: skipped });
   if (hierarchyMismatch - reparented > 0) warnings.push({ level: 'info', code: 'HIERARCHY', message: `${hierarchyMismatch - reparented} row(s) where the parent implied by the Process ID does not exist – kept under the row above.` });
   if (unmappedGap.length) warnings.push({ level: 'warn', code: 'GAP_UNMAPPED', message: `${unmappedGap.length} GAP value(s) could not be mapped (set to UNCLEAR).`, examples: unmappedGap.slice(0, 10) });
   if (notes.length) warnings.push({ level: 'info', code: 'INSTRUCTION_TEXT', message: `${notes.length} cell(s) with instruction text imported as notes, not values.`, examples: notes.slice(0, 10) });
 
-  const entities = layout.entities.map(e => ({ code: e.code || `name:${fuzzyKey(e.name)}`, name: e.name, raw: e.raw, hasCode: !!e.code }));
+  const entities = layout.entities.map(e => (e.unlabeled ? { code: 'unlabeled', name: '', raw: '', hasCode: false, unlabeled: true } : { code: e.code || `name:${fuzzyKey(e.name)}`, name: e.name, raw: e.raw, hasCode: !!e.code }));
   const activities = processes.filter(p => activityLevels.has(p.level));
   const summary = summarise(entities, activities, assessments);
   return {

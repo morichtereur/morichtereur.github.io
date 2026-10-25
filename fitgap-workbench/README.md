@@ -76,6 +76,15 @@ across modules – the build fails on duplicates.
 3. Session JSON save/load, backup prompt at session end
 4. Deviation log (+ initiative candidates, taxonomy change requests), flat export with audit log, audit export; acceptance run  ← pilot MVP complete
 5–11. flows, present mode, QG2, evaluate, swimlane, write-back, full PLAN/PREPARE/HAND-OVER, profile mapping UI
+14. Single-entity country files (first seen with Korea): sheets without any entity label are read as one entity and
+    joined to the entity of the same country on import (country from the file name, ISO codes such as `_KR`); if the
+    labelled file comes later it takes over a placeholder entity, so the import order does not matter. Duplicate
+    activity IDs in a sheet are kept as separate activities (`<id> (2)`) and reported instead of overwriting each
+    other; repeated structure IDs with different names (e.g. two "A2R" headers for Asset and Inventory Accounting)
+    become separate process groups; an empty Process Level is taken from the ID; sheet ranges stretched to row
+    1,048,576 by column formatting are read only to the last filled cell (44 s → 0.2 s). FTE capture in present
+    mode: FTE field with quick picks in the flow-board panel, FTE badge on step cards, Σ FTE per process group, FTE
+    per entity on the table slide, FTE by split class (with GBS / staying local / split open) on the stream slide.
 13. Undo / redo for every workshop step (top bar, Ctrl+Z / Ctrl+Shift+Z outside text fields): each user step gets an
     action id in the audit trail; undo and redo are written to the audit trail as their own entries. Client-ready
     Excel: every export and every file of the hand-over package gets a frozen, formatted header row, column widths

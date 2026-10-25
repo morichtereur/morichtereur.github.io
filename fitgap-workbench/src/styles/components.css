@@ -555,3 +555,17 @@ dialog.welcome { max-width: 40rem; }
 .legend-tile { display: grid; grid-template-columns: auto 1fr; gap: 1cqw; align-items: start; }
 .legend-ico { width: 3cqw; height: 3cqw; border-radius: .8cqw; display: grid; place-items: center; background: color-mix(in srgb, var(--c) 14%, transparent); color: var(--c); margin-top: .2cqw; }
 .present-foot .mark-svg { vertical-align: middle; }
+
+/* ---------- FTE capture (flow board, present) ---------- */
+.fte-row { display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; }
+.fte-row .fte-input { width: 5.2rem; text-align: right; font-family: var(--font-mono); } .fte-row .fte-input::placeholder { color: var(--ink-3); opacity: .6; }
+.fte-row.compact .fte-input { width: 4.2rem; padding: .1rem .35rem; }
+.fte-row .chips { gap: .25rem; } .fte-row .chip { font-family: var(--font-mono); }
+.fte-badge { font-family: var(--font-mono); font-size: .62rem; padding: .02rem .3rem; border-radius: 3px; background: var(--accent-soft); color: var(--accent); white-space: nowrap; }
+.fte-total { font-family: var(--font-mono); font-size: .74rem; color: var(--accent); background: var(--accent-soft); padding: .1rem .45rem; border-radius: 999px; white-space: nowrap; }
+.present .fte-total { font-size: .9cqw; } .present .fte-badge { font-size: .75cqw; }
+.present .fte-row.compact .fte-input { width: 5cqw; font-size: .95cqw; }
+.slide-table tr.fte-sum td { border-top: 2px solid var(--line-strong); background: var(--accent-soft); font-size: 1.05cqw; }
+.bar-row { grid-template-columns: 11rem 1fr 3rem 4.5rem; } .present .bar-row { grid-template-columns: 16cqw 1fr 4cqw 6cqw; }
+.fte-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1cqw; margin-top: 1.6cqw; padding-top: 1.2cqw; border-top: 1px solid var(--line); }
+.fte-kpis b { display: block; font-family: var(--font-mono); font-weight: 500; font-size: 2.2cqw; line-height: 1.1; color: var(--accent); } .fte-kpis span { font-size: .85cqw; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-2); }
