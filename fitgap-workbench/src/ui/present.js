@@ -1,7 +1,9 @@
 // Present mode: full-bleed slides per stream, ←/→ and Esc, progress bar, live edits.
 
 function buildSlides(session, stream, entityFilter) {
-  const entities = Object.values(session.entities).filter(e => !entityFilter || e.code === entityFilter);
+  // Only entities with activities in this stream (a hub assessed for A2R only has no column on the R2R slides).
+  const inStream = new Set(Object.values(session.assessments).filter(a => stream === 'MD' || a.stream === stream).map(a => a.entityCode));
+  const entities = Object.values(session.entities).filter(e => (!entityFilter || e.code === entityFilter) && (!inStream.size || inStream.has(e.code)));
   const tree = buildTree(session, stream === 'MD' ? null : stream, { masterDataOnly: stream === 'MD' });
   const leaves = []; const walk = (n) => { if (n.activities.length) leaves.push(n); n.children.forEach(walk); }; tree.forEach(walk);
   const slides = [{ type: 'cover' }, { type: 'scope' }, { type: 'legend' }];

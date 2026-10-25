@@ -176,14 +176,14 @@ function ImportView({ session, summary, updateSession, toast, onClearAll, onRepl
   // Files of another country than the one in this browser: ask before mixing two countries into one workshop.
   const [countryAsk, setCountryAsk] = useState(null);
   const onFiles = (files) => {
-    const list = Array.from(files); const incoming = [...new Set(list.map(f => countryFromFileName(f.name)).filter(Boolean))]; const existing = sessionCountries(session);
+    const list = Array.from(files); const incoming = [...new Set(list.map(f => countryFromFileName(f.name)).filter(Boolean))]; const existing = sessionCountries(session._full || session);
     if (hasData && onNewSession && incoming.length && existing.length && incoming.every(c => !existing.includes(c))) { setCountryAsk({ files: list, incoming, existing }); window.scrollTo({ top: 0, behavior: "smooth" }); return; }
     q.run(list);
   };
   const startNewCountry = () => { const { files, incoming, existing } = countryAsk; downloadSessionJson(session); onNewSession(); setCountryAsk(null); q.clear(); toast(`${existing.join(' / ')} session saved as a file (Load session… brings it back) – new session for ${incoming.join(' / ')}`); q.run(files); };
   const countryCard = countryAsk && html`<div class="card" style="margin-bottom:1rem;border-color:var(--g-harm)"><div class="card-head"><h3>${countryAsk.incoming.join(' / ')} – new country</h3><span class="muted small">${countryAsk.files.length} file${countryAsk.files.length > 1 ? 's' : ''}</span></div><div class="card-body" style="display:grid;gap:.6rem">
-    <p class="small" style="margin:0">This browser holds the <b>${countryAsk.existing.join(' / ')}</b> workshop (${Object.keys(session.entities).length} entities, ${session.audit.length} recorded changes). Each country is best run as its own session, so slides, KPIs and exports show only that country.</p>
-    <div class="sg-row" style="margin:0"><${Button} variant="primary" icon="save" onClick=${startNewCountry}>Save ${countryAsk.existing.join(' / ')} session & start ${countryAsk.incoming.join(' / ')}</${Button}><${Button} variant="outline" onClick=${() => { const f = countryAsk.files; setCountryAsk(null); q.run(f); }}>Add to this session</${Button}><${Button} variant="text" onClick=${() => setCountryAsk(null)}>Cancel</${Button}></div>
+    <p class="small" style="margin:0">This browser holds the <b>${countryAsk.existing.join(' / ')}</b> workshop (${Object.keys((session._full || session).entities).length} entities, ${(session._full || session).audit.length} recorded changes). Start a separate session, or add the files and switch between the countries in the sidebar.</p>
+    <div class="sg-row" style="margin:0"><${Button} variant="primary" icon="save" onClick=${startNewCountry}>Save ${countryAsk.existing.join(' / ')} session & start ${countryAsk.incoming.join(' / ')}</${Button}><${Button} variant="outline" onClick=${() => { const { files: f, incoming } = countryAsk; setCountryAsk(null); q.run(f); if (incoming.length === 1) { updateSession(s => { s.settings.countryFilter = incoming[0]; }); toast(`Showing ${incoming[0]} – switch country in the sidebar`, { ttl: 5000 }); } }}>Add to this session</${Button}><${Button} variant="text" onClick=${() => setCountryAsk(null)}>Cancel</${Button}></div>
   </div></div>`;
   if (!hasData && !q.jobs.length) {
     return html`<div>

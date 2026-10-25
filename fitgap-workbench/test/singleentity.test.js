@@ -8,7 +8,8 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import * as XLSX from 'xlsx';
 import { parseCaptureWorkbook, sheetToGrid } from '../src/parser/capture.js';
-import { createSession, mergeParsedWorkbook, countryFromFileName, clientNameFromEntities, sessionCountries } from '../src/model/session.js';
+import { createSession, mergeParsedWorkbook, countryFromFileName, clientNameFromEntities, sessionCountries, countryView } from '../src/model/session.js';
+import { applyChange } from '../src/model/workshop.js';
 
 let dir, files;
 before(() => {
@@ -99,4 +100,22 @@ test('a second country in the same browser: unlabelled files still find their en
   assert.ok(!Object.keys(s.entities).some(c => c.startsWith('unlabeled:')), 'no "(no entity label)" entity left');
   assert.ok(Object.values(s.assessments).some(a => a.entityCode === '999999' && a.stream === 'R2R'), 'R2R joined the Singapore entity');
   assert.deepEqual(sessionCountries(s).sort(), ['France', 'Singapore']);
+});
+
+test('country filter: a view with one country only; changes made through it land in the full session', () => {
+  const a2r = parse(files.find(f => /A2R/.test(f))), r2r = parse(files.find(f => /R2R/.test(f)));
+  const s = createSession(); const code = a2r.entities.find(e => e.hasCode).code;
+  const asFile = (p, f) => ({ ...p, fileName: f, assessments: p.assessments.map(a => ({ ...a, sources: a.sources.map(x => ({ ...x, file: f })) })) });
+  mergeParsedWorkbook(s, asFile(a2r, 'Cap_A2R_France.xlsx'));
+  const sg = asCountryFile(r2r, code, 'Cap_R2R_SG.xlsx', false); mergeParsedWorkbook(s, { ...sg, entities: [{ ...sg.entities[0], code: '999999' }], assessments: sg.assessments.map(a => ({ ...a, entityCode: '999999' })) });
+  const v = countryView(s, 'Singapore');
+  assert.deepEqual(Object.keys(v.entities), ['999999']);
+  assert.ok(Object.values(v.assessments).every(a => a.entityCode === '999999') && Object.keys(v.assessments).length > 0);
+  assert.deepEqual(v.files.map(f => f.name), ['Cap_R2R_SG.xlsx']);
+  assert.ok(Object.values(v.processes).every(p => p.stream === 'R2R'), 'no A2R tree from the other country');
+  assert.equal(v.settings.country, 'Singapore'); assert.equal(v._full, s);
+  assert.equal(countryView(s, ''), s); assert.equal(countryView(s, 'Narnia'), s, 'unknown country shows everything');
+  const k = Object.keys(v.assessments)[0]; applyChange(s, k, 'fitGap.local', true);
+  assert.equal(countryView(s, 'Singapore').assessments[k].fitGap.local, true);
+  assert.equal(Object.keys(countryView(s, 'France').assessments).length, Object.values(s.assessments).filter(a => a.entityCode !== '999999').length);
 });

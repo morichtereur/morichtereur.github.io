@@ -86,6 +86,30 @@ export function sessionCountries(session) {
   return [...set];
 }
 
+/**
+ * The session as seen with a country filter (settings.countryFilter): only that country's entities, assessments,
+ * files, flows and audit entries; the process tree keeps the activities those entities have. Read-only view – every
+ * change still goes to the full session (keys are the same), so nothing of the other countries is lost.
+ */
+export function countryView(session, country) {
+  if (!session || !country) return session;
+  const entities = Object.fromEntries(Object.entries(session.entities).filter(([, e]) => entityCountry(e) === country));
+  if (!Object.keys(entities).length) return session;
+  const assessments = Object.fromEntries(Object.entries(session.assessments).filter(([, a]) => entities[a.entityCode]));
+  const own = new Set(Object.values(entities).flatMap(e => e.sources || []));
+  const files = session.files.filter(f => own.has(f.name) || countryFromFileName(f.name) === country);
+  const fileSet = new Set(files.map(f => f.name));
+  const processes = {};
+  for (const a of Object.values(assessments)) { let p = session.processes[a.processId]; while (p && !processes[p.id]) { processes[p.id] = p; p = p.parentId && session.processes[p.parentId]; } }
+  for (const p of Object.values(session.processes)) if (!processes[p.id] && p.level < 4 && (p.sources || []).some(x => fileSet.has(x.file))) processes[p.id] = p;
+  const keyOk = (k) => !k || !String(k).includes('::') || !!assessments[k];
+  const view = { ...session, settings: { ...session.settings, country }, entities, assessments, files, processes,
+    flows: (session.flows || []).filter(f => fileSet.has(f.file)), audit: session.audit.filter(x => keyOk(x.key)),
+    importDiffs: (session.importDiffs || []).filter(d => entities[d.entityCode]), pendingEntityMatches: (session.pendingEntityMatches || []).filter(m => fileSet.has(m.file)) };
+  Object.defineProperty(view, '_full', { value: session, enumerable: false });
+  return view;
+}
+
 /** "Alpha Pharma France S.A.S.", "Alpha Logistics S.A.S.", "Beta France S.A.S." → "Alpha" (the first word most entities share). */
 export function clientNameFromEntities(names) {
   const firsts = names.map(n => (String(n).trim().match(/^[\p{L}][\p{L}\d&'-]{2,}/u) || [''])[0]).filter(Boolean);

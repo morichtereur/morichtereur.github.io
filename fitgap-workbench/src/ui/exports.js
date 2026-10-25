@@ -5,7 +5,8 @@ function downloadBlob(name, blob) {
   setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 2000);
 }
 async function downloadWorkbook(name, wb) { const out = await polishXlsx(new Uint8Array(XLSX.write(wb, { bookType: 'xlsx', type: 'array' })), JSZip); downloadBlob(`${name}.xlsx`, new Blob([out], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })); }
-function downloadSessionJson(session) { downloadBlob(`${exportFileName(session, 'session')}.json`, new Blob([serializeSession(session)], { type: 'application/json' })); }
+// Always the full session (all countries), also when a country filter is active.
+function downloadSessionJson(session) { const full = session._full || session; downloadBlob(`${exportFileName(full, 'session')}.json`, new Blob([serializeSession(full)], { type: 'application/json' })); }
 
 function ExportsCard({ session, summary, updateSession, toast, onReplaceSession }) {
   const inp = useRef(); const [confirmLoad, setConfirmLoad] = useState(null); const [qc, setQc] = useState(null);

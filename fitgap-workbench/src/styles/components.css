@@ -502,6 +502,8 @@ dialog.agenda { max-width: 48rem; }
 .logo-plate.sized img { width: var(--logo-w); max-width: 16rem; height: auto; max-height: var(--logo-h, 28px); }
 .side-client { padding: .6rem 1rem 0; } .side-client .logo-plate img { max-width: 13rem; }
 .app[data-rail="1"] .side-client { display: none; }
+.side-country { padding: .6rem 1rem 0; display: grid; gap: .25rem; } .side-country .select { width: 100%; }
+.app[data-rail="1"] .side-country { display: none; }
 .side-stream .sname { display: inline-flex; align-items: center; gap: .4rem; }
 .side-stream .sname svg { color: var(--side-accent); opacity: .9; }
 .tree-ico { display: inline-flex; color: var(--accent); margin-right: .2rem; vertical-align: -2px; }

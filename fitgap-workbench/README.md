@@ -91,6 +91,10 @@ across modules – the build fails on duplicates.
     <country> session & start <new country>" downloads the current session as JSON and starts an empty one (initials
     and effort settings kept), or "Add to this session". Entities of older sessions without a stored country get it
     from their file names, so unlabelled files of a second country no longer end up as "<country> (no entity label)".
+    Country filter (sidebar, shown once a session holds two or more countries): every page – workshop, present mode,
+    KPIs, results, QC, exports – reads `countryView(session, settings.countryFilter)`; changes still go to the full
+    session and "Save session" always saves all countries. Present mode shows only entities with activities in the
+    stream on screen.
 15. Effort in hours: local teams estimate hours per month (quick picks 1–40 h, free entry with comma or point);
     FTE = hours ÷ productive hours per FTE per month (default 140 ≈ 1,680 h a year, set under Plan & prepare → More
     settings; changing it recalculates every FTE derived from hours, logged in the audit trail). Both are stored
