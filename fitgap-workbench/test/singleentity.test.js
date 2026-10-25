@@ -8,7 +8,7 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import * as XLSX from 'xlsx';
 import { parseCaptureWorkbook, sheetToGrid } from '../src/parser/capture.js';
-import { createSession, mergeParsedWorkbook, countryFromFileName, clientNameFromEntities } from '../src/model/session.js';
+import { createSession, mergeParsedWorkbook, countryFromFileName, clientNameFromEntities, sessionCountries } from '../src/model/session.js';
 
 let dir, files;
 before(() => {
@@ -87,4 +87,16 @@ test('pre-assessment check: summary per entity × stream and one finding per emp
   const hit = qc.issues.find(i => i.code === 'GAP_MISSING' && i.processId === victim.processId);
   assert.ok(hit, 'empty GAP reported'); assert.equal(hit.cell, victim.sources[0].cells.asIs.gap);
   assert.ok(qc.summary.every(r => ['Green', 'Amber', 'Red', 'n/a'].includes(r.readiness)));
+});
+
+test('a second country in the same browser: unlabelled files still find their entity (older sessions without stored country)', () => {
+  const r2r = parse(files.find(f => /R2R/.test(f))), a2r = parse(files.find(f => /A2R/.test(f)));
+  const s = createSession();
+  mergeParsedWorkbook(s, { ...a2r, fileName: 'Cap_A2R_France.xlsx', assessments: a2r.assessments.map(a => ({ ...a, sources: a.sources.map(x => ({ ...x, file: 'Cap_A2R_France.xlsx' })) })) });
+  for (const e of Object.values(s.entities)) delete e.country; // as saved by earlier versions
+  const code = a2r.entities.find(e => e.hasCode).code, kr = (p, f, unl) => { const c = asCountryFile(p, code, f, unl); return unl ? c : { ...c, entities: [{ ...c.entities[0], code: '999999' }], assessments: c.assessments.map(a => ({ ...a, entityCode: '999999' })) }; };
+  mergeParsedWorkbook(s, kr(r2r, 'Cap_R2R_SG.xlsx', true)); mergeParsedWorkbook(s, kr(a2r, 'Cap_A2R_SG.xlsx', false));
+  assert.ok(!Object.keys(s.entities).some(c => c.startsWith('unlabeled:')), 'no "(no entity label)" entity left');
+  assert.ok(Object.values(s.assessments).some(a => a.entityCode === '999999' && a.stream === 'R2R'), 'R2R joined the Singapore entity');
+  assert.deepEqual(sessionCountries(s).sort(), ['France', 'Singapore']);
 });

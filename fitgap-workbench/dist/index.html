@@ -762,7 +762,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 </script>
 <script id="app">
 'use strict';
-const BUILD = { version: '0.1.0', builtAt: '2026-10-25T10:40:56.990Z' };
+const BUILD = { version: '0.1.0', builtAt: '2026-10-25T11:47:04.191Z' };
 
 /* ---- src/model/constants.js ---- */
 // Domain constants. Pure data – no client-specific values anywhere in here.
@@ -1771,6 +1771,19 @@ function countryFromFileName(fileName = '') {
   return tok.charAt(0).toUpperCase() + tok.slice(1);
 }
 
+/** Country of an entity: as stored, else from the names of the files it came from (sessions saved before countries were kept). */
+function entityCountry(e) {
+  if (e?.country) return e.country;
+  for (const f of e?.sources || []) { const c = countryFromFileName(f); if (c) return c; }
+  return '';
+}
+/** Countries already in a session – the import asks before mixing a new country into them. */
+function sessionCountries(session) {
+  const set = new Set(Object.values(session.entities || {}).map(entityCountry).filter(Boolean));
+  if (!set.size && session.settings?.country) set.add(session.settings.country);
+  return [...set];
+}
+
 /** "Alpha Pharma France S.A.S.", "Alpha Logistics S.A.S.", "Beta France S.A.S." → "Alpha" (the first word most entities share). */
 function clientNameFromEntities(names) {
   const firsts = names.map(n => (String(n).trim().match(/^[\p{L}][\p{L}\d&'-]{2,}/u) || [''])[0]).filter(Boolean);
@@ -1800,7 +1813,7 @@ function mergeParsedWorkbook(session, parsed, opts = {}) {
   const codeMap = {}; // parsed entity code → session entity code
 
   const fileCountry = countryFromFileName(parsed.fileName) || session.settings.country || '';
-  const sameCountry = () => Object.values(session.entities).filter(x => !fileCountry || !x.country || x.country === fileCountry);
+  const sameCountry = () => Object.values(session.entities).filter(x => { const c = entityCountry(x); return !fileCountry || !c || c === fileCountry; });
   for (const e of parsed.entities) {
     let target = null;
     if (e.unlabeled) {
@@ -4148,7 +4161,7 @@ function TemplatesCard({ session, toast }) {
   </${Card}>`;
 }
 
-function ImportView({ session, summary, updateSession, toast, onClearAll, onReplaceSession }) {
+function ImportView({ session, summary, updateSession, toast, onClearAll, onReplaceSession, onNewSession }) {
   const profiles = allProfiles(session); const [profileId, setProfileId] = useState(DEFAULT_PROFILE_ID); const profileRef = useRef(null);
   profileRef.current = profiles.find(p => p.id === profileId) || null;
   const dz = { profiles, profileId, setProfileId };
@@ -4159,7 +4172,18 @@ function ImportView({ session, summary, updateSession, toast, onClearAll, onRepl
   }, profileRef);
   const [confirmClear, setConfirmClear] = useState(false);
   const hasData = session.files.length > 0;
-  const onFiles = (files) => q.run(files);
+  // Files of another country than the one in this browser: ask before mixing two countries into one workshop.
+  const [countryAsk, setCountryAsk] = useState(null);
+  const onFiles = (files) => {
+    const list = Array.from(files); const incoming = [...new Set(list.map(f => countryFromFileName(f.name)).filter(Boolean))]; const existing = sessionCountries(session);
+    if (hasData && onNewSession && incoming.length && existing.length && incoming.every(c => !existing.includes(c))) { setCountryAsk({ files: list, incoming, existing }); window.scrollTo({ top: 0, behavior: "smooth" }); return; }
+    q.run(list);
+  };
+  const startNewCountry = () => { const { files, incoming, existing } = countryAsk; downloadSessionJson(session); onNewSession(); setCountryAsk(null); q.clear(); toast(`${existing.join(' / ')} session saved as a file (Load session… brings it back) – new session for ${incoming.join(' / ')}`); q.run(files); };
+  const countryCard = countryAsk && html`<div class="card" style="margin-bottom:1rem;border-color:var(--g-harm)"><div class="card-head"><h3>${countryAsk.incoming.join(' / ')} – new country</h3><span class="muted small">${countryAsk.files.length} file${countryAsk.files.length > 1 ? 's' : ''}</span></div><div class="card-body" style="display:grid;gap:.6rem">
+    <p class="small" style="margin:0">This browser holds the <b>${countryAsk.existing.join(' / ')}</b> workshop (${Object.keys(session.entities).length} entities, ${session.audit.length} recorded changes). Each country is best run as its own session, so slides, KPIs and exports show only that country.</p>
+    <div class="sg-row" style="margin:0"><${Button} variant="primary" icon="save" onClick=${startNewCountry}>Save ${countryAsk.existing.join(' / ')} session & start ${countryAsk.incoming.join(' / ')}</${Button}><${Button} variant="outline" onClick=${() => { const f = countryAsk.files; setCountryAsk(null); q.run(f); }}>Add to this session</${Button}><${Button} variant="text" onClick=${() => setCountryAsk(null)}>Cancel</${Button}></div>
+  </div></div>`;
   if (!hasData && !q.jobs.length) {
     return html`<div>
       <${PageHead} icon="upload" eyebrow="2 · Workshop · files & exports" title="Import the capture sheets" lead="Start with the pre-filled workbooks from GBS Operations. The tool reads the main Fit-Gap sheet of each file, detects entities and blocks by their titles, and shows you exactly what it found before anything is assessed." how=${html`<ol><li>Drop all stream workbooks at once (or add them one by one).</li><li>Check the import summary: entities × streams, activity counts, gap distribution and warnings.</li><li>If a label without entity code looks like a known entity, confirm or reject the match.</li><li>Re-import a newer version at any time – Ops values are refreshed and listed, workshop results stay.</li></ol>`} />
@@ -4169,6 +4193,7 @@ function ImportView({ session, summary, updateSession, toast, onClearAll, onRepl
   }
   return html`<div>
     <${PageHead} icon="upload" eyebrow="2 · Workshop · files & exports" title=${hasData ? `${summary.entities.length} entities · ${summary.streams.length} streams · ${summary.assessments} assessments` : 'Importing…'} lead="What was read from the capture sheets. Check that every entity appears in every stream, then go to the workshop." />
+    ${countryCard}
     <${PendingEntities} session=${session} updateSession=${updateSession} />
     ${hasData && html`<div class="kpi-row"><${Kpi} value=${summary.entities.length} label="Entities" /><${Kpi} value=${Object.values(summary.activitiesByStream).reduce((a, b) => a + b, 0)} label="L4 activities" color="var(--gbs)" /><${Kpi} value=${summary.assessments} label="Entity × activity" color="var(--auto)" /><${Kpi} value=${summary.outOfScope} label="Out of scope" color="var(--g-oos)" /><${Kpi} value=${summary.warnings.filter(w => w.level !== 'info').length} label="Warnings" color=${summary.warnings.some(w => w.level === 'error') ? 'var(--flag)' : 'var(--g-harm)'} /></div>`}
     <div class="import-grid">
@@ -5121,12 +5146,12 @@ function ComingNext({ p }) {
   </div>`;
 }
 
-function RunPage({ session, summary, updateSession, toast, onClearAll, tab, setTab, ui, setUi, onReplaceSession, onPresent, onAsk }) {
+function RunPage({ session, summary, updateSession, toast, onClearAll, tab, setTab, ui, setUi, onReplaceSession, onNewSession, onPresent, onAsk }) {
   const hasData = session.files.length > 0;
   useEffect(() => { if (!hasData) setTab('import'); }, [hasData]);
   if (tab === 'import' || !hasData) return html`<div>
     ${hasData && html`<div class="sg-row" style="margin:0 0 .6rem"><${Button} variant="text" size="sm" onClick=${() => setTab('workshop')}>← Back to the workshop</${Button}></div>`}
-    <${ImportView} session=${session} summary=${summary} updateSession=${updateSession} toast=${toast} onClearAll=${onClearAll} onReplaceSession=${onReplaceSession} />
+    <${ImportView} session=${session} summary=${summary} updateSession=${updateSession} toast=${toast} onClearAll=${onClearAll} onReplaceSession=${onReplaceSession} onNewSession=${onNewSession} />
   </div>`;
   return html`<div>
     <div class="sg-row" style="justify-content:flex-end;margin:-.5rem 0 .4rem"><${Button} variant="text" size="sm" icon="file" onClick=${() => setTab('import')}>Files & exports (${session.files.length})</${Button}></div>
@@ -5222,13 +5247,15 @@ function App() {
   const paletteItems = [...Object.values(session.entities).map(e => ({ label: `${e.displayName || e.name} · ${e.code}`, kind: 'entity', icon: 'file', go: () => { setPage('phase'); setPhase('run'); setRunTab('workshop'); setWsUi(u => ({ ...u, entity: e.code })); } })), ...STREAMS.filter(s => summary.activitiesByStream[s]).map(s => ({ label: `${s} · ${summary.activitiesByStream[s]} activities`, kind: 'stream', icon: 'run', go: () => { setPage('phase'); setPhase('run'); setRunTab('workshop'); setWsUi(u => ({ ...u, stream: s, l3: null })); } })), ...Object.values(session.processes).filter(p => p.level >= 2).map(p => ({ label: `${p.id} ${p.name}`, kind: `L${p.level}`, icon: 'file', go: () => goActivity(p) })), ...NAV.map(p => ({ label: `${p.n} ${p.label}`, kind: 'page', icon: p.icon, go: () => { setPage('phase'); setPhase(p.key); } })), { label: 'Start here', kind: 'home', icon: 'info', go: () => setPage('home') }, { label: 'Style sheet', kind: 'design', icon: 'palette', go: () => setPage('styleguide') }, { label: 'Present', kind: 'present', icon: 'share', go: () => setPresent({ stream: session.processes[wsUi.l3]?.stream || 'R2R', entityFilter: null, l3: wsUi.l3 }) }, { label: theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme', kind: 'theme', icon: 'sun', go: () => setTheme(theme === 'dark' ? 'light' : 'dark') }];
   const logFeedback = (note) => { updateSession(s => { s.feedback = [...s.feedback, { ts: new Date().toISOString(), view: viewName, note, sessionId: s.activeSessionId }]; }); toast('Feedback logged'); };
   const replaceSession = (loaded) => { hist.current = { undo: [], redo: [] }; bumpHist(); setSession({ ...createSession(), ...loaded }); dirty.current = true; setRunTab(loaded.files?.length ? 'workshop' : 'import'); toast('Session loaded from file'); };
+  // New country: an empty session that keeps only the facilitator's own settings (initials, effort unit and basis).
+  const newCountrySession = () => { hist.current = { undo: [], redo: [] }; bumpHist(); setSession(s => { const n = createSession(); for (const k of ['editorInitials', 'effortUnit', 'hoursPerFteMonth']) if (s.settings[k] !== undefined) n.settings[k] = s.settings[k]; return n; }); dirty.current = true; };
   const clearAll = async () => { hist.current = { undo: [], redo: [] }; bumpHist(); try { await storageClear(); } catch { /* ignore */ } setSession(createSession()); dirty.current = true; setRunTab('import'); toast('All data cleared'); };
   return html`<div class="app" data-rail=${rail ? '1' : '0'}>
     <${Sidebar} phase=${phase} setPhase=${setPhase} summary=${summary} rail=${rail} setRail=${setRail} session=${session} page=${page} setPage=${setPage} onPresent=${() => setPresent({ stream: session.processes[wsUi.l3]?.stream || 'R2R', entityFilter: null, l3: wsUi.l3 })} />
     <div class="content">
       <${TopBar} canUndo=${hist.current.undo.length > 0} canRedo=${hist.current.redo.length > 0} onUndo=${() => stepHistory('undo')} onRedo=${() => stepHistory('redo')} crumbs=${crumbs} theme=${theme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')} setTheme=${setTheme} share=${share} setShare=${setShare} onPalette=${() => setPalette(true)} onFeedback=${() => setFeedback(f => !f)} save=${save} onSave=${() => { downloadSessionJson(session); toast('Session file downloaded'); }} onAi=${() => setAi(x => ({ open: !x.open, key: x.key || (wsUi.expanded && wsUi.expandedEntity ? assessmentKey(wsUi.expandedEntity, wsUi.expanded) : null) }))} />
       <${KpiStrip} summary=${summary} session=${session} updateSession=${updateSession} toast=${toast} />
-      <main class="main">${page === 'home' ? html`<${HomePage} session=${session} summary=${summary} updateSession=${updateSession} toast=${toast} go=${goStep} onReplaceSession=${replaceSession} />` : page === 'styleguide' ? html`<${StyleGuide} />` : phase === 'run' ? html`<${RunPage} session=${session} summary=${summary} updateSession=${updateSession} toast=${toast} onClearAll=${clearAll} tab=${tab} setTab=${setRunTab} ui=${wsUi} setUi=${setWsUi} onReplaceSession=${replaceSession} onPresent=${p => setPresent(p)} onAsk=${onAsk} />` : phase === 'plan' ? html`<${PlanView} session=${session} summary=${summary} updateSession=${updateSession} toast=${toast} />` : phase === 'results' ? html`<${EvaluatePage} session=${session} updateSession=${updateSession} toast=${toast} goActivity=${goActivity} />` : phase === 'signoff' ? html`<${Qg2Page} session=${session} updateSession=${updateSession} toast=${toast} /><div style="margin-top:2rem"><${HandoverPage} session=${session} toast=${toast} /></div>` : html`<${ComingNext} p=${current} />`}</main>
+      <main class="main">${page === 'home' ? html`<${HomePage} session=${session} summary=${summary} updateSession=${updateSession} toast=${toast} go=${goStep} onReplaceSession=${replaceSession} />` : page === 'styleguide' ? html`<${StyleGuide} />` : phase === 'run' ? html`<${RunPage} session=${session} summary=${summary} updateSession=${updateSession} toast=${toast} onClearAll=${clearAll} onNewSession=${newCountrySession} tab=${tab} setTab=${setRunTab} ui=${wsUi} setUi=${setWsUi} onReplaceSession=${replaceSession} onPresent=${p => setPresent(p)} onAsk=${onAsk} />` : phase === 'plan' ? html`<${PlanView} session=${session} summary=${summary} updateSession=${updateSession} toast=${toast} />` : phase === 'results' ? html`<${EvaluatePage} session=${session} updateSession=${updateSession} toast=${toast} goActivity=${goActivity} />` : phase === 'signoff' ? html`<${Qg2Page} session=${session} updateSession=${updateSession} toast=${toast} /><div style="margin-top:2rem"><${HandoverPage} session=${session} toast=${toast} /></div>` : html`<${ComingNext} p=${current} />`}</main>
     </div>
     <${Palette} open=${palette} onClose=${() => setPalette(false)} items=${paletteItems} onPick=${i => { setPalette(false); i.go(); }} />
     <${Welcome} open=${welcome} onClose=${() => { setWelcome(false); store.set('fg.welcomed', true); }} onPrimary=${() => { setWelcome(false); store.set('fg.welcomed', true); setPage('phase'); setPhase('run'); setRunTab('import'); }} onDemo=${async () => { setWelcome(false); store.set('fg.welcomed', true); setPage('home'); await loadDemoData(updateSession, toast, () => goStep('run', 'workshop')); }} />

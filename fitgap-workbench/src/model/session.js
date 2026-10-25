@@ -73,6 +73,19 @@ export function countryFromFileName(fileName = '') {
   return tok.charAt(0).toUpperCase() + tok.slice(1);
 }
 
+/** Country of an entity: as stored, else from the names of the files it came from (sessions saved before countries were kept). */
+export function entityCountry(e) {
+  if (e?.country) return e.country;
+  for (const f of e?.sources || []) { const c = countryFromFileName(f); if (c) return c; }
+  return '';
+}
+/** Countries already in a session – the import asks before mixing a new country into them. */
+export function sessionCountries(session) {
+  const set = new Set(Object.values(session.entities || {}).map(entityCountry).filter(Boolean));
+  if (!set.size && session.settings?.country) set.add(session.settings.country);
+  return [...set];
+}
+
 /** "Alpha Pharma France S.A.S.", "Alpha Logistics S.A.S.", "Beta France S.A.S." → "Alpha" (the first word most entities share). */
 export function clientNameFromEntities(names) {
   const firsts = names.map(n => (String(n).trim().match(/^[\p{L}][\p{L}\d&'-]{2,}/u) || [''])[0]).filter(Boolean);
@@ -102,7 +115,7 @@ export function mergeParsedWorkbook(session, parsed, opts = {}) {
   const codeMap = {}; // parsed entity code → session entity code
 
   const fileCountry = countryFromFileName(parsed.fileName) || session.settings.country || '';
-  const sameCountry = () => Object.values(session.entities).filter(x => !fileCountry || !x.country || x.country === fileCountry);
+  const sameCountry = () => Object.values(session.entities).filter(x => { const c = entityCountry(x); return !fileCountry || !c || c === fileCountry; });
   for (const e of parsed.entities) {
     let target = null;
     if (e.unlabeled) {

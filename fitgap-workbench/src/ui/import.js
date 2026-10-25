@@ -162,7 +162,7 @@ function TemplatesCard({ session, toast }) {
   </${Card}>`;
 }
 
-function ImportView({ session, summary, updateSession, toast, onClearAll, onReplaceSession }) {
+function ImportView({ session, summary, updateSession, toast, onClearAll, onReplaceSession, onNewSession }) {
   const profiles = allProfiles(session); const [profileId, setProfileId] = useState(DEFAULT_PROFILE_ID); const profileRef = useRef(null);
   profileRef.current = profiles.find(p => p.id === profileId) || null;
   const dz = { profiles, profileId, setProfileId };
@@ -173,7 +173,18 @@ function ImportView({ session, summary, updateSession, toast, onClearAll, onRepl
   }, profileRef);
   const [confirmClear, setConfirmClear] = useState(false);
   const hasData = session.files.length > 0;
-  const onFiles = (files) => q.run(files);
+  // Files of another country than the one in this browser: ask before mixing two countries into one workshop.
+  const [countryAsk, setCountryAsk] = useState(null);
+  const onFiles = (files) => {
+    const list = Array.from(files); const incoming = [...new Set(list.map(f => countryFromFileName(f.name)).filter(Boolean))]; const existing = sessionCountries(session);
+    if (hasData && onNewSession && incoming.length && existing.length && incoming.every(c => !existing.includes(c))) { setCountryAsk({ files: list, incoming, existing }); window.scrollTo({ top: 0, behavior: "smooth" }); return; }
+    q.run(list);
+  };
+  const startNewCountry = () => { const { files, incoming, existing } = countryAsk; downloadSessionJson(session); onNewSession(); setCountryAsk(null); q.clear(); toast(`${existing.join(' / ')} session saved as a file (Load session… brings it back) – new session for ${incoming.join(' / ')}`); q.run(files); };
+  const countryCard = countryAsk && html`<div class="card" style="margin-bottom:1rem;border-color:var(--g-harm)"><div class="card-head"><h3>${countryAsk.incoming.join(' / ')} – new country</h3><span class="muted small">${countryAsk.files.length} file${countryAsk.files.length > 1 ? 's' : ''}</span></div><div class="card-body" style="display:grid;gap:.6rem">
+    <p class="small" style="margin:0">This browser holds the <b>${countryAsk.existing.join(' / ')}</b> workshop (${Object.keys(session.entities).length} entities, ${session.audit.length} recorded changes). Each country is best run as its own session, so slides, KPIs and exports show only that country.</p>
+    <div class="sg-row" style="margin:0"><${Button} variant="primary" icon="save" onClick=${startNewCountry}>Save ${countryAsk.existing.join(' / ')} session & start ${countryAsk.incoming.join(' / ')}</${Button}><${Button} variant="outline" onClick=${() => { const f = countryAsk.files; setCountryAsk(null); q.run(f); }}>Add to this session</${Button}><${Button} variant="text" onClick=${() => setCountryAsk(null)}>Cancel</${Button}></div>
+  </div></div>`;
   if (!hasData && !q.jobs.length) {
     return html`<div>
       <${PageHead} icon="upload" eyebrow="2 · Workshop · files & exports" title="Import the capture sheets" lead="Start with the pre-filled workbooks from GBS Operations. The tool reads the main Fit-Gap sheet of each file, detects entities and blocks by their titles, and shows you exactly what it found before anything is assessed." how=${html`<ol><li>Drop all stream workbooks at once (or add them one by one).</li><li>Check the import summary: entities × streams, activity counts, gap distribution and warnings.</li><li>If a label without entity code looks like a known entity, confirm or reject the match.</li><li>Re-import a newer version at any time – Ops values are refreshed and listed, workshop results stay.</li></ol>`} />
@@ -183,6 +194,7 @@ function ImportView({ session, summary, updateSession, toast, onClearAll, onRepl
   }
   return html`<div>
     <${PageHead} icon="upload" eyebrow="2 · Workshop · files & exports" title=${hasData ? `${summary.entities.length} entities · ${summary.streams.length} streams · ${summary.assessments} assessments` : 'Importing…'} lead="What was read from the capture sheets. Check that every entity appears in every stream, then go to the workshop." />
+    ${countryCard}
     <${PendingEntities} session=${session} updateSession=${updateSession} />
     ${hasData && html`<div class="kpi-row"><${Kpi} value=${summary.entities.length} label="Entities" /><${Kpi} value=${Object.values(summary.activitiesByStream).reduce((a, b) => a + b, 0)} label="L4 activities" color="var(--gbs)" /><${Kpi} value=${summary.assessments} label="Entity × activity" color="var(--auto)" /><${Kpi} value=${summary.outOfScope} label="Out of scope" color="var(--g-oos)" /><${Kpi} value=${summary.warnings.filter(w => w.level !== 'info').length} label="Warnings" color=${summary.warnings.some(w => w.level === 'error') ? 'var(--flag)' : 'var(--g-harm)'} /></div>`}
     <div class="import-grid">
