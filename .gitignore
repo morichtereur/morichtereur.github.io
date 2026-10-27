@@ -40,3 +40,4 @@ fitgap-workbench/samples/*
 fitgap-workbench/dist/smoke/
 fitgap-workbench/gbs-fitgap-workbench-replit.zip
 fitgap-workbench/dist/video/
+__pycache__/
