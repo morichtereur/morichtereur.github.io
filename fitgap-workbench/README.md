@@ -69,6 +69,29 @@ The build strips `import`/`export` from the ES modules and concatenates them in 
 so the same files run in Node (tests, inspector) and in the browser. Top-level names must be unique
 across modules – the build fails on duplicates.
 
+## Country deliverable (fit-gap workbook per stream)
+
+`scripts/deliverable/` turns a stream's capture workbook plus the session content into the client deliverable –
+the template with its single fit-gap sheet replaced by `<WS>_<COUNTRY>_vWS` (full session notes) and
+`<WS>_<COUNTRY>` (final, active): taxonomy | standard split | one 17-column block per entity (as-is split, system,
+GAP, information, to-be split, FTE, comment, 7 detail columns) | the template's remaining columns. Column roles are
+read from the header texts (`fitgap_layout.py`), so the same code serves every stream template.
+
+1. `dump_capture.py <capture.xlsx> --pre <pre-assessment.xlsx> --out notes.md` – every row with both entity blocks,
+   cells that changed in the session marked.
+2. Author the content with `author.py` (`Content`: level-3 / level-4 dictionaries, default decision lines per
+   level-3 group and rating, detail dictionaries, cover glossary, vWS notes, yellow cells) and `resolve()` it to JSON –
+   the deliverable is fully regenerable from template + JSON.
+3. `build_fitgap.py --template … --content … --out …` – formatting as in the finished reference files (Verdana 8,
+   level shading, borders, computed row heights, conditional formatting and dropdowns on the GAP / to-be columns,
+   frozen header, autofilter, Arial cover). Images, external links and the other sheets survive.
+4. `qa_fitgap.py <deliverable> --capture <capture.xlsx> --people …` – read-only report: structure, ratings vs
+   capture, content rules of the final tab, forbidden workshop language, terminology, spelling, formulas, yellow
+   cells, entity differences, cover. `compare_fitgap.py` diffs two deliverables cell by cell (format regression:
+   `extract_content.py <reference>` + `build_fitgap.py` reproduce a reference from its template).
+
+Client workbooks and content modules stay in the gitignored `samples/` folders.
+
 ## Increments
 
 0. Shell with all six phases, design system style sheet, parser profile #1, demo generator, inspector
