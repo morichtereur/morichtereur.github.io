@@ -22,7 +22,8 @@ function stepContext(session, a) {
     `Process path: ${path.join(' › ')}`, `Activity: ${p.id} ${p.name}${p.description ? ' – ' + p.description : ''}`,
     `To-Be (global standard): local entity ${yn(p.toBe?.le)}, GBS ${yn(p.toBe?.gbs)}${p.toBe?.system ? ', system ' + p.toBe.system : ''}${p.toBe?.initiative ? ', planned initiative ' + p.toBe.initiative : ''}`,
     `Ops pre-assessment (as-is): local ${yn(a.asIs.le)}, GBS ${yn(a.asIs.gbs)}${a.asIs.systems ? ', systems ' + a.asIs.systems : ''}, GAP ${GAP_LABEL[a.asIs.gap] || 'not assessed'}${a.asIs.info ? ', note: ' + a.asIs.info : ''}`,
-    `Workshop so far: local ${yn(a.fitGap.local)}, GBS ${yn(a.fitGap.gbs)}, other ${yn(a.fitGap.other)}, gap type ${a.workshop.gapType ? GAP_LABEL[a.workshop.gapType] : 'not set'}${a.workshop.rationale ? ', rationale: ' + a.workshop.rationale : ''}${dg ? '; details: ' + dg : ''}`,
+    `Who performs it today (${todaySplit(a).source === 'workshop' ? 'confirmed in the workshop' : 'Ops pre-assessment'}): ${performerView(a, p).today}; after the transition (workshop decision): ${performerView(a, p).future}`,
+    `Workshop so far: gap type ${a.workshop.gapType ? GAP_LABEL[a.workshop.gapType] : 'not set'}${a.workshop.rationale ? ', rationale: ' + a.workshop.rationale : ''}${dg ? '; details: ' + dg : ''}`,
     ...(p.context ? Object.entries(p.context).map(([k, v]) => `${k}: ${Object.entries(v).map(([h, x]) => `${h}=${x}`).join(', ')}`) : [])].join('\n');
 }
 const EXPLAIN_PROMPT = `Explain this process step for the workshop:

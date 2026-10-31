@@ -11,6 +11,7 @@ import { createSession, mergeParsedWorkbook } from '../src/model/session.js';
 import { applyChange, bulkConfirmNoGap, confirmFit } from '../src/model/workshop.js';
 import { classifySplit, activitySplit, gapAnalysis, qg2Readiness, prepareReadiness } from '../src/model/analysis.js';
 import { patchSheetXml, writeBackCells, writeBackWorkbook } from '../src/model/writeback.js';
+import { flatRows } from '../src/model/exports.js';
 
 let s, dir;
 before(() => {
@@ -112,4 +113,19 @@ test('write-back leaves cells alone whose value the workshop did not change (kee
   assert.ok(!(a.sources[0].cells.detailedGap.itSystems in cells), 'unchanged text not rewritten');
   applyChange(t, a.key, 'detailedGap.itSystems', 'SAP');
   assert.equal(writeBackCells(t, f)[a.sources[0].sheet][a.sources[0].cells.detailedGap.itSystems], 'SAP');
+});
+
+test('who performs it today: workshop correction goes to the As-is split, the decision to the Fit-Gap split', () => {
+  const t = createSession(); const f = readdirSync(dir).find(x => /R2R/.test(x));
+  mergeParsedWorkbook(t, parseCaptureWorkbook(XLSX.read(readFileSync(join(dir, f)), { type: 'buffer' }), { XLSX, fileName: f }));
+  const a = Object.values(t.assessments).find(x => !x.scope.outOfScope && x.asIs.le === true && x.asIs.gbs === false && x.sources[0].cells.asIs?.le && x.sources[0].cells.asIs?.gbs && x.sources[0].cells.fitGap?.gbs);
+  const cells = () => writeBackCells(t, f)[a.sources[0].sheet] || {};
+  applyChange(t, a.key, 'today.local', true); applyChange(t, a.key, 'today.gbs', false);
+  assert.ok(!(a.sources[0].cells.asIs.le in cells()), 'today confirmed as Ops: As-is cells untouched');
+  applyChange(t, a.key, 'today.local', false); applyChange(t, a.key, 'today.gbs', true);
+  assert.equal(cells()[a.sources[0].cells.asIs.le], 'N'); assert.equal(cells()[a.sources[0].cells.asIs.gbs], 'Y');
+  applyChange(t, a.key, 'fitGap.local', false); applyChange(t, a.key, 'fitGap.other', false); applyChange(t, a.key, 'fitGap.gbs', true);
+  assert.equal(cells()[a.sources[0].cells.fitGap.gbs], 'Y', 'to-be decision in the Fit-Gap split');
+  const row = flatRows(t).find(r => r['Process ID'] === a.processId && r['Entity code'] === a.entityCode);
+  assert.equal(row['Today GBS'], 'Y'); assert.equal(row['Today source'], 'Workshop'); assert.equal(row['Performer today → to-be'], 'GBS → GBS');
 });

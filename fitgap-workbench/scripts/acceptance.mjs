@@ -64,7 +64,7 @@ for (let i = 0; i < 3 && devDone < 3; i++) {
   if (await pills.count() <= i) break;
   await pills.nth(i).scrollIntoViewIfNeeded(); await page.evaluate(() => window.scrollBy(0, -260)); await pills.nth(i).click();
   await page.waitForSelector('.expand-inner');
-  await page.click('.expand-inner .yn >> nth=0 >> button >> nth=0'); await page.click('.expand-inner .yn >> nth=1 >> button >> nth=1'); await page.click('.expand-inner .yn >> nth=2 >> button >> nth=1');
+  await page.click('.expand-inner [aria-label="To-be Local"] button >> nth=0'); await page.click('.expand-inner [aria-label="To-be GBS"] button >> nth=1'); await page.click('.expand-inner [aria-label="To-be Other"] button >> nth=1');
   await page.selectOption('.expand-inner select >> nth=0', 'HARMONIZATION');
   await page.fill('.expand-inner input[placeholder="Short reason"]', `Local approval step ${i + 1}`); await page.press('.expand-inner input[placeholder="Short reason"]', 'Enter');
   await page.waitForSelector('.block.dev');

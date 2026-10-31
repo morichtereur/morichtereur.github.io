@@ -7,7 +7,7 @@ import { tmpdir } from 'node:os';
 import * as XLSX from 'xlsx';
 import { parseCaptureWorkbook } from '../src/parser/capture.js';
 import { createSession, mergeParsedWorkbook } from '../src/model/session.js';
-import { applyChange, completeness, confirmFit, bulkConfirmNoGap, undoBulk, buildTree, activitiesOf, nodeStats, suggestGapType, applyToAllEntities, sessionPace, undoAction, redoAction, setEffortHours, setEffortFte, rebaseFte, hoursOf, effortSum, fteBasis } from '../src/model/workshop.js';
+import { applyChange, completeness, confirmFit, bulkConfirmNoGap, undoBulk, buildTree, activitiesOf, nodeStats, suggestGapType, applyToAllEntities, performerView, todaySplit, standardSplit, laneText, sessionPace, undoAction, redoAction, setEffortHours, setEffortFte, rebaseFte, hoursOf, effortSum, fteBasis } from '../src/model/workshop.js';
 import { flatRows } from '../src/model/exports.js';
 
 let session;
@@ -34,7 +34,7 @@ test('completeness: gap types require rationale, detailed gap and deviation fiel
   assert.equal(c.complete, false);
   assert.ok(c.missing.includes('Rationale') && c.missing.includes('Accountable owner'));
   const fit = Object.values(session.assessments).find(x => x.asIs.gap === 'NO_GAP' && !x.scope.outOfScope);
-  assert.ok(completeness(fit).missing.includes('Fit-Gap split (Local / Other / GBS)'));
+  assert.ok(completeness(fit).missing.includes('Who will perform it (to-be: Local / Other / GBS)'));
   const oos = Object.values(session.assessments).find(x => x.scope.outOfScope);
   assert.equal(completeness(oos).complete, true);
 });
@@ -67,14 +67,31 @@ test('bulk confirm NO GAP for one L3 and undo it', () => {
   assert.equal(back.opsNoGap, before.opsNoGap);
 });
 
-test('harmonization is suggested when the workshop split differs from To-Be', () => {
-  const a = Object.values(session.assessments).find(x => x.asIs.gap === 'NO_GAP' && !x.scope.outOfScope && x.workshop.status === 'NOT_ASSESSED' && session.processes[x.processId].toBe.gbs === true);
-  applyChange(session, a.key, 'fitGap.local', true); applyChange(session, a.key, 'fitGap.other', false); applyChange(session, a.key, 'fitGap.gbs', false);
-  assert.equal(suggestGapType(a, session.processes[a.processId]), 'HARMONIZATION');
+test('who performs it: harmonization from today vs standard, the future split is the to-be decision', () => {
+  const a = Object.values(session.assessments).find(x => x.asIs.gap === 'NO_GAP' && !x.scope.outOfScope && x.workshop.status === 'NOT_ASSESSED' && session.processes[x.processId].toBe.gbs === true && x.processId);
+  const p = session.processes[a.processId];
+  assert.equal(performerView(a, p).standard, laneText(standardSplit(p)));
+  applyChange(session, a.key, 'today.local', true); applyChange(session, a.key, 'today.gbs', false);
+  assert.equal(todaySplit(a).source, 'workshop');
+  assert.equal(suggestGapType(a, p), 'HARMONIZATION', 'done locally today, GBS in the standard');
+  applyChange(session, a.key, 'fitGap.local', false); applyChange(session, a.key, 'fitGap.other', false); applyChange(session, a.key, 'fitGap.gbs', true);
+  const v = performerView(a, p);
+  assert.equal(v.today, 'Local'); assert.equal(v.future, 'GBS'); assert.equal(v.moves, true); assert.equal(v.todayDiffers, true);
+  assert.ok(!completeness(a).missing.some(m => m.startsWith('Who')), 'today and future captured');
   const n = applyToAllEntities(session, a.key);
   assert.ok(n >= 2);
   const sibling = Object.values(session.assessments).find(x => x.processId === a.processId && x.key !== a.key);
-  assert.equal(sibling.fitGap.local, true);
+  assert.equal(sibling.fitGap.gbs, true); assert.equal(sibling.today.local, true);
+});
+
+test('today falls back to the Ops pre-assessment; Ops HARMONIZATION with today = standard suggests NO GAP', () => {
+  const a = Object.values(session.assessments).find(x => x.asIs.gap === 'HARMONIZATION' && !x.scope.outOfScope && x.asIs.le !== null && session.processes[x.processId].toBe.gbs !== undefined && !x.workshop.changedAt);
+  const p = session.processes[a.processId];
+  assert.equal(todaySplit(a).source, 'ops');
+  const st = standardSplit(p);
+  applyChange(session, a.key, 'today.local', st.local === true); applyChange(session, a.key, 'today.gbs', st.gbs === true); applyChange(session, a.key, 'today.other', false);
+  assert.equal(performerView(a, p).todayDiffers, false);
+  assert.equal(suggestGapType(a, p), 'NO_GAP');
 });
 
 test('MD tree holds only master-data nodes across streams; pace uses planned minutes', () => {

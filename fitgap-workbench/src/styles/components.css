@@ -586,3 +586,21 @@ dialog.welcome { max-width: 40rem; }
 
 .qc-light { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: .35rem; vertical-align: 0; background: var(--none); }
 .qc-green { background: var(--ok); } .qc-amber { background: var(--g-harm); } .qc-red { background: var(--flag); }
+/* Who performs it: standard · today · after transition, above the gap classification. */
+.who { display: grid; gap: .35rem; }
+.who-row { display: grid; grid-template-columns: 6.6rem 1fr; align-items: center; gap: .4rem; }
+.who-k { font-size: .74rem; font-weight: 600; color: var(--ink-2); line-height: 1.2; }
+.who-src { font-size: .62rem; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--ink-3); border: 1px solid var(--line); border-radius: 4px; padding: 0 .25rem; }
+.who-lane { font-family: var(--font-mono); font-size: .78rem; font-weight: 600; }
+.performers.from-ops .performer.on { background: transparent; border-style: dashed; }
+.performers.from-ops .yn button[aria-pressed="true"] { opacity: .55; }
+.performers.future .performer.on { border-color: var(--gbs); background: color-mix(in srgb, var(--gbs) 14%, transparent); }
+.who-quick { display: flex; gap: .3rem; flex-wrap: wrap; padding-left: 7rem; }
+.who-quick .chip { font-size: .72rem; }
+.who-note { font-size: .76rem; line-height: 1.35; padding: .35rem .5rem; border-radius: var(--radius); background: var(--bg); border: 1px solid var(--line); display: grid; gap: .15rem; }
+.who-flag { color: var(--flag); font-weight: 600; } .who-ok { color: var(--g-none, #2e7d32); font-weight: 600; }
+.who-mini { font-family: var(--font-mono); font-size: .66rem; color: var(--ink-3); margin: .1rem 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.who-mini.flag { color: var(--flag); }
+.stepcard .handoff.moves { color: var(--accent); font-weight: 600; }
+.present .who-k, .present .who-note, .present .who-quick .chip { font-size: .85cqw; } .present .who-row { grid-template-columns: 7cqw 1fr; } .present .who-quick { padding-left: 7.4cqw; }
+@media (max-width: 720px) { .who-row { grid-template-columns: 1fr; } .who-quick { padding-left: 0; } }

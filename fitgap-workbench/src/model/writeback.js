@@ -2,6 +2,7 @@
 // patched cell by cell inside the xlsx package (JSZip). Formatting, images,
 // data validations and merged cells are untouched; values are inline strings.
 import { DETAILED_GAP_FIELDS } from './constants.js';
+import { todaySplit } from './workshop.js';
 import { sheetParts } from '../parser/flows.js';
 
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -74,6 +75,13 @@ export function writeBackCells(session, fileName, { onlyTouched = true } = {}) {
       for (const f of ['local', 'other', 'gbs']) { const v = ynCell(a.fitGap[f]); if (fg[f] && v !== null && !same('fitGap', f)) sheet[fg[f]] = v; }
       if (fg.fte && a.fitGap.fte !== null && a.fitGap.fte !== undefined && !same('fitGap', 'fte')) sheet[fg.fte] = a.fitGap.fte;
       for (const f of DETAILED_GAP_FIELDS) if (dg[f] && a.detailedGap[f] && !same('detailedGap', f)) sheet[dg[f]] = a.detailedGap[f];
+      // Who performs it today, corrected in the workshop → the As-is split (LE/Country/Other | GBS); only where it differs from Ops.
+      const t = todaySplit(a), ai = src.cells.asIs || {};
+      if (t.source === 'workshop') {
+        const le = t.local === true || t.other === true ? true : t.local === false && t.other !== true ? false : null;
+        if (ai.le && le !== null && le !== a.asIs.le) sheet[ai.le] = ynCell(le);
+        if (ai.gbs && t.gbs !== null && t.gbs !== a.asIs.gbs) sheet[ai.gbs] = ynCell(t.gbs);
+      }
     }
   }
   return out;

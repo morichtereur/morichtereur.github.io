@@ -31,6 +31,38 @@ function EffortField({ session, a, updateSession, compact }) {
   return html`<div class=${`fte-row${compact ? ' compact' : ''}`}><${TextInput} class="num sm fte-input" value=${fmtHours(h)} onCommit=${commit} placeholder=${fromOps ? `≈${fmtHours(hoursOf(session, a))}` : compact ? '–' : '0'} inputmode="decimal" aria-label="Hours per month" /><span class="small muted">h / month</span>${!compact && html`<div class="chips">${HOURS_QUICK.map(q => html`<${Chip} key=${q} active=${Number(h) === q} onClick=${() => setH(Number(h) === q ? null : q)}>${q} h</${Chip}>`)}</div>`}${fteNote && html`<span class="fte-note" title=${`FTE basis: ${basis} productive hours per FTE per month`}>${fteNote}</span>`}</div>`;
 }
 
+/* Who performs it – standard (template To-Be), today (Ops pre-assessment, confirmed or corrected) and after the
+ * transition (the decision). Shown above the gap classification in the workshop form, the flow-board panel and
+ * present mode, with the conclusion it implies (harmonization gap, transfer, deviation). */
+const WHO = [['local', 'Local'], ['gbs', 'GBS'], ['other', 'Other']];
+function WhoPerforms({ session, a, process, updateSession, gapType, onGap }) {
+  const key = a.key; const today = todaySplit(a); const v = performerView(a, process); const std = standardSplit(process);
+  const setToday = (f, val) => updateSession(s => {
+    const x = s.assessments[key]; const cur = todaySplit(x);
+    // first answer in the workshop: take over the Ops values for the other fields, so the split stays complete
+    if (cur.source !== 'workshop') for (const [k] of WHO) if (k !== f) applyChange(s, key, `today.${k}`, cur[k] ?? (k === 'other' ? false : null));
+    applyChange(s, key, `today.${f}`, val);
+  });
+  const setFuture = (split) => updateSession(s => { for (const [k] of WHO) applyChange(s, key, `fitGap.${k}`, split[k] === true); });
+  const fromOps = today.source === 'ops';
+  const suggestion = suggestGapType(a, process);
+  const lines = [];
+  if (v.todayDiffers) lines.push(html`<span class="who-flag">Today ${v.today} · standard ${v.standard} → harmonization gap (who performs it)</span>`);
+  else if (v.today !== '?' && v.standard !== '?') lines.push(html`<span>Today as standard (${v.standard})</span>`);
+  if (v.future !== '?') {
+    if (!v.futureDiffers && v.moves) lines.push(html`<span class="who-ok">Agreement to transfer: ${v.today} → ${v.future}</span>`);
+    else if (v.futureDiffers) lines.push(html`<span class="who-flag">Deviation: stays ${v.future} (standard ${v.standard}) – resolution needed</span>`);
+    else lines.push(html`<span>No change of performer</span>`);
+  }
+  return html`<div class="who">
+    <div class="who-row"><span class="who-k">Standard</span><span class="who-v">${v.standard === '?' ? html`<span class="muted small">not given in the template</span>` : html`<span class="who-lane">${v.standard}</span>`}${process?.toBe?.system && html`<span class="muted small"> · ${process.toBe.system}</span>`}</span></div>
+    <div class="who-row"><span class="who-k">Today${fromOps ? html` <span class="who-src">Ops</span>` : ''}</span><div class=${`performers${fromOps ? ' from-ops' : ''}`}>${WHO.map(([f, l]) => html`<div key=${f} class=${`performer${today[f] === true ? ' on' : ''}`}><span>${l}</span><${YN} size="sm" value=${today[f]} name=${`Today ${l}`} onChange=${val => setToday(f, fromOps && val === null ? today[f] : val)} /></div>`)}</div></div>
+    <div class="who-row"><span class="who-k">After transition</span><div class="performers future">${WHO.map(([f, l]) => html`<div key=${f} class=${`performer${a.fitGap[f] === true ? ' on' : ''}`}><span>${l}</span><${YN} size="sm" value=${a.fitGap[f]} name=${`To-be ${l}`} onChange=${val => updateSession(s => applyChange(s, key, `fitGap.${f}`, val))} /></div>`)}</div></div>
+    <div class="who-quick">${v.standard !== '?' && html`<button class="chip" aria-pressed=${v.future !== '?' && !v.futureDiffers} onClick=${() => setFuture(std)}>As standard (${v.standard})</button>`}${v.today !== '?' && v.today !== v.standard && html`<button class="chip" aria-pressed=${v.future !== '?' && v.future === v.today} onClick=${() => setFuture(today)}>Stays as today (${v.today})</button>`}</div>
+    ${lines.length > 0 && html`<div class="who-note">${lines.map((l, i) => html`<div key=${i}>${l}</div>`)}${suggestion && suggestion !== gapType && onGap && html`<div>Suggested gap type: <b>${GAP_LABEL[suggestion]}</b> <button class="lnk" onClick=${() => onGap(suggestion)}>apply</button></div>`}</div>`}
+  </div>`;
+}
+
 function FlowBoard({ session, entityCode, node, activities, updateSession, toast, readOnly, onOpenRow, large, onAsk }) {
   const { steps, handoffs } = useMemo(() => swimlaneModel(session, entityCode, activities), [session.assessments, entityCode, activities]);
   const [sel, setSel] = useState(null);
@@ -51,9 +83,10 @@ function FlowBoard({ session, entityCode, node, activities, updateSession, toast
     return html`<button class=${`stepcard${s.lanes.length > 1 ? ' split' : ''}${sel === s.p.id ? ' sel' : ''}`} style=${`--lane-color:var(--${BOARD_LANES.find(l => l[0] === k)[2]})`} onClick=${() => !readOnly && setSel(sel === s.p.id ? null : s.p.id)} onDblClick=${() => onOpenRow && onOpenRow(s.p.id)} title=${`${s.p.id} ${s.p.name}`}>
       <div class="tg">${stepTag(s.p)}${s.lanes.length > 1 ? ` · ${idx + 1}/${s.lanes.length}` : ''}</div>
       <div class="nm">${s.p.name}</div>
-      <div class="meta"><${GapPill} value=${s.gap || (s.source === 'tobe' ? 'NOT_ASSESSED' : 'NOT_ASSESSED')} size="sm" />${s.source !== 'workshop' && html`<span class="src">${s.source === 'ops' ? 'Ops as-is' : 'To-Be'}</span>`}${idx === 0 && effortBadge(session, s.a) && html`<span class="fte-badge" title="Effort today">${effortBadge(session, s.a)}</span>`}</div>
+      <div class="meta"><${GapPill} value=${s.gap || (s.source === 'tobe' ? 'NOT_ASSESSED' : 'NOT_ASSESSED')} size="sm" />${s.source !== 'workshop' && html`<span class="src">${s.source === 'ops' ? 'Ops as-is' : 'standard'}</span>`}${idx === 0 && effortBadge(session, s.a) && html`<span class="fte-badge" title="Effort today">${effortBadge(session, s.a)}</span>`}</div>
       ${handoff && html`<div class="handoff">↳ hand-off from ${BOARD_LANES.find(l => l[0] === prev.lanes[0])?.[1]}</div>`}
-      ${mismatch && html`<div class="handoff" style="color:var(--flag)">⚑ To-Be: ${BOARD_LANES.find(l => l[0] === toBeLane)?.[1]}</div>`}
+      ${mismatch && html`<div class="handoff" style="color:var(--flag)">⚑ standard: ${BOARD_LANES.find(l => l[0] === toBeLane)?.[1]}</div>`}
+      ${s.moves && idx === 0 && html`<div class="handoff moves">→ after transition: ${s.future.map(l => BOARD_LANES.find(b => b[0] === l)?.[1]).join(' + ')}</div>`}
       ${s.differsOps && html`<div class="handoff" style="color:var(--accent)">● differs from Ops as-is</div>`}
     </button>`;
   };
@@ -71,16 +104,15 @@ function FlowBoard({ session, entityCode, node, activities, updateSession, toast
           </${Fragment}>`)}
         </div>
       </div>
-      <div class="board-legend">${BOARD_LANES.map(([k, label, color]) => html`<span key=${k}><i style=${`background:var(--${color})`}></i>${label}</span>`)}<span>● CORE / ◆ CONTROL = activity type</span><span>↳ hand-off between lanes</span><span style="color:var(--flag)">⚑ placed in a different lane than To-Be</span><span>split card = performed in two lanes</span>${!readOnly && html`<span class="mono">← → select step · double-click = open row</span>`}</div>
+      <div class="board-legend">${BOARD_LANES.map(([k, label, color]) => html`<span key=${k}><i style=${`background:var(--${color})`}></i>${label}</span>`)}<span>● CORE / ◆ CONTROL = activity type</span><span>↳ hand-off between lanes</span><span>lane = who performs it today</span><span style="color:var(--flag)">⚑ today not as the standard</span><span style="color:var(--accent)">→ performer after transition</span><span>split card = performed in two lanes</span>${!readOnly && html`<span class="mono">← → select step · double-click = open row</span>`}</div>
       <div style="position:absolute;left:-9999px;top:0" ref=${svgRef} aria-hidden="true"><${Swimlane} session=${session} entityCode=${entityCode} node=${node} activities=${activities} /></div>
     </div>
     ${selected && !readOnly && html`<aside class="board-detail">
       <div class="eyebrow">Selected activity</div>
       <div class="mono small muted">${a.processId}</div><h3 style="margin:.1rem 0 .4rem">${selected.p.name}</h3>
       ${selected.p.description && html`<p class="small muted">${selected.p.description}</p>`}
-      <dl class="kv"><dt>To-Be</dt><dd>${selected.toBe.map(l => html`<${Tag} kind=${l} key=${l} />`)}${!selected.toBe.length && '–'} ${selected.p.toBe?.system && html`<span class="muted small">· ${selected.p.toBe.system}</span>`}</dd><dt>Ops as-is</dt><dd>${selected.ops.map(l => html`<${Tag} kind=${l} key=${l} />`)}${!selected.ops.length && '–'}</dd><dt>Workshop</dt><dd>${selected.source === 'workshop' ? selected.lanes.map(l => html`<${Tag} kind=${l} key=${l} />`) : html`<span class="muted">not yet assessed</span>`}</dd></dl>
       <div class="fgrid" style="grid-template-columns:1fr;margin-top:.6rem">
-        <${Field} label="Who performs it today?"><div class="performers">${[['local', 'Local'], ['gbs', 'GBS'], ['other', 'Other']].map(([f, l]) => html`<div key=${f} class=${`performer${a.fitGap[f] === true ? ' on' : ''}`}><span>${l}</span><${YN} size="sm" value=${a.fitGap[f]} onChange=${v => set(`fitGap.${f}`, v)} name=${l} /></div>`)}</div></${Field}>
+        <${Field} label="Who performs it?"><${WhoPerforms} session=${session} a=${a} process=${selected.p} updateSession=${updateSession} gapType=${a.workshop.gapType} onGap=${g => { set('workshop.gapType', g); if (a.workshop.status === WORKSHOP_STATUS.NOT_ASSESSED) set('workshop.status', g === 'NO_GAP' ? WORKSHOP_STATUS.CONFIRMED_FIT : WORKSHOP_STATUS.GAP_CONFIRMED); }} /></${Field}>
         <${Field} label=${effortMode(session) === 'hours' ? 'Effort today (hours per month)' : 'Effort today (FTE)'} hint=${effortMode(session) === 'hours' ? `Average hours a month incl. period-end peaks · Σ process group: ${effortLabel(session, effortSum(session, steps.map(s => s.a)))}` : `Σ process group: ${effortLabel(session, effortSum(session, steps.map(s => s.a)))}`}><${EffortField} session=${session} a=${a} updateSession=${updateSession} /></${Field}>
         <${Field} label="Is there a gap vs. the global standard?"><div class="gapbtns">${['NO_GAP', 'HARMONIZATION', 'STANDARDIZATION', 'BOTH'].map(g => html`<button key=${g} class=${`pill pill-${g}${(a.workshop.gapType || '') === g ? ' on' : ''}`} title=${session.settings.gapDefinitions[g]} onClick=${() => { set('workshop.gapType', g); if (a.workshop.status === WORKSHOP_STATUS.NOT_ASSESSED) set('workshop.status', g === 'NO_GAP' ? WORKSHOP_STATUS.CONFIRMED_FIT : WORKSHOP_STATUS.GAP_CONFIRMED); }}>${GAP_LABEL[g]}</button>`)}</div>${!a.workshop.gapType && a.asIs.gap && html`<span class="hint">Ops pre-assessed: ${GAP_LABEL[a.asIs.gap]}</span>`}</${Field}>
         <${Field} label="What is different vs. the global standard?" required=${GAP_TYPES_WITH_DEVIATION.has(effectiveGap(a))}><${TextInput} textarea class="sm" style="min-height:3rem" value=${a.workshop.rationale} onCommit=${v => set('workshop.rationale', v)} placeholder="Who does it differently, which system, which rule…" /></${Field}>

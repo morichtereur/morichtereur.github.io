@@ -1,7 +1,7 @@
 // Export builders: deviation log (primary workshop output), flat export, audit
 // trail. Pure: they return rows / SheetJS workbooks with XLSX injected.
 import { GAP, GAP_LABEL, WORKSHOP_STATUS_LABEL, DIMENSION_LABEL, RESOLUTION_LABEL, ESCALATION_LABEL, DETAILED_GAP_FIELDS, DETAILED_GAP_LABEL } from './constants.js';
-import { effectiveGap, GAP_TYPES_WITH_DEVIATION, NA, fteBasis } from './workshop.js';
+import { effectiveGap, GAP_TYPES_WITH_DEVIATION, NA, fteBasis, todaySplit, performerView } from './workshop.js';
 
 const yn = (v) => v === true ? 'Y' : v === false ? 'N' : v && v.text ? v.text : '';
 const ts = (s) => s ? s.replace('T', ' ').slice(0, 16) : '';
@@ -51,7 +51,8 @@ export function flatRows(session) {
       'To-Be LE': yn(p.toBe?.le), 'To-Be GBS': yn(p.toBe?.gbs), 'To-Be system': p.toBe?.system || '', 'Planned initiative': p.toBe?.initiative || '',
       'Ops LE/Country/Other': yn(a.asIs.le), 'Ops GBS': yn(a.asIs.gbs), 'Ops used systems': a.asIs.systems || '', 'Ops GAP': GAP_LABEL[a.asIs.gap] || '', 'Ops GAP (raw)': a.asIs.gapRaw || '', 'Ops additional information': a.asIs.info || '',
       'Scope': a.scope.outOfScope ? 'Out of scope' : 'In scope', 'Scope source': a.scope.source || '',
-      'Fit-Gap Local Accounting': yn(a.fitGap.local), 'Fit-Gap Other': yn(a.fitGap.other), 'Fit-Gap GBS': yn(a.fitGap.gbs), 'Hours / month': a.fitGap.hours ?? '', 'FTE': a.fitGap.fte ?? '', 'FTE basis (h/month)': a.fitGap.hours !== null && a.fitGap.hours !== undefined ? fteBasis(session) : '',
+      'Today Local': yn(todaySplit(a).local), 'Today Other': yn(todaySplit(a).other), 'Today GBS': yn(todaySplit(a).gbs), 'Today source': todaySplit(a).source === 'workshop' ? 'Workshop' : todaySplit(a).source === 'ops' ? 'Ops pre-assessment' : '',
+      'Fit-Gap Local Accounting': yn(a.fitGap.local), 'Fit-Gap Other': yn(a.fitGap.other), 'Fit-Gap GBS': yn(a.fitGap.gbs), 'Performer today → to-be': (() => { const v = performerView(a, p); return v.today === '?' && v.future === '?' ? '' : `${v.today} → ${v.future}`; })(), 'Hours / month': a.fitGap.hours ?? '', 'FTE': a.fitGap.fte ?? '', 'FTE basis (h/month)': a.fitGap.hours !== null && a.fitGap.hours !== undefined ? fteBasis(session) : '',
     };
     for (const f of DETAILED_GAP_FIELDS) r[`DG ${DETAILED_GAP_LABEL[f]}`] = a.detailedGap[f] || '';
     Object.assign(r, {

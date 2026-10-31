@@ -60,7 +60,7 @@ function fmtVal(v) { if (v === null || v === undefined || v === '') return '–'
 function ExpandedCell({ session, a, process, updateSession, picks, participants, prevKey, toast, commentRef, onAsk }) {
   const key = a.key;
   const set = (path, v) => updateSession(s => applyChange(s, key, path, v));
-  const c = completeness(a); const gap = effectiveGap(a); const delta = splitDelta(a, process); const suggestion = suggestGapType(a, process);
+  const c = completeness(a); const gap = effectiveGap(a);
   const tb = process?.toBe || {}; const dev = a.deviation || {};
   const setDev = (patch) => updateSession(s => applyChange(s, key, 'deviation', { dimensions: [], resolution: '', justification: '', ownerId: '', targetDate: '', escalation: 'L1', approval: 'PROPOSED', initiativeCandidate: false, linkedInitiative: '', ...(s.assessments[key].deviation || {}), ...patch }));
   const [showHist, setShowHist] = useState(false);
@@ -75,9 +75,8 @@ function ExpandedCell({ session, a, process, updateSession, picks, participants,
     <div class="block ctx">
       <h4>Context · ${session.entities[a.entityCode]?.displayName || a.entityCode}</h4>
       <dl class="kv">
-        <dt>To-Be</dt><dd>${laneTags(tb.le, tb.gbs, false)} ${tb.system && html`<span class="muted small">· ${tb.system}</span>`}</dd>
         ${tb.initiative && html`<dt>Initiative</dt><dd><span class="mono small">${tb.initiative}</span></dd>`}
-        <dt>Ops as-is</dt><dd>${laneTags(a.asIs.le, a.asIs.gbs, false)} ${a.asIs.systems && html`<span class="muted small">· ${a.asIs.systems}</span>`}</dd>
+        ${a.asIs.systems && html`<dt>Ops systems</dt><dd class="small">${a.asIs.systems}</dd>`}
         <dt>Ops GAP</dt><dd><${GapPill} value=${a.asIs.gap || 'NOT_ASSESSED'} size="sm" definitions=${session.settings.gapDefinitions} /> ${a.asIs.gapRaw && a.asIs.gapRaw !== GAP_LABEL[a.asIs.gap] && html`<span class="muted small">"${a.asIs.gapRaw}"</span>`}</dd>
         ${a.asIs.info && html`<dt>Ops note</dt><dd>${a.asIs.info}</dd>`}
         ${process?.description && html`<dt>Description</dt><dd class="muted">${process.description}</dd>`}
@@ -99,20 +98,16 @@ function ExpandedCell({ session, a, process, updateSession, picks, participants,
     </div>
     ${a.scope.outOfScope ? html`<div class="block"><h4>Out of scope</h4><p class="muted small">${a.scope.source === 'workshop' ? a.scope.reason : 'Pre-set as out of scope in the capture sheet.'} Excluded from progress, time budget and analysis.</p></div>` : html`
     <div class="block">
-      <h4><span class="step">1</span> Who performs this activity today?</h4>
+      <h4><span class="step">1</span> Who performs it – today and after the transition?</h4>
       <div class="fgrid">
-        <${Field} label="Local Accounting (the entity)" required><${YN} value=${a.fitGap.local} onChange=${v => set('fitGap.local', v)} name="Local Accounting" /></${Field}>
-        <${Field} label="GBS (shared service centre)" required><${YN} value=${a.fitGap.gbs} onChange=${v => set('fitGap.gbs', v)} name="GBS" /></${Field}>
-        <${Field} label="Other party (e.g. external provider)"><${YN} value=${a.fitGap.other} onChange=${v => set('fitGap.other', v)} name="Other" /></${Field}>
-        <${Field} label=${effortMode(session) === 'hours' ? 'Effort (hours per month)' : 'Effort (FTE)'} hint="optional"><${EffortField} session=${session} a=${a} updateSession=${updateSession} /></${Field}>
+        <${Field} label="Local · GBS · Other party" required class="full"><${WhoPerforms} session=${session} a=${a} process=${process} updateSession=${updateSession} gapType=${a.workshop.gapType} onGap=${g => set('workshop.gapType', g)} /></${Field}>
+        <${Field} label=${effortMode(session) === 'hours' ? 'Effort today (hours per month)' : 'Effort today (FTE)'} hint="optional"><${EffortField} session=${session} a=${a} updateSession=${updateSession} /></${Field}>
       </div>
       <h4 style="margin-top:.8rem"><span class="step">2</span> Is there a gap vs. the global standard?</h4>
       <div class="fgrid">
         <${Field} label="Gap type" required><select class="select sm" value=${a.workshop.gapType || ''} onChange=${e => set('workshop.gapType', e.target.value || null)}><option value="">${a.asIs.gap ? `(Ops: ${GAP_LABEL[a.asIs.gap]})` : '– choose –'}</option>${GAP_CHOICES.map(g => html`<option value=${g}>${GAP_LABEL[g]}</option>`)}</select></${Field}>
         <${Field} label="Why? (short rationale)" required=${c.missing.includes('Rationale')} error=${c.missing.includes('Rationale') ? 'Needed for any gap, or when you change the pre-assessment' : null}><${TextInput} class=${`sm${c.missing.includes('Rationale') ? ' invalid' : ''}`} value=${a.workshop.rationale} onCommit=${v => set('workshop.rationale', v)} placeholder="Short reason" /></${Field}>
       </div>
-      ${delta.known && delta.differs && html`<div class="diff-note" style="margin-top:.5rem">To-Be: ${delta.toBe} → Workshop: ${delta.workshop}${suggestion && suggestion !== gap ? html` — suggest <b>${GAP_LABEL[suggestion]}</b> <${Button} variant="text" size="sm" onClick=${() => set('workshop.gapType', suggestion)}>Apply</${Button}>` : ''}</div>`}
-      ${delta.known && !delta.differs && a.asIs.gap === GAP.HARMONIZATION && suggestion === GAP.NO_GAP && html`<div class="diff-note" style="margin-top:.5rem">Split matches To-Be – Ops HARMONIZATION not confirmed? <${Button} variant="text" size="sm" onClick=${() => set('workshop.gapType', GAP.NO_GAP)}>Set NO GAP</${Button}></div>`}
       ${a.workshop.status !== WORKSHOP_STATUS.CONFIRMED_FIT && (a.asIs.gap === GAP.NO_GAP || gap === GAP.NO_GAP) && html`<div style="margin-top:.6rem"><${Button} variant="primary" size="sm" kbd="C" onClick=${() => { updateSession(s => confirmFit(s, key, process)); }}>Confirm as fit</${Button}><span class="muted small" style="margin-left:.5rem">no gap · split as planned · details n/a</span></div>`}
     </div>
     <div class="block">
@@ -156,6 +151,7 @@ function EntityCell({ a, process, onOpen, open, updateSession, onFit, onGap }) {
   return html`<td class=${`ent${open ? ' open' : ''}`} onClick=${e => { stop(e); onOpen(); }}>
     <div class="cell">
       <div class="top"><${GapPill} value=${gap || 'NOT_ASSESSED'} size="sm" />${differs && html`<span class="diff-note">was ${GAP_LABEL[a.asIs.gap] || '–'}</span>`}${l.workshop && html`<${Tag} kind=${l.workshop} />`}${c.complete ? html`<span class="complete" title="Complete"><${Icon} name="check" size=${13} /></span>` : c.touched ? html`<span class="incomplete" title=${c.missing.join(', ')}><${Icon} name="alert" size=${13} /></span>` : null}</div>
+      ${(() => { const v = performerView(a, process); return v.today === '?' && v.future === '?' ? null : html`<div class=${`who-mini${v.todayDiffers ? ' flag' : ''}`} title="Who performs it: today → after the transition (standard: ${v.standard})">${v.today}${v.todaySource === 'ops' ? '' : ' ✓'} → ${v.future === '?' ? '?' : v.future}</div>`; })()}
       ${confirmed ? html`<div class="quick"><${StatusDot} status=${a.workshop.status} /><button class="lnk" onClick=${e => { stop(e); onOpen(); }}>change</button></div>`
         : a.workshop.status === WORKSHOP_STATUS.NOT_ASSESSED ? html`<div class="quick"><button class="qbtn fit" title="Confirm as fit: no gap, split as planned (key C)" onClick=${e => { stop(e); onFit(); }}><${Icon} name="check" size=${13} /> Fit</button><button class="qbtn gap" title="There is a deviation – open the details" onClick=${e => { stop(e); onGap(); }}>Gap…</button><button class="qbtn q" title="Open question (key 4)" onClick=${e => { stop(e); updateSession(s => applyChange(s, a.key, 'workshop.status', WORKSHOP_STATUS.OPEN_QUESTION)); }}>?</button></div>`
         : html`<div class="quick"><${StatusDot} status=${a.workshop.status} />${!c.complete && html`<button class="lnk" onClick=${e => { stop(e); onOpen(); }}>complete</button>`}</div>`}

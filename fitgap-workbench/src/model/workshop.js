@@ -73,26 +73,62 @@ export function effortSum(session, list) {
 
 export function effectiveGap(a) { return a.workshop.gapType || a.asIs.gap || null; }
 export function gapDiffersFromOps(a) { return !!a.workshop.gapType && a.workshop.gapType !== a.asIs.gap; }
-export function fitGapComplete(a) { return [a.fitGap.local, a.fitGap.other, a.fitGap.gbs].every(v => v === true || v === false); }
 export function detailedGapFilled(a) { return DETAILED_GAP_FIELDS.filter(f => a.detailedGap[f] && a.detailedGap[f] !== NA); }
 export function detailedGapTouched(a) { return DETAILED_GAP_FIELDS.filter(f => a.detailedGap[f]); }
 
-/** Fit-Gap split vs. To-Be split: returns { differs, toBe: 'GBS'|'Local'|'Both'|'?', workshop } */
-export function splitDelta(a, process) {
-  const tb = process?.toBe || {};
-  const lane = (local, gbs, other) => { const parts = []; if (local === true) parts.push('Local'); if (other === true) parts.push('Other'); if (gbs === true) parts.push('GBS'); return parts.length ? parts.join(' + ') : (local === false || gbs === false ? 'none' : '?'); };
-  const toBe = lane(tb.le, tb.gbs, false), ws = fitGapComplete(a) ? lane(a.fitGap.local, a.fitGap.gbs, a.fitGap.other) : '?';
-  const known = toBe !== '?' && ws !== '?';
-  return { toBe, workshop: ws, differs: known && toBe !== ws, known };
+/* ---------------------------------------------------------- who performs it
+ * Three splits per activity, always shown before the gap classification:
+ *  standard – the global To-Be split of the template (process.toBe: LE / GBS)
+ *  today    – who performs it today: Ops pre-assessment (asIs.le / asIs.gbs), confirmed or corrected in the
+ *             workshop (a.today.local / other / gbs) – written back to the capture sheet's As-is split
+ *  future   – who will perform it after the transition: the workshop decision (a.fitGap.local / other / gbs) –
+ *             the capture sheet's Fit-Gap split; "x under GBS" = agreement to transfer, "Local" = stays local
+ * Harmonization gap = today's performer differs from the standard; a future performer other than the standard
+ * is a deviation that needs a resolution. */
+const yn3 = (v) => (v === true || v === false ? v : null);
+export function laneText(s) {
+  if (!s) return '?';
+  const parts = []; if (s.local === true) parts.push('Local'); if (s.other === true) parts.push('Other'); if (s.gbs === true) parts.push('GBS');
+  if (parts.length) return parts.join(' + ');
+  return s.local === false || s.gbs === false || s.other === false ? 'none' : '?';
 }
+const known = (s) => laneText(s) !== '?';
+/** Global standard (template To-Be). */
+export function standardSplit(process) { const tb = process?.toBe || {}; return { local: yn3(tb.le), other: null, gbs: yn3(tb.gbs) }; }
+/** Who performs it today: workshop answer when given, else the Ops pre-assessment. */
+export function todaySplit(a) {
+  const t = a?.today || {};
+  if (['local', 'other', 'gbs'].some(k => t[k] === true || t[k] === false)) return { local: yn3(t.local), other: yn3(t.other), gbs: yn3(t.gbs), source: 'workshop' };
+  if (a?.asIs && (a.asIs.le !== null && a.asIs.le !== undefined || a.asIs.gbs !== null && a.asIs.gbs !== undefined)) return { local: yn3(a.asIs.le), other: null, gbs: yn3(a.asIs.gbs), source: 'ops' };
+  return { local: null, other: null, gbs: null, source: null };
+}
+/** Who will perform it after the transition (workshop decision). */
+export function futureSplit(a) { return { local: yn3(a?.fitGap?.local), other: yn3(a?.fitGap?.other), gbs: yn3(a?.fitGap?.gbs) }; }
+export function futureComplete(a) { return [a.fitGap.local, a.fitGap.other, a.fitGap.gbs].every(v => v === true || v === false); }
+export const fitGapComplete = futureComplete;
 
-/** Suggested workshop gap type from the split delta and the Ops value. */
+/** Standard vs today vs future, as labels plus the comparisons the screen and the suggestions need. */
+export function performerView(a, process) {
+  const standard = standardSplit(process), today = todaySplit(a), future = futureSplit(a);
+  const st = laneText(standard), td = laneText(today), fu = futureComplete(a) ? laneText(future) : '?';
+  return {
+    standard: st, today: td, todaySource: today.source, future: fu,
+    todayDiffers: known(standard) && td !== '?' && td !== st,         // → harmonization gap
+    futureDiffers: known(standard) && fu !== '?' && fu !== st,         // → deviation from the standard
+    moves: td !== '?' && fu !== '?' && td !== fu,                      // the activity changes hands
+  };
+}
+/** Kept for callers of the old name: today's performer vs the standard. */
+export function splitDelta(a, process) { const v = performerView(a, process); return { toBe: v.standard, workshop: v.today, differs: v.todayDiffers, known: v.standard !== '?' && v.today !== '?' }; }
+
+/** Suggested workshop gap type: who performs it today vs the standard, combined with the Ops value. */
 export function suggestGapType(a, process) {
-  const d = splitDelta(a, process);
-  if (!d.known) return null;
+  const v = performerView(a, process);
+  if (v.standard === '?' || v.today === '?') return null;
   const ops = a.asIs.gap;
-  if (d.differs) return ops === GAP.STANDARDIZATION || ops === GAP.BOTH ? GAP.BOTH : GAP.HARMONIZATION;
-  if (ops === GAP.HARMONIZATION) return GAP.NO_GAP; // split matches To-Be: harmonization gap not confirmed
+  if (v.todayDiffers) return ops === GAP.STANDARDIZATION || ops === GAP.BOTH ? GAP.BOTH : GAP.HARMONIZATION;
+  if (ops === GAP.HARMONIZATION) return GAP.NO_GAP;      // performer already as standard: harmonization not confirmed
+  if (ops === GAP.BOTH) return GAP.STANDARDIZATION;      // only the "how" part remains
   return null;
 }
 
@@ -102,7 +138,8 @@ export function completeness(a) {
   if (a.scope.outOfScope || a.workshop.status === WORKSHOP_STATUS.OUT_OF_SCOPE) return { complete: true, outOfScope: true, missing, gap: effectiveGap(a) };
   const gap = effectiveGap(a);
   const touched = a.workshop.status !== WORKSHOP_STATUS.NOT_ASSESSED || !!a.workshop.changedAt;
-  if (!fitGapComplete(a)) missing.push('Fit-Gap split (Local / Other / GBS)');
+  if (todaySplit(a).source === null) missing.push('Who performs it today');
+  if (!futureComplete(a)) missing.push('Who will perform it (to-be: Local / Other / GBS)');
   const isGap = GAP_TYPES_WITH_DEVIATION.has(gap);
   const rationaleNeeded = (gap && gap !== GAP.NO_GAP) || gapDiffersFromOps(a);
   if (rationaleNeeded && !a.workshop.rationale?.trim()) missing.push('Rationale');
@@ -167,12 +204,13 @@ export function copyDetailedGap(session, fromKey, toKey, meta = auditMeta(sessio
   return n;
 }
 
-/** Apply the Fit-Gap split, gap type, rationale, Detailed Gap and status of one entity's assessment to the other entities of the same activity. */
+/** Apply today's and the future split, gap type, rationale, Detailed Gap and status of one entity's assessment to the other entities of the same activity. */
 export function applyToAllEntities(session, fromKey, meta = auditMeta(session)) {
   const src = session.assessments[fromKey]; if (!src) return 0; let n = 0;
   for (const a of Object.values(session.assessments)) {
     if (a.processId !== src.processId || a.key === fromKey || a.scope.outOfScope) continue;
     for (const f of ['local', 'other', 'gbs', 'fte', 'hours']) if (src.fitGap[f] !== null && src.fitGap[f] !== undefined) n += applyChange(session, a.key, `fitGap.${f}`, src.fitGap[f], meta) ? 1 : 0;
+    for (const f of ['local', 'other', 'gbs']) if (src.today?.[f] === true || src.today?.[f] === false) n += applyChange(session, a.key, `today.${f}`, src.today[f], meta) ? 1 : 0;
     for (const f of DETAILED_GAP_FIELDS) if (src.detailedGap[f]) n += applyChange(session, a.key, `detailedGap.${f}`, src.detailedGap[f], meta) ? 1 : 0;
     for (const f of ['gapType', 'rationale', 'status']) if (src.workshop[f]) n += applyChange(session, a.key, `workshop.${f}`, src.workshop[f], meta) ? 1 : 0;
     if (src.deviation) n += applyChange(session, a.key, 'deviation', JSON.parse(JSON.stringify(src.deviation)), meta) ? 1 : 0;

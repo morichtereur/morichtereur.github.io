@@ -100,6 +100,14 @@ Client workbooks and content modules stay in the gitignored `samples/` folders.
 3. Session JSON save/load, backup prompt at session end
 4. Deviation log (+ initiative candidates, taxonomy change requests), flat export with audit log, audit export; acceptance run  ← pilot MVP complete
 5–11. flows, present mode, QG2, evaluate, swimlane, write-back, full PLAN/PREPARE/HAND-OVER, profile mapping UI
+17. Who performs it – shown and captured before the gap classification (workshop form, flow-board panel, present
+    mode): standard (template To-Be), today (Ops pre-assessment until confirmed or corrected in the workshop,
+    `a.today`) and after the transition (the decision, `a.fitGap` = the capture sheet's Fit-Gap split). Quick picks
+    "As standard" / "Stays as today"; the block states the consequence (today ≠ standard → harmonization gap,
+    agreement to transfer, deviation that needs a resolution) and suggests the gap type. Flow-board lanes show today's
+    flow with an arrow to the performer after the transition; table cells show "today → after". Write-back: today's
+    correction goes to the As-is split (only where it differs from Ops), the decision to the Fit-Gap split; the flat
+    export carries today, the decision and "today → to-be".
 16. Pre-assessment check before the workshop (`src/model/qc.js`; button under Files & exports, or
     `node scripts/qc-preassessment.mjs <country-folder> [--reference <other-country-folder> ...] [--out file.xlsx]`):
     readiness per entity × stream (GAP filled, As-Is/To-Be split filled, system filled, gaps explained → Green / Amber /

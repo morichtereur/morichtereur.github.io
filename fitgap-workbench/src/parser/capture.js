@@ -397,6 +397,7 @@ export function parseCaptureWorkbook(wb, opts) {
         entityCode: code, processId: id, stream: p.stream,
         asIs: { le: null, gbs: null, systems: '', gap: null, gapRaw: '', info: '', extra: {} },
         fitGap: { local: null, other: null, gbs: null, fte: null, hours: null, extra: {} },
+        today: { local: null, other: null, gbs: null },   // who performs it today, confirmed in the workshop (Ops as-is until then)
         detailedGap: Object.fromEntries(DETAILED_GAP_FIELDS.map(f => [f, ''])),
         scope: { outOfScope: false, source: null, reason: '' },
         notes: [],

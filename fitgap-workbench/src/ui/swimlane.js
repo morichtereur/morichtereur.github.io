@@ -4,14 +4,17 @@
 
 const LANES = [['LOCAL', 'Local Accounting'], ['OTHER', 'Other'], ['GBS', 'GBS']];
 function placement(a, p) {
+  // Lanes = who performs it today (the current flow): workshop answer, else Ops pre-assessment, else the standard.
   const tb = p?.toBe || {};
+  const t = todaySplit(a);
   let lanes, source;
-  if (fitGapComplete(a)) { lanes = [a.fitGap.local && 'LOCAL', a.fitGap.other && 'OTHER', a.fitGap.gbs && 'GBS'].filter(Boolean); source = 'workshop'; }
-  else if (a.asIs.le !== null || a.asIs.gbs !== null) { lanes = [a.asIs.le === true && 'LOCAL', a.asIs.gbs === true && 'GBS'].filter(Boolean); source = 'ops'; }
+  if (t.source) { lanes = [t.local === true && 'LOCAL', t.other === true && 'OTHER', t.gbs === true && 'GBS'].filter(Boolean); source = t.source; }
   else { lanes = [tb.le === true && 'LOCAL', tb.gbs === true && 'GBS'].filter(Boolean); source = 'tobe'; }
   const toBe = [tb.le === true && 'LOCAL', tb.gbs === true && 'GBS'].filter(Boolean);
   const ops = [a.asIs.le === true && 'LOCAL', a.asIs.gbs === true && 'GBS'].filter(Boolean);
-  return { lanes, source, toBe, ops, differsToBe: toBe.length > 0 && lanes.length > 0 && toBe.join() !== lanes.join(), differsOps: source === 'workshop' && ops.length > 0 && ops.join() !== lanes.join() };
+  const future = futureComplete(a) ? [a.fitGap.local && 'LOCAL', a.fitGap.other && 'OTHER', a.fitGap.gbs && 'GBS'].filter(Boolean) : [];
+  return { lanes, source, toBe, ops, future, moves: future.length > 0 && lanes.length > 0 && future.join() !== lanes.join(),
+    differsToBe: toBe.length > 0 && lanes.length > 0 && toBe.join() !== lanes.join(), differsOps: source === 'workshop' && ops.length > 0 && ops.join() !== lanes.join() };
 }
 
 function swimlaneModel(session, entityCode, activities) {

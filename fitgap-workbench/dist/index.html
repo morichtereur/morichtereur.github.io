@@ -727,6 +727,24 @@ dialog.welcome { max-width: 40rem; }
 
 .qc-light { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: .35rem; vertical-align: 0; background: var(--none); }
 .qc-green { background: var(--ok); } .qc-amber { background: var(--g-harm); } .qc-red { background: var(--flag); }
+/* Who performs it: standard · today · after transition, above the gap classification. */
+.who { display: grid; gap: .35rem; }
+.who-row { display: grid; grid-template-columns: 6.6rem 1fr; align-items: center; gap: .4rem; }
+.who-k { font-size: .74rem; font-weight: 600; color: var(--ink-2); line-height: 1.2; }
+.who-src { font-size: .62rem; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--ink-3); border: 1px solid var(--line); border-radius: 4px; padding: 0 .25rem; }
+.who-lane { font-family: var(--font-mono); font-size: .78rem; font-weight: 600; }
+.performers.from-ops .performer.on { background: transparent; border-style: dashed; }
+.performers.from-ops .yn button[aria-pressed="true"] { opacity: .55; }
+.performers.future .performer.on { border-color: var(--gbs); background: color-mix(in srgb, var(--gbs) 14%, transparent); }
+.who-quick { display: flex; gap: .3rem; flex-wrap: wrap; padding-left: 7rem; }
+.who-quick .chip { font-size: .72rem; }
+.who-note { font-size: .76rem; line-height: 1.35; padding: .35rem .5rem; border-radius: var(--radius); background: var(--bg); border: 1px solid var(--line); display: grid; gap: .15rem; }
+.who-flag { color: var(--flag); font-weight: 600; } .who-ok { color: var(--g-none, #2e7d32); font-weight: 600; }
+.who-mini { font-family: var(--font-mono); font-size: .66rem; color: var(--ink-3); margin: .1rem 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.who-mini.flag { color: var(--flag); }
+.stepcard .handoff.moves { color: var(--accent); font-weight: 600; }
+.present .who-k, .present .who-note, .present .who-quick .chip { font-size: .85cqw; } .present .who-row { grid-template-columns: 7cqw 1fr; } .present .who-quick { padding-left: 7.4cqw; }
+@media (max-width: 720px) { .who-row { grid-template-columns: 1fr; } .who-quick { padding-left: 0; } }
 
 </style>
 </head>
@@ -773,7 +791,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 </script>
 <script id="app">
 'use strict';
-const BUILD = { version: '0.1.0', builtAt: '2026-10-25T14:46:37.407Z' };
+const BUILD = { version: '0.1.0', builtAt: '2026-10-31T21:14:22.126Z' };
 
 /* ---- src/model/constants.js ---- */
 // Domain constants. Pure data – no client-specific values anywhere in here.
@@ -1534,6 +1552,7 @@ function parseCaptureWorkbook(wb, opts) {
         entityCode: code, processId: id, stream: p.stream,
         asIs: { le: null, gbs: null, systems: '', gap: null, gapRaw: '', info: '', extra: {} },
         fitGap: { local: null, other: null, gbs: null, fte: null, hours: null, extra: {} },
+        today: { local: null, other: null, gbs: null },   // who performs it today, confirmed in the workshop (Ops as-is until then)
         detailedGap: Object.fromEntries(DETAILED_GAP_FIELDS.map(f => [f, ''])),
         scope: { outOfScope: false, source: null, reason: '' },
         notes: [],
@@ -2071,26 +2090,62 @@ function effortSum(session, list) {
 
 function effectiveGap(a) { return a.workshop.gapType || a.asIs.gap || null; }
 function gapDiffersFromOps(a) { return !!a.workshop.gapType && a.workshop.gapType !== a.asIs.gap; }
-function fitGapComplete(a) { return [a.fitGap.local, a.fitGap.other, a.fitGap.gbs].every(v => v === true || v === false); }
 function detailedGapFilled(a) { return DETAILED_GAP_FIELDS.filter(f => a.detailedGap[f] && a.detailedGap[f] !== NA); }
 function detailedGapTouched(a) { return DETAILED_GAP_FIELDS.filter(f => a.detailedGap[f]); }
 
-/** Fit-Gap split vs. To-Be split: returns { differs, toBe: 'GBS'|'Local'|'Both'|'?', workshop } */
-function splitDelta(a, process) {
-  const tb = process?.toBe || {};
-  const lane = (local, gbs, other) => { const parts = []; if (local === true) parts.push('Local'); if (other === true) parts.push('Other'); if (gbs === true) parts.push('GBS'); return parts.length ? parts.join(' + ') : (local === false || gbs === false ? 'none' : '?'); };
-  const toBe = lane(tb.le, tb.gbs, false), ws = fitGapComplete(a) ? lane(a.fitGap.local, a.fitGap.gbs, a.fitGap.other) : '?';
-  const known = toBe !== '?' && ws !== '?';
-  return { toBe, workshop: ws, differs: known && toBe !== ws, known };
+/* ---------------------------------------------------------- who performs it
+ * Three splits per activity, always shown before the gap classification:
+ *  standard – the global To-Be split of the template (process.toBe: LE / GBS)
+ *  today    – who performs it today: Ops pre-assessment (asIs.le / asIs.gbs), confirmed or corrected in the
+ *             workshop (a.today.local / other / gbs) – written back to the capture sheet's As-is split
+ *  future   – who will perform it after the transition: the workshop decision (a.fitGap.local / other / gbs) –
+ *             the capture sheet's Fit-Gap split; "x under GBS" = agreement to transfer, "Local" = stays local
+ * Harmonization gap = today's performer differs from the standard; a future performer other than the standard
+ * is a deviation that needs a resolution. */
+const yn3 = (v) => (v === true || v === false ? v : null);
+function laneText(s) {
+  if (!s) return '?';
+  const parts = []; if (s.local === true) parts.push('Local'); if (s.other === true) parts.push('Other'); if (s.gbs === true) parts.push('GBS');
+  if (parts.length) return parts.join(' + ');
+  return s.local === false || s.gbs === false || s.other === false ? 'none' : '?';
 }
+const known = (s) => laneText(s) !== '?';
+/** Global standard (template To-Be). */
+function standardSplit(process) { const tb = process?.toBe || {}; return { local: yn3(tb.le), other: null, gbs: yn3(tb.gbs) }; }
+/** Who performs it today: workshop answer when given, else the Ops pre-assessment. */
+function todaySplit(a) {
+  const t = a?.today || {};
+  if (['local', 'other', 'gbs'].some(k => t[k] === true || t[k] === false)) return { local: yn3(t.local), other: yn3(t.other), gbs: yn3(t.gbs), source: 'workshop' };
+  if (a?.asIs && (a.asIs.le !== null && a.asIs.le !== undefined || a.asIs.gbs !== null && a.asIs.gbs !== undefined)) return { local: yn3(a.asIs.le), other: null, gbs: yn3(a.asIs.gbs), source: 'ops' };
+  return { local: null, other: null, gbs: null, source: null };
+}
+/** Who will perform it after the transition (workshop decision). */
+function futureSplit(a) { return { local: yn3(a?.fitGap?.local), other: yn3(a?.fitGap?.other), gbs: yn3(a?.fitGap?.gbs) }; }
+function futureComplete(a) { return [a.fitGap.local, a.fitGap.other, a.fitGap.gbs].every(v => v === true || v === false); }
+const fitGapComplete = futureComplete;
 
-/** Suggested workshop gap type from the split delta and the Ops value. */
+/** Standard vs today vs future, as labels plus the comparisons the screen and the suggestions need. */
+function performerView(a, process) {
+  const standard = standardSplit(process), today = todaySplit(a), future = futureSplit(a);
+  const st = laneText(standard), td = laneText(today), fu = futureComplete(a) ? laneText(future) : '?';
+  return {
+    standard: st, today: td, todaySource: today.source, future: fu,
+    todayDiffers: known(standard) && td !== '?' && td !== st,         // → harmonization gap
+    futureDiffers: known(standard) && fu !== '?' && fu !== st,         // → deviation from the standard
+    moves: td !== '?' && fu !== '?' && td !== fu,                      // the activity changes hands
+  };
+}
+/** Kept for callers of the old name: today's performer vs the standard. */
+function splitDelta(a, process) { const v = performerView(a, process); return { toBe: v.standard, workshop: v.today, differs: v.todayDiffers, known: v.standard !== '?' && v.today !== '?' }; }
+
+/** Suggested workshop gap type: who performs it today vs the standard, combined with the Ops value. */
 function suggestGapType(a, process) {
-  const d = splitDelta(a, process);
-  if (!d.known) return null;
+  const v = performerView(a, process);
+  if (v.standard === '?' || v.today === '?') return null;
   const ops = a.asIs.gap;
-  if (d.differs) return ops === GAP.STANDARDIZATION || ops === GAP.BOTH ? GAP.BOTH : GAP.HARMONIZATION;
-  if (ops === GAP.HARMONIZATION) return GAP.NO_GAP; // split matches To-Be: harmonization gap not confirmed
+  if (v.todayDiffers) return ops === GAP.STANDARDIZATION || ops === GAP.BOTH ? GAP.BOTH : GAP.HARMONIZATION;
+  if (ops === GAP.HARMONIZATION) return GAP.NO_GAP;      // performer already as standard: harmonization not confirmed
+  if (ops === GAP.BOTH) return GAP.STANDARDIZATION;      // only the "how" part remains
   return null;
 }
 
@@ -2100,7 +2155,8 @@ function completeness(a) {
   if (a.scope.outOfScope || a.workshop.status === WORKSHOP_STATUS.OUT_OF_SCOPE) return { complete: true, outOfScope: true, missing, gap: effectiveGap(a) };
   const gap = effectiveGap(a);
   const touched = a.workshop.status !== WORKSHOP_STATUS.NOT_ASSESSED || !!a.workshop.changedAt;
-  if (!fitGapComplete(a)) missing.push('Fit-Gap split (Local / Other / GBS)');
+  if (todaySplit(a).source === null) missing.push('Who performs it today');
+  if (!futureComplete(a)) missing.push('Who will perform it (to-be: Local / Other / GBS)');
   const isGap = GAP_TYPES_WITH_DEVIATION.has(gap);
   const rationaleNeeded = (gap && gap !== GAP.NO_GAP) || gapDiffersFromOps(a);
   if (rationaleNeeded && !a.workshop.rationale?.trim()) missing.push('Rationale');
@@ -2165,12 +2221,13 @@ function copyDetailedGap(session, fromKey, toKey, meta = auditMeta(session)) {
   return n;
 }
 
-/** Apply the Fit-Gap split, gap type, rationale, Detailed Gap and status of one entity's assessment to the other entities of the same activity. */
+/** Apply today's and the future split, gap type, rationale, Detailed Gap and status of one entity's assessment to the other entities of the same activity. */
 function applyToAllEntities(session, fromKey, meta = auditMeta(session)) {
   const src = session.assessments[fromKey]; if (!src) return 0; let n = 0;
   for (const a of Object.values(session.assessments)) {
     if (a.processId !== src.processId || a.key === fromKey || a.scope.outOfScope) continue;
     for (const f of ['local', 'other', 'gbs', 'fte', 'hours']) if (src.fitGap[f] !== null && src.fitGap[f] !== undefined) n += applyChange(session, a.key, `fitGap.${f}`, src.fitGap[f], meta) ? 1 : 0;
+    for (const f of ['local', 'other', 'gbs']) if (src.today?.[f] === true || src.today?.[f] === false) n += applyChange(session, a.key, `today.${f}`, src.today[f], meta) ? 1 : 0;
     for (const f of DETAILED_GAP_FIELDS) if (src.detailedGap[f]) n += applyChange(session, a.key, `detailedGap.${f}`, src.detailedGap[f], meta) ? 1 : 0;
     for (const f of ['gapType', 'rationale', 'status']) if (src.workshop[f]) n += applyChange(session, a.key, `workshop.${f}`, src.workshop[f], meta) ? 1 : 0;
     if (src.deviation) n += applyChange(session, a.key, 'deviation', JSON.parse(JSON.stringify(src.deviation)), meta) ? 1 : 0;
@@ -2426,7 +2483,8 @@ function flatRows(session) {
       'To-Be LE': yn(p.toBe?.le), 'To-Be GBS': yn(p.toBe?.gbs), 'To-Be system': p.toBe?.system || '', 'Planned initiative': p.toBe?.initiative || '',
       'Ops LE/Country/Other': yn(a.asIs.le), 'Ops GBS': yn(a.asIs.gbs), 'Ops used systems': a.asIs.systems || '', 'Ops GAP': GAP_LABEL[a.asIs.gap] || '', 'Ops GAP (raw)': a.asIs.gapRaw || '', 'Ops additional information': a.asIs.info || '',
       'Scope': a.scope.outOfScope ? 'Out of scope' : 'In scope', 'Scope source': a.scope.source || '',
-      'Fit-Gap Local Accounting': yn(a.fitGap.local), 'Fit-Gap Other': yn(a.fitGap.other), 'Fit-Gap GBS': yn(a.fitGap.gbs), 'Hours / month': a.fitGap.hours ?? '', 'FTE': a.fitGap.fte ?? '', 'FTE basis (h/month)': a.fitGap.hours !== null && a.fitGap.hours !== undefined ? fteBasis(session) : '',
+      'Today Local': yn(todaySplit(a).local), 'Today Other': yn(todaySplit(a).other), 'Today GBS': yn(todaySplit(a).gbs), 'Today source': todaySplit(a).source === 'workshop' ? 'Workshop' : todaySplit(a).source === 'ops' ? 'Ops pre-assessment' : '',
+      'Fit-Gap Local Accounting': yn(a.fitGap.local), 'Fit-Gap Other': yn(a.fitGap.other), 'Fit-Gap GBS': yn(a.fitGap.gbs), 'Performer today → to-be': (() => { const v = performerView(a, p); return v.today === '?' && v.future === '?' ? '' : `${v.today} → ${v.future}`; })(), 'Hours / month': a.fitGap.hours ?? '', 'FTE': a.fitGap.fte ?? '', 'FTE basis (h/month)': a.fitGap.hours !== null && a.fitGap.hours !== undefined ? fteBasis(session) : '',
     };
     for (const f of DETAILED_GAP_FIELDS) r[`DG ${DETAILED_GAP_LABEL[f]}`] = a.detailedGap[f] || '';
     Object.assign(r, {
@@ -2663,6 +2721,7 @@ async function qcWorkbookBytes(session, XLSX, JSZip, qc) {
 
 
 
+
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 function colIndex(ref) { const m = ref.match(/^([A-Z]+)/); let n = 0; for (const ch of m[1]) n = n * 26 + (ch.charCodeAt(0) - 64); return n; }
 const rowOf = (ref) => Number(ref.match(/\d+$/)[0]);
@@ -2733,6 +2792,13 @@ function writeBackCells(session, fileName, { onlyTouched = true } = {}) {
       for (const f of ['local', 'other', 'gbs']) { const v = ynCell(a.fitGap[f]); if (fg[f] && v !== null && !same('fitGap', f)) sheet[fg[f]] = v; }
       if (fg.fte && a.fitGap.fte !== null && a.fitGap.fte !== undefined && !same('fitGap', 'fte')) sheet[fg.fte] = a.fitGap.fte;
       for (const f of DETAILED_GAP_FIELDS) if (dg[f] && a.detailedGap[f] && !same('detailedGap', f)) sheet[dg[f]] = a.detailedGap[f];
+      // Who performs it today, corrected in the workshop → the As-is split (LE/Country/Other | GBS); only where it differs from Ops.
+      const t = todaySplit(a), ai = src.cells.asIs || {};
+      if (t.source === 'workshop') {
+        const le = t.local === true || t.other === true ? true : t.local === false && t.other !== true ? false : null;
+        if (ai.le && le !== null && le !== a.asIs.le) sheet[ai.le] = ynCell(le);
+        if (ai.gbs && t.gbs !== null && t.gbs !== a.asIs.gbs) sheet[ai.gbs] = ynCell(t.gbs);
+      }
     }
   }
   return out;
@@ -3601,14 +3667,17 @@ function FlowViewer({ session, node, updateSession, toast, compact }) {
 
 const LANES = [['LOCAL', 'Local Accounting'], ['OTHER', 'Other'], ['GBS', 'GBS']];
 function placement(a, p) {
+  // Lanes = who performs it today (the current flow): workshop answer, else Ops pre-assessment, else the standard.
   const tb = p?.toBe || {};
+  const t = todaySplit(a);
   let lanes, source;
-  if (fitGapComplete(a)) { lanes = [a.fitGap.local && 'LOCAL', a.fitGap.other && 'OTHER', a.fitGap.gbs && 'GBS'].filter(Boolean); source = 'workshop'; }
-  else if (a.asIs.le !== null || a.asIs.gbs !== null) { lanes = [a.asIs.le === true && 'LOCAL', a.asIs.gbs === true && 'GBS'].filter(Boolean); source = 'ops'; }
+  if (t.source) { lanes = [t.local === true && 'LOCAL', t.other === true && 'OTHER', t.gbs === true && 'GBS'].filter(Boolean); source = t.source; }
   else { lanes = [tb.le === true && 'LOCAL', tb.gbs === true && 'GBS'].filter(Boolean); source = 'tobe'; }
   const toBe = [tb.le === true && 'LOCAL', tb.gbs === true && 'GBS'].filter(Boolean);
   const ops = [a.asIs.le === true && 'LOCAL', a.asIs.gbs === true && 'GBS'].filter(Boolean);
-  return { lanes, source, toBe, ops, differsToBe: toBe.length > 0 && lanes.length > 0 && toBe.join() !== lanes.join(), differsOps: source === 'workshop' && ops.length > 0 && ops.join() !== lanes.join() };
+  const future = futureComplete(a) ? [a.fitGap.local && 'LOCAL', a.fitGap.other && 'OTHER', a.fitGap.gbs && 'GBS'].filter(Boolean) : [];
+  return { lanes, source, toBe, ops, future, moves: future.length > 0 && lanes.length > 0 && future.join() !== lanes.join(),
+    differsToBe: toBe.length > 0 && lanes.length > 0 && toBe.join() !== lanes.join(), differsOps: source === 'workshop' && ops.length > 0 && ops.join() !== lanes.join() };
 }
 
 function swimlaneModel(session, entityCode, activities) {
@@ -3699,6 +3768,38 @@ function EffortField({ session, a, updateSession, compact }) {
   return html`<div class=${`fte-row${compact ? ' compact' : ''}`}><${TextInput} class="num sm fte-input" value=${fmtHours(h)} onCommit=${commit} placeholder=${fromOps ? `≈${fmtHours(hoursOf(session, a))}` : compact ? '–' : '0'} inputmode="decimal" aria-label="Hours per month" /><span class="small muted">h / month</span>${!compact && html`<div class="chips">${HOURS_QUICK.map(q => html`<${Chip} key=${q} active=${Number(h) === q} onClick=${() => setH(Number(h) === q ? null : q)}>${q} h</${Chip}>`)}</div>`}${fteNote && html`<span class="fte-note" title=${`FTE basis: ${basis} productive hours per FTE per month`}>${fteNote}</span>`}</div>`;
 }
 
+/* Who performs it – standard (template To-Be), today (Ops pre-assessment, confirmed or corrected) and after the
+ * transition (the decision). Shown above the gap classification in the workshop form, the flow-board panel and
+ * present mode, with the conclusion it implies (harmonization gap, transfer, deviation). */
+const WHO = [['local', 'Local'], ['gbs', 'GBS'], ['other', 'Other']];
+function WhoPerforms({ session, a, process, updateSession, gapType, onGap }) {
+  const key = a.key; const today = todaySplit(a); const v = performerView(a, process); const std = standardSplit(process);
+  const setToday = (f, val) => updateSession(s => {
+    const x = s.assessments[key]; const cur = todaySplit(x);
+    // first answer in the workshop: take over the Ops values for the other fields, so the split stays complete
+    if (cur.source !== 'workshop') for (const [k] of WHO) if (k !== f) applyChange(s, key, `today.${k}`, cur[k] ?? (k === 'other' ? false : null));
+    applyChange(s, key, `today.${f}`, val);
+  });
+  const setFuture = (split) => updateSession(s => { for (const [k] of WHO) applyChange(s, key, `fitGap.${k}`, split[k] === true); });
+  const fromOps = today.source === 'ops';
+  const suggestion = suggestGapType(a, process);
+  const lines = [];
+  if (v.todayDiffers) lines.push(html`<span class="who-flag">Today ${v.today} · standard ${v.standard} → harmonization gap (who performs it)</span>`);
+  else if (v.today !== '?' && v.standard !== '?') lines.push(html`<span>Today as standard (${v.standard})</span>`);
+  if (v.future !== '?') {
+    if (!v.futureDiffers && v.moves) lines.push(html`<span class="who-ok">Agreement to transfer: ${v.today} → ${v.future}</span>`);
+    else if (v.futureDiffers) lines.push(html`<span class="who-flag">Deviation: stays ${v.future} (standard ${v.standard}) – resolution needed</span>`);
+    else lines.push(html`<span>No change of performer</span>`);
+  }
+  return html`<div class="who">
+    <div class="who-row"><span class="who-k">Standard</span><span class="who-v">${v.standard === '?' ? html`<span class="muted small">not given in the template</span>` : html`<span class="who-lane">${v.standard}</span>`}${process?.toBe?.system && html`<span class="muted small"> · ${process.toBe.system}</span>`}</span></div>
+    <div class="who-row"><span class="who-k">Today${fromOps ? html` <span class="who-src">Ops</span>` : ''}</span><div class=${`performers${fromOps ? ' from-ops' : ''}`}>${WHO.map(([f, l]) => html`<div key=${f} class=${`performer${today[f] === true ? ' on' : ''}`}><span>${l}</span><${YN} size="sm" value=${today[f]} name=${`Today ${l}`} onChange=${val => setToday(f, fromOps && val === null ? today[f] : val)} /></div>`)}</div></div>
+    <div class="who-row"><span class="who-k">After transition</span><div class="performers future">${WHO.map(([f, l]) => html`<div key=${f} class=${`performer${a.fitGap[f] === true ? ' on' : ''}`}><span>${l}</span><${YN} size="sm" value=${a.fitGap[f]} name=${`To-be ${l}`} onChange=${val => updateSession(s => applyChange(s, key, `fitGap.${f}`, val))} /></div>`)}</div></div>
+    <div class="who-quick">${v.standard !== '?' && html`<button class="chip" aria-pressed=${v.future !== '?' && !v.futureDiffers} onClick=${() => setFuture(std)}>As standard (${v.standard})</button>`}${v.today !== '?' && v.today !== v.standard && html`<button class="chip" aria-pressed=${v.future !== '?' && v.future === v.today} onClick=${() => setFuture(today)}>Stays as today (${v.today})</button>`}</div>
+    ${lines.length > 0 && html`<div class="who-note">${lines.map((l, i) => html`<div key=${i}>${l}</div>`)}${suggestion && suggestion !== gapType && onGap && html`<div>Suggested gap type: <b>${GAP_LABEL[suggestion]}</b> <button class="lnk" onClick=${() => onGap(suggestion)}>apply</button></div>`}</div>`}
+  </div>`;
+}
+
 function FlowBoard({ session, entityCode, node, activities, updateSession, toast, readOnly, onOpenRow, large, onAsk }) {
   const { steps, handoffs } = useMemo(() => swimlaneModel(session, entityCode, activities), [session.assessments, entityCode, activities]);
   const [sel, setSel] = useState(null);
@@ -3719,9 +3820,10 @@ function FlowBoard({ session, entityCode, node, activities, updateSession, toast
     return html`<button class=${`stepcard${s.lanes.length > 1 ? ' split' : ''}${sel === s.p.id ? ' sel' : ''}`} style=${`--lane-color:var(--${BOARD_LANES.find(l => l[0] === k)[2]})`} onClick=${() => !readOnly && setSel(sel === s.p.id ? null : s.p.id)} onDblClick=${() => onOpenRow && onOpenRow(s.p.id)} title=${`${s.p.id} ${s.p.name}`}>
       <div class="tg">${stepTag(s.p)}${s.lanes.length > 1 ? ` · ${idx + 1}/${s.lanes.length}` : ''}</div>
       <div class="nm">${s.p.name}</div>
-      <div class="meta"><${GapPill} value=${s.gap || (s.source === 'tobe' ? 'NOT_ASSESSED' : 'NOT_ASSESSED')} size="sm" />${s.source !== 'workshop' && html`<span class="src">${s.source === 'ops' ? 'Ops as-is' : 'To-Be'}</span>`}${idx === 0 && effortBadge(session, s.a) && html`<span class="fte-badge" title="Effort today">${effortBadge(session, s.a)}</span>`}</div>
+      <div class="meta"><${GapPill} value=${s.gap || (s.source === 'tobe' ? 'NOT_ASSESSED' : 'NOT_ASSESSED')} size="sm" />${s.source !== 'workshop' && html`<span class="src">${s.source === 'ops' ? 'Ops as-is' : 'standard'}</span>`}${idx === 0 && effortBadge(session, s.a) && html`<span class="fte-badge" title="Effort today">${effortBadge(session, s.a)}</span>`}</div>
       ${handoff && html`<div class="handoff">↳ hand-off from ${BOARD_LANES.find(l => l[0] === prev.lanes[0])?.[1]}</div>`}
-      ${mismatch && html`<div class="handoff" style="color:var(--flag)">⚑ To-Be: ${BOARD_LANES.find(l => l[0] === toBeLane)?.[1]}</div>`}
+      ${mismatch && html`<div class="handoff" style="color:var(--flag)">⚑ standard: ${BOARD_LANES.find(l => l[0] === toBeLane)?.[1]}</div>`}
+      ${s.moves && idx === 0 && html`<div class="handoff moves">→ after transition: ${s.future.map(l => BOARD_LANES.find(b => b[0] === l)?.[1]).join(' + ')}</div>`}
       ${s.differsOps && html`<div class="handoff" style="color:var(--accent)">● differs from Ops as-is</div>`}
     </button>`;
   };
@@ -3739,16 +3841,15 @@ function FlowBoard({ session, entityCode, node, activities, updateSession, toast
           </${Fragment}>`)}
         </div>
       </div>
-      <div class="board-legend">${BOARD_LANES.map(([k, label, color]) => html`<span key=${k}><i style=${`background:var(--${color})`}></i>${label}</span>`)}<span>● CORE / ◆ CONTROL = activity type</span><span>↳ hand-off between lanes</span><span style="color:var(--flag)">⚑ placed in a different lane than To-Be</span><span>split card = performed in two lanes</span>${!readOnly && html`<span class="mono">← → select step · double-click = open row</span>`}</div>
+      <div class="board-legend">${BOARD_LANES.map(([k, label, color]) => html`<span key=${k}><i style=${`background:var(--${color})`}></i>${label}</span>`)}<span>● CORE / ◆ CONTROL = activity type</span><span>↳ hand-off between lanes</span><span>lane = who performs it today</span><span style="color:var(--flag)">⚑ today not as the standard</span><span style="color:var(--accent)">→ performer after transition</span><span>split card = performed in two lanes</span>${!readOnly && html`<span class="mono">← → select step · double-click = open row</span>`}</div>
       <div style="position:absolute;left:-9999px;top:0" ref=${svgRef} aria-hidden="true"><${Swimlane} session=${session} entityCode=${entityCode} node=${node} activities=${activities} /></div>
     </div>
     ${selected && !readOnly && html`<aside class="board-detail">
       <div class="eyebrow">Selected activity</div>
       <div class="mono small muted">${a.processId}</div><h3 style="margin:.1rem 0 .4rem">${selected.p.name}</h3>
       ${selected.p.description && html`<p class="small muted">${selected.p.description}</p>`}
-      <dl class="kv"><dt>To-Be</dt><dd>${selected.toBe.map(l => html`<${Tag} kind=${l} key=${l} />`)}${!selected.toBe.length && '–'} ${selected.p.toBe?.system && html`<span class="muted small">· ${selected.p.toBe.system}</span>`}</dd><dt>Ops as-is</dt><dd>${selected.ops.map(l => html`<${Tag} kind=${l} key=${l} />`)}${!selected.ops.length && '–'}</dd><dt>Workshop</dt><dd>${selected.source === 'workshop' ? selected.lanes.map(l => html`<${Tag} kind=${l} key=${l} />`) : html`<span class="muted">not yet assessed</span>`}</dd></dl>
       <div class="fgrid" style="grid-template-columns:1fr;margin-top:.6rem">
-        <${Field} label="Who performs it today?"><div class="performers">${[['local', 'Local'], ['gbs', 'GBS'], ['other', 'Other']].map(([f, l]) => html`<div key=${f} class=${`performer${a.fitGap[f] === true ? ' on' : ''}`}><span>${l}</span><${YN} size="sm" value=${a.fitGap[f]} onChange=${v => set(`fitGap.${f}`, v)} name=${l} /></div>`)}</div></${Field}>
+        <${Field} label="Who performs it?"><${WhoPerforms} session=${session} a=${a} process=${selected.p} updateSession=${updateSession} gapType=${a.workshop.gapType} onGap=${g => { set('workshop.gapType', g); if (a.workshop.status === WORKSHOP_STATUS.NOT_ASSESSED) set('workshop.status', g === 'NO_GAP' ? WORKSHOP_STATUS.CONFIRMED_FIT : WORKSHOP_STATUS.GAP_CONFIRMED); }} /></${Field}>
         <${Field} label=${effortMode(session) === 'hours' ? 'Effort today (hours per month)' : 'Effort today (FTE)'} hint=${effortMode(session) === 'hours' ? `Average hours a month incl. period-end peaks · Σ process group: ${effortLabel(session, effortSum(session, steps.map(s => s.a)))}` : `Σ process group: ${effortLabel(session, effortSum(session, steps.map(s => s.a)))}`}><${EffortField} session=${session} a=${a} updateSession=${updateSession} /></${Field}>
         <${Field} label="Is there a gap vs. the global standard?"><div class="gapbtns">${['NO_GAP', 'HARMONIZATION', 'STANDARDIZATION', 'BOTH'].map(g => html`<button key=${g} class=${`pill pill-${g}${(a.workshop.gapType || '') === g ? ' on' : ''}`} title=${session.settings.gapDefinitions[g]} onClick=${() => { set('workshop.gapType', g); if (a.workshop.status === WORKSHOP_STATUS.NOT_ASSESSED) set('workshop.status', g === 'NO_GAP' ? WORKSHOP_STATUS.CONFIRMED_FIT : WORKSHOP_STATUS.GAP_CONFIRMED); }}>${GAP_LABEL[g]}</button>`)}</div>${!a.workshop.gapType && a.asIs.gap && html`<span class="hint">Ops pre-assessed: ${GAP_LABEL[a.asIs.gap]}</span>`}</${Field}>
         <${Field} label="What is different vs. the global standard?" required=${GAP_TYPES_WITH_DEVIATION.has(effectiveGap(a))}><${TextInput} textarea class="sm" style="min-height:3rem" value=${a.workshop.rationale} onCommit=${v => set('workshop.rationale', v)} placeholder="Who does it differently, which system, which rule…" /></${Field}>
@@ -4514,7 +4615,7 @@ function fmtVal(v) { if (v === null || v === undefined || v === '') return '–'
 function ExpandedCell({ session, a, process, updateSession, picks, participants, prevKey, toast, commentRef, onAsk }) {
   const key = a.key;
   const set = (path, v) => updateSession(s => applyChange(s, key, path, v));
-  const c = completeness(a); const gap = effectiveGap(a); const delta = splitDelta(a, process); const suggestion = suggestGapType(a, process);
+  const c = completeness(a); const gap = effectiveGap(a);
   const tb = process?.toBe || {}; const dev = a.deviation || {};
   const setDev = (patch) => updateSession(s => applyChange(s, key, 'deviation', { dimensions: [], resolution: '', justification: '', ownerId: '', targetDate: '', escalation: 'L1', approval: 'PROPOSED', initiativeCandidate: false, linkedInitiative: '', ...(s.assessments[key].deviation || {}), ...patch }));
   const [showHist, setShowHist] = useState(false);
@@ -4529,9 +4630,8 @@ function ExpandedCell({ session, a, process, updateSession, picks, participants,
     <div class="block ctx">
       <h4>Context · ${session.entities[a.entityCode]?.displayName || a.entityCode}</h4>
       <dl class="kv">
-        <dt>To-Be</dt><dd>${laneTags(tb.le, tb.gbs, false)} ${tb.system && html`<span class="muted small">· ${tb.system}</span>`}</dd>
         ${tb.initiative && html`<dt>Initiative</dt><dd><span class="mono small">${tb.initiative}</span></dd>`}
-        <dt>Ops as-is</dt><dd>${laneTags(a.asIs.le, a.asIs.gbs, false)} ${a.asIs.systems && html`<span class="muted small">· ${a.asIs.systems}</span>`}</dd>
+        ${a.asIs.systems && html`<dt>Ops systems</dt><dd class="small">${a.asIs.systems}</dd>`}
         <dt>Ops GAP</dt><dd><${GapPill} value=${a.asIs.gap || 'NOT_ASSESSED'} size="sm" definitions=${session.settings.gapDefinitions} /> ${a.asIs.gapRaw && a.asIs.gapRaw !== GAP_LABEL[a.asIs.gap] && html`<span class="muted small">"${a.asIs.gapRaw}"</span>`}</dd>
         ${a.asIs.info && html`<dt>Ops note</dt><dd>${a.asIs.info}</dd>`}
         ${process?.description && html`<dt>Description</dt><dd class="muted">${process.description}</dd>`}
@@ -4553,20 +4653,16 @@ function ExpandedCell({ session, a, process, updateSession, picks, participants,
     </div>
     ${a.scope.outOfScope ? html`<div class="block"><h4>Out of scope</h4><p class="muted small">${a.scope.source === 'workshop' ? a.scope.reason : 'Pre-set as out of scope in the capture sheet.'} Excluded from progress, time budget and analysis.</p></div>` : html`
     <div class="block">
-      <h4><span class="step">1</span> Who performs this activity today?</h4>
+      <h4><span class="step">1</span> Who performs it – today and after the transition?</h4>
       <div class="fgrid">
-        <${Field} label="Local Accounting (the entity)" required><${YN} value=${a.fitGap.local} onChange=${v => set('fitGap.local', v)} name="Local Accounting" /></${Field}>
-        <${Field} label="GBS (shared service centre)" required><${YN} value=${a.fitGap.gbs} onChange=${v => set('fitGap.gbs', v)} name="GBS" /></${Field}>
-        <${Field} label="Other party (e.g. external provider)"><${YN} value=${a.fitGap.other} onChange=${v => set('fitGap.other', v)} name="Other" /></${Field}>
-        <${Field} label=${effortMode(session) === 'hours' ? 'Effort (hours per month)' : 'Effort (FTE)'} hint="optional"><${EffortField} session=${session} a=${a} updateSession=${updateSession} /></${Field}>
+        <${Field} label="Local · GBS · Other party" required class="full"><${WhoPerforms} session=${session} a=${a} process=${process} updateSession=${updateSession} gapType=${a.workshop.gapType} onGap=${g => set('workshop.gapType', g)} /></${Field}>
+        <${Field} label=${effortMode(session) === 'hours' ? 'Effort today (hours per month)' : 'Effort today (FTE)'} hint="optional"><${EffortField} session=${session} a=${a} updateSession=${updateSession} /></${Field}>
       </div>
       <h4 style="margin-top:.8rem"><span class="step">2</span> Is there a gap vs. the global standard?</h4>
       <div class="fgrid">
         <${Field} label="Gap type" required><select class="select sm" value=${a.workshop.gapType || ''} onChange=${e => set('workshop.gapType', e.target.value || null)}><option value="">${a.asIs.gap ? `(Ops: ${GAP_LABEL[a.asIs.gap]})` : '– choose –'}</option>${GAP_CHOICES.map(g => html`<option value=${g}>${GAP_LABEL[g]}</option>`)}</select></${Field}>
         <${Field} label="Why? (short rationale)" required=${c.missing.includes('Rationale')} error=${c.missing.includes('Rationale') ? 'Needed for any gap, or when you change the pre-assessment' : null}><${TextInput} class=${`sm${c.missing.includes('Rationale') ? ' invalid' : ''}`} value=${a.workshop.rationale} onCommit=${v => set('workshop.rationale', v)} placeholder="Short reason" /></${Field}>
       </div>
-      ${delta.known && delta.differs && html`<div class="diff-note" style="margin-top:.5rem">To-Be: ${delta.toBe} → Workshop: ${delta.workshop}${suggestion && suggestion !== gap ? html` — suggest <b>${GAP_LABEL[suggestion]}</b> <${Button} variant="text" size="sm" onClick=${() => set('workshop.gapType', suggestion)}>Apply</${Button}>` : ''}</div>`}
-      ${delta.known && !delta.differs && a.asIs.gap === GAP.HARMONIZATION && suggestion === GAP.NO_GAP && html`<div class="diff-note" style="margin-top:.5rem">Split matches To-Be – Ops HARMONIZATION not confirmed? <${Button} variant="text" size="sm" onClick=${() => set('workshop.gapType', GAP.NO_GAP)}>Set NO GAP</${Button}></div>`}
       ${a.workshop.status !== WORKSHOP_STATUS.CONFIRMED_FIT && (a.asIs.gap === GAP.NO_GAP || gap === GAP.NO_GAP) && html`<div style="margin-top:.6rem"><${Button} variant="primary" size="sm" kbd="C" onClick=${() => { updateSession(s => confirmFit(s, key, process)); }}>Confirm as fit</${Button}><span class="muted small" style="margin-left:.5rem">no gap · split as planned · details n/a</span></div>`}
     </div>
     <div class="block">
@@ -4610,6 +4706,7 @@ function EntityCell({ a, process, onOpen, open, updateSession, onFit, onGap }) {
   return html`<td class=${`ent${open ? ' open' : ''}`} onClick=${e => { stop(e); onOpen(); }}>
     <div class="cell">
       <div class="top"><${GapPill} value=${gap || 'NOT_ASSESSED'} size="sm" />${differs && html`<span class="diff-note">was ${GAP_LABEL[a.asIs.gap] || '–'}</span>`}${l.workshop && html`<${Tag} kind=${l.workshop} />`}${c.complete ? html`<span class="complete" title="Complete"><${Icon} name="check" size=${13} /></span>` : c.touched ? html`<span class="incomplete" title=${c.missing.join(', ')}><${Icon} name="alert" size=${13} /></span>` : null}</div>
+      ${(() => { const v = performerView(a, process); return v.today === '?' && v.future === '?' ? null : html`<div class=${`who-mini${v.todayDiffers ? ' flag' : ''}`} title="Who performs it: today → after the transition (standard: ${v.standard})">${v.today}${v.todaySource === 'ops' ? '' : ' ✓'} → ${v.future === '?' ? '?' : v.future}</div>`; })()}
       ${confirmed ? html`<div class="quick"><${StatusDot} status=${a.workshop.status} /><button class="lnk" onClick=${e => { stop(e); onOpen(); }}>change</button></div>`
         : a.workshop.status === WORKSHOP_STATUS.NOT_ASSESSED ? html`<div class="quick"><button class="qbtn fit" title="Confirm as fit: no gap, split as planned (key C)" onClick=${e => { stop(e); onFit(); }}><${Icon} name="check" size=${13} /> Fit</button><button class="qbtn gap" title="There is a deviation – open the details" onClick=${e => { stop(e); onGap(); }}>Gap…</button><button class="qbtn q" title="Open question (key 4)" onClick=${e => { stop(e); updateSession(s => applyChange(s, a.key, 'workshop.status', WORKSHOP_STATUS.OPEN_QUESTION)); }}>?</button></div>`
         : html`<div class="quick"><${StatusDot} status=${a.workshop.status} />${!c.complete && html`<button class="lnk" onClick=${e => { stop(e); onOpen(); }}>complete</button>`}</div>`}
@@ -4967,7 +5064,8 @@ function stepContext(session, a) {
     `Process path: ${path.join(' › ')}`, `Activity: ${p.id} ${p.name}${p.description ? ' – ' + p.description : ''}`,
     `To-Be (global standard): local entity ${yn(p.toBe?.le)}, GBS ${yn(p.toBe?.gbs)}${p.toBe?.system ? ', system ' + p.toBe.system : ''}${p.toBe?.initiative ? ', planned initiative ' + p.toBe.initiative : ''}`,
     `Ops pre-assessment (as-is): local ${yn(a.asIs.le)}, GBS ${yn(a.asIs.gbs)}${a.asIs.systems ? ', systems ' + a.asIs.systems : ''}, GAP ${GAP_LABEL[a.asIs.gap] || 'not assessed'}${a.asIs.info ? ', note: ' + a.asIs.info : ''}`,
-    `Workshop so far: local ${yn(a.fitGap.local)}, GBS ${yn(a.fitGap.gbs)}, other ${yn(a.fitGap.other)}, gap type ${a.workshop.gapType ? GAP_LABEL[a.workshop.gapType] : 'not set'}${a.workshop.rationale ? ', rationale: ' + a.workshop.rationale : ''}${dg ? '; details: ' + dg : ''}`,
+    `Who performs it today (${todaySplit(a).source === 'workshop' ? 'confirmed in the workshop' : 'Ops pre-assessment'}): ${performerView(a, p).today}; after the transition (workshop decision): ${performerView(a, p).future}`,
+    `Workshop so far: gap type ${a.workshop.gapType ? GAP_LABEL[a.workshop.gapType] : 'not set'}${a.workshop.rationale ? ', rationale: ' + a.workshop.rationale : ''}${dg ? '; details: ' + dg : ''}`,
     ...(p.context ? Object.entries(p.context).map(([k, v]) => `${k}: ${Object.entries(v).map(([h, x]) => `${h}=${x}`).join(', ')}`) : [])].join('\n');
 }
 const EXPLAIN_PROMPT = `Explain this process step for the workshop:
